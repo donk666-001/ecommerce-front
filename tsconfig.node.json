@@ -1,0 +1,52 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  // 继承 Node.js 24 环境的最佳 TypeScript 配置
+  "include": [
+    "vite.config.*",
+    // 包含 Vite 构建工具配置文件
+    "vitest.config.*",
+    // 包含 Vitest 测试框架配置文件
+    "playwright.config.*",
+    // 包含 Playwright E2E 测试配置文件
+    ".oxfmtrc.jsonc",
+    // 包含代码格式化配置文件
+    ".oxlintrc.json"
+    // 包含代码检查配置文件
+  ],
+  "compilerOptions": {
+    "module": "ESNext",
+    // 指定代码中使用的模块语法（import/export）
+    "target": "ESNext",
+    // 指定编译后 JavaScript 代码的版本标准，即实机上支持的环境，通常需要和 module 保持一致
+    "noEmit": true,
+    // 仅进行类型检查，不输出编译结果
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    // 存储增量编译信息的文件路径
+    "moduleResolution": "bundler",
+    // 使用 Bundler 模块解析策略，适配现代打包工具
+    // -- 构建时无需过度的检查 --
+    "strict": true,
+    // 启用严格模式，但禁用一些严格检查
+    "skipLibCheck": true,
+    // 跳过声明文件的类型检查
+    "incremental": true,
+    // 启用增量编译，提升性能
+    "composite": true,
+    // 启用复合项目支持
+    "noUnusedLocals": true,
+    // 检测未使用的局部变量
+    "noUnusedParameters": true,
+    // 检测未使用的参数
+    "noImplicitReturns": true,
+    // 禁止没有返回值的函数有隐式返回
+    "noFallthroughCasesInSwitch": true,
+    // 禁止 switch 语句中 fallthrough（穿透）情况
+    "jsx": "preserve",
+    // 保留 JSX 元素，不进行转换
+    // -------------------------
+    "types": [
+      "node"
+      // 默认所有可见 "@types" 第三方包都包含在您的编译中，但是显式的指定，可以减少编译时间，构建时，只需要 node 环境既可
+    ]
+  }
+}

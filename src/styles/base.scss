@@ -1,0 +1,40 @@
+body {
+    margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+header {
+    margin: 0;
+    padding: 0;
+}
+
+ul,
+figure {
+    margin: 0;
+    padding: 0;
+}
+
+img {
+    width: 100%;
+    height: auto;
+}
+
+ul {
+    list-style: none;
+}
+
+.area-main {
+    width: 100%;
+    font-family: var(--font-family-secondary), serif;
+
+    .banner {
+        margin: 0 auto;
+        width: 98vw;
+    }
+}

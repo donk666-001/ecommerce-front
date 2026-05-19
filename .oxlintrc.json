@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "no-console": "allow",
+    "namespace": "warn",
+    "no-deprecated-destroyed-lifecycle": "error",
+    "no-export-in-script-setup": "error",
+    "prefer-import-from-vue": "error",
+    "valid-define-emits": "error",
+    "valid-define-props": "error",
+    "no-import-compiler-macros": "error",
+    "no-multiple-slot-args": "error",
+    "no-required-prop-with-default": "error",
+    "require-default-export": "error",
+    "define-emits-declaration": "error",
+    "require-typed-ref": "error"
+  },
+  "plugins": [
+    "vue"
+  ]
+}
