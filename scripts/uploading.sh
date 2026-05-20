@@ -2,7 +2,7 @@
 
 # 配置
 LOCAL_DIST="/Users/shadowabyss/Desktop/softWare/code/01 Vue/e-commerce-front/dist"
-REMOTE_DIR="/var/www/centos.local"
+REMOTE_DIR="/var/www/html/e-commerce"
 SSH_KEY="/Users/shadowabyss/Desktop/个人文件/百度同步目录/writing/Linux/密钥/secretKey"
 TEMP_FILE="/tmp/dist-$(date +%s).tar.gz"
 

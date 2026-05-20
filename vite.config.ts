@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
 import { defineConfig, loadEnv } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
+import VueRouter from "unplugin-vue-router/vite";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -48,6 +49,14 @@ export default defineConfig(({ mode }) => {
         envDir: "./env", // 环境变量目录，用于读取环境变量
         // 插件配置
         plugins: [
+            VueRouter({
+                dts: 'src/typed-router.d.ts',
+                routesFolder: 'src/pages',
+                importMode: 'sync',
+                extendRoute: () => {
+                    // 可以在这里扩展路由
+                },
+            }),
             vue(),
             isDev
                 ? vueDevTools({
@@ -104,7 +113,7 @@ export default defineConfig(({ mode }) => {
 
         // 优化依赖项
         optimizeDeps: {
-            include: ["vue", "vue-router", "echarts"], // 预构建的包，常用的还有："echarts", "element-plus"
+            include: ["vue", "vue-router", "echarts", "element-plus"], // 预构建的包，常用的还有："echarts", "element-plus"
             // exclude: ['vue-demi'] // 排除某些不需要预构建的包
             force: true, // 强制预构建
         },

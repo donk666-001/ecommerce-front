@@ -1,7 +1,9 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/auto-imports.d.ts",
+    "src/typed-router.d.ts"
   ],
   "exclude": [
     "src/**/__tests__/*"
