@@ -2,6 +2,13 @@ body {
     margin: 0;
 }
 
+// 修复 Element Plus 弹窗导致的滚动问题
+body.el-popup-parent--hidden {
+    overflow-y: auto !important;
+    width: 100% !important;
+    padding-right: 0 !important;
+}
+
 h1,
 h2,
 h3,

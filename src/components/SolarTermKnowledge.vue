@@ -1293,10 +1293,27 @@ const showRecipeDetail = (recipe: Recipe) => {
 // 处理图片加载错误
 const handleImageError = (event: Event, recipeName: string) => {
     const target = event.target as HTMLImageElement;
-    // 使用渐变色背景作为占位图
-    target.style.background =
-        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-    target.alt = recipeName;
+    // 阻止默认错误处理
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // 创建一个占位div替换img元素
+    const placeholder = document.createElement('div');
+    placeholder.style.width = '100%';
+    placeholder.style.height = '100%';
+    placeholder.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    placeholder.style.display = 'flex';
+    placeholder.style.alignItems = 'center';
+    placeholder.style.justifyContent = 'center';
+    placeholder.style.color = 'white';
+    placeholder.style.fontSize = '14px';
+    placeholder.style.borderRadius = '4px';
+    placeholder.textContent = recipeName;
+    
+    // 替换img元素
+    if (target.parentNode) {
+        target.parentNode.replaceChild(placeholder, target);
+    }
 };
 </script>
 
