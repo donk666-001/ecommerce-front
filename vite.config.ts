@@ -1,4 +1,5 @@
 import vue from "@vitejs/plugin-vue";
+import fs from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
 import { defineConfig, loadEnv } from "vite";
@@ -42,7 +43,7 @@ export default defineConfig(({ mode }) => {
     console.log(`当前项目运行环境地址：${JSON.stringify(viteEnv, null, 2)}`);
 
     return {
-        // 项目启动后的路由根路径（例如：http://localhost:5173/dev/ ），注意格式为 /yoursrc/，你可以写多层路径，如：/dev/yoursrc/，但必须保证左右都被斜杠包裹
+        // 项目启动后的路由根路径（例如：http://localhost:5173/dev/ ），注意格式为 /yoursrc/，你可以写多层路径，如：/.env.development/yoursrc/，但必须保证左右都被斜杠包裹
         base: baseUrl,
         envDir: "./env", // 环境变量目录，用于读取环境变量
         // 插件配置
@@ -73,8 +74,32 @@ export default defineConfig(({ mode }) => {
             host: "localhost",
             // open: true, // 启动项目后，自动打开浏览器
 
+            // 启用 HTTPS
+            https: isDev
+                ? {
+                      key: fs.readFileSync(
+                          resolve(__dirname, "./resource/certs/key.pem"),
+                      ),
+                      cert: fs.readFileSync(
+                          resolve(__dirname, "./resource/certs/cert.pem"),
+                      ),
+                  }
+                : undefined,
+
             // 禁用 WebSocket 功能
             disableWebSocket: false,
+
+            // 代理配置 - 解决 HTTPS 证书问题和跨域问题
+            proxy: isDev
+                ? {
+                      "/e-commerce/api": {
+                          target: "https://localhost:3000",
+                          changeOrigin: true,
+                          secure: false, // 忽略 SSL 证书验证
+                          rewrite: (path) => path.replace(/^\/e-commerce\/api/, "/e-commerce/api"),
+                      },
+                  }
+                : undefined,
         },
 
         // 优化依赖项

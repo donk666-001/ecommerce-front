@@ -1,11 +1,9 @@
 <template>
-  <div class="app">
-    <router-view />
-  </div>
+    <div class="app">
+        <router-view />
+    </div>
 </template>
 
-<script lang="ts" setup>
-</script>
+<script lang="ts" setup></script>
 
-<style lang="scss" scoped>
-</style>
+<style lang="scss" scoped></style>
