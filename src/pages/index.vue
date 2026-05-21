@@ -1,26 +1,7 @@
 <template>
     <div class="home-page">
         <!-- 顶部导航栏 -->
-        <header class="header">
-            <div class="container">
-                <div class="logo">颐养阁</div>
-                <el-menu mode="horizontal" :ellipsis="false" class="nav-menu">
-                    <el-menu-item index="1">首页</el-menu-item>
-                    <el-menu-item index="2">养生智库</el-menu-item>
-                    <el-menu-item index="3">名医问诊</el-menu-item>
-                    <el-menu-item index="4">课程</el-menu-item>
-                    <el-menu-item index="5">商城</el-menu-item>
-                </el-menu>
-                <div class="search-box">
-                    <el-input
-                        v-model="searchQuery"
-                        placeholder="搜索节气、食谱、穴位..."
-                        prefix-icon="Search"
-                        clearable
-                    />
-                </div>
-            </div>
-        </header>
+        <HeaderLayout />
 
         <!-- 主体内容区 -->
         <main class="main-content">
@@ -127,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SolarTermKnowledge from "@/components/SolarTermKnowledge.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
 import MenstrualTracker from "@/components/MenstrualTracker.vue";
@@ -134,7 +116,6 @@ import TcmWisdom from "@/components/TcmWisdom.vue";
 import EmotionHealing from "@/components/EmotionHealing.vue";
 import PersonalizedRecommendation from "@/components/PersonalizedRecommendation.vue";
 
-const searchQuery = ref("");
 const activeTab = ref("solar-term");
 
 // 切换标签页
@@ -153,40 +134,6 @@ const switchTab = (tabName: string) => {
 .home-page {
     min-height: 100vh;
     background-color: #f8f9fa;
-}
-
-.header {
-    background-color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-
-    .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 60px;
-    }
-
-    .logo {
-        font-size: 24px;
-        font-weight: bold;
-        color: #409eff;
-    }
-
-    .nav-menu {
-        flex: 1;
-        margin: 0 20px;
-        border-bottom: none;
-    }
-
-    .search-box {
-        width: 250px;
-    }
 }
 
 .main-content {

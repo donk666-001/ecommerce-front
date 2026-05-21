@@ -9,20 +9,20 @@
         >
             <el-steps :active="currentStep" finish-status="success">
                 <el-step
-                    v-for="(question, index) in questions"
+                    v-for="(_, index) in questions"
                     :key="index"
                     :title="`第${index + 1}题`"
                 />
             </el-steps>
 
             <div v-if="currentStep < questions.length" class="test-content">
-                <h4>{{ questions[currentStep].question }}</h4>
+                <h4>{{ questions[currentStep]?.question }}</h4>
                 <el-radio-group
                     v-model="answers[currentStep]"
                     class="answer-options"
                 >
                     <el-radio
-                        v-for="option in questions[currentStep].options"
+                        v-for="option in questions[currentStep]?.options"
                         :key="option.value"
                         :label="option.value"
                         border
@@ -42,10 +42,7 @@
                         </el-tag>
                         <div class="score">{{ result.primary.score }}分</div>
                     </div>
-                    <div
-                        v-if="result.secondary"
-                        class="secondary-constitution"
-                    >
+                    <div v-if="result.secondary" class="secondary-constitution">
                         <h5>兼体质</h5>
                         <el-tag size="large" type="warning">
                             {{ result.secondary.name }}
@@ -74,10 +71,17 @@
                 <el-button
                     v-if="currentStep < questions.length"
                     type="primary"
-                    :disabled="answers[currentStep] === undefined"
+                    :disabled="
+                        answers[currentStep] === undefined ||
+                        !questions[currentStep]
+                    "
                     @click="nextStep"
                 >
-                    {{ currentStep === questions.length - 1 ? "查看结果" : "下一题" }}
+                    {{
+                        currentStep === questions.length - 1
+                            ? "查看结果"
+                            : "下一题"
+                    }}
                 </el-button>
                 <el-button
                     v-if="currentStep >= questions.length"
@@ -129,7 +133,9 @@
                                     <span class="score-label">兼体质：</span>
                                     <span class="score-value secondary">
                                         {{ currentConstitution.secondaryName }}
-                                        {{ currentConstitution.secondaryScore }}分
+                                        {{
+                                            currentConstitution.secondaryScore
+                                        }}分
                                     </span>
                                 </div>
                             </div>
@@ -145,10 +151,7 @@
                     <h4 class="section-title">经络穴位</h4>
                     <div class="meridian-container">
                         <div class="body-map">
-                            <svg
-                                viewBox="0 0 400 600"
-                                class="body-svg"
-                            >
+                            <svg viewBox="0 0 400 600" class="body-svg">
                                 <!-- 人体轮廓 -->
                                 <ellipse
                                     cx="200"
@@ -404,9 +407,9 @@
                                         :alt="course.title"
                                     />
                                     <el-tag
-                                        :type="getCourseStatusType(
-                                            course.status
-                                        )"
+                                        :type="
+                                            getCourseStatusType(course.status)
+                                        "
                                         class="course-status"
                                     >
                                         {{ getCourseStatusText(course.status) }}
@@ -478,15 +481,6 @@ interface Acupoint {
     indications: string;
     method: string;
     caution: string;
-}
-
-interface Article {
-    id: number;
-    title: string;
-    category: string;
-    summary: string;
-    date: string;
-    readTime: string;
 }
 
 interface Course {
@@ -571,7 +565,6 @@ const currentConstitution = reactive({
 // 测试结果
 const result = ref<ConstitutionResult>({
     primary: { name: "", score: 0 },
-    secondary: undefined,
     description: "",
 });
 
@@ -642,8 +635,7 @@ const articles = reactive({
             id: 1,
             title: "阴阳学说的基本概念",
             category: "阴阳五行",
-            summary:
-                "阴阳是中医理论的核心，代表着事物对立统一的两个方面...",
+            summary: "阴阳是中医理论的核心，代表着事物对立统一的两个方面...",
             date: "2024-01-15",
             readTime: "8分钟",
         },
@@ -753,26 +745,27 @@ function nextStep() {
 
 function calculateResult() {
     // 简化的体质计算逻辑（实际应根据中医体质分类标准）
-    const yinXuScore = (answers.value[0] + answers.value[1]) * 10;
-    const qiYuScore = answers.value[2] * 13;
+    const yinXuScore = ((answers.value[0] ?? 0) + (answers.value[1] ?? 0)) * 10;
+    const qiYuScore = (answers.value[2] ?? 0) * 13;
 
     result.value = {
         primary: {
             name: yinXuScore > qiYuScore ? "阴虚" : "气郁",
             score: Math.max(yinXuScore, qiYuScore),
         },
-        secondary:
-            yinXuScore !== qiYuScore
-                ? {
-                      name: yinXuScore > qiYuScore ? "气郁" : "阴虚",
-                      score: Math.min(yinXuScore, qiYuScore),
-                  }
-                : undefined,
         description:
             yinXuScore > qiYuScore
                 ? "阴虚体质主要表现为体内阴液不足，容易出现口干、手足心热等症状。建议多食用滋阴润燥的食物，如银耳、百合、梨等。"
                 : "气郁体质主要表现为情绪不畅，容易抑郁焦虑。建议保持心情愉悦，适当运动，可饮用玫瑰花茶疏肝解郁。",
     };
+
+    // 只有在有兼体质时才添加 secondary 属性
+    if (yinXuScore !== qiYuScore) {
+        result.value.secondary = {
+            name: yinXuScore > qiYuScore ? "气郁" : "阴虚",
+            score: Math.min(yinXuScore, qiYuScore),
+        };
+    }
 
     // 更新当前体质显示
     currentConstitution.primary = result.value.primary.name;
@@ -794,14 +787,15 @@ function showAcupointDetail(acupoint: Acupoint) {
 }
 
 function getCourseStatusType(
-    status: Course["status"]
+    status: Course["status"],
 ): "" | "success" | "warning" | "info" {
-    const types = {
-        "not-started": "info",
-        "in-progress": "warning",
-        completed: "success",
-    };
-    return types[status] || "";
+    const types: Record<Course["status"], "" | "success" | "warning" | "info"> =
+        {
+            "not-started": "info",
+            "in-progress": "warning",
+            completed: "success",
+        };
+    return types[status];
 }
 
 function getCourseStatusText(status: Course["status"]): string {
@@ -1004,7 +998,6 @@ function getCourseStatusText(status: Course["status"]): string {
                     transition: all 0.3s ease;
 
                     &:hover {
-                        r: 10;
                         fill: #ff4081;
                     }
                 }

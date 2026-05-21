@@ -20,7 +20,7 @@
                     <el-step
                         v-for="(_, index) in currentAssessment.questions.slice(
                             0,
-                            10
+                            10,
                         )"
                         :key="index"
                         :title="`第${index + 1}题`"
@@ -63,9 +63,11 @@
                         </div>
                         <div class="result-level">
                             <el-tag
-                                :type="getAssessmentLevelType(
-                                    assessmentResult.level
-                                )"
+                                :type="
+                                    getAssessmentLevelType(
+                                        assessmentResult.level,
+                                    )
+                                "
                                 size="large"
                             >
                                 {{ assessmentResult.level }}
@@ -86,19 +88,29 @@
 
             <template #footer>
                 <el-button
-                    v-if="assessmentStep < (currentAssessment?.questions.length || 0)"
+                    v-if="
+                        assessmentStep <
+                        (currentAssessment?.questions.length || 0)
+                    "
                     @click="showAssessmentDialog = false"
                 >
                     取消
                 </el-button>
                 <el-button
-                    v-if="assessmentStep > 0 && assessmentStep < (currentAssessment?.questions.length || 0)"
+                    v-if="
+                        assessmentStep > 0 &&
+                        assessmentStep <
+                            (currentAssessment?.questions.length || 0)
+                    "
                     @click="assessmentStep--"
                 >
                     上一题
                 </el-button>
                 <el-button
-                    v-if="assessmentStep < (currentAssessment?.questions.length || 0)"
+                    v-if="
+                        assessmentStep <
+                        (currentAssessment?.questions.length || 0)
+                    "
                     type="primary"
                     :disabled="assessmentAnswers[assessmentStep] === undefined"
                     @click="nextAssessmentStep"
@@ -111,7 +123,10 @@
                     }}
                 </el-button>
                 <el-button
-                    v-if="assessmentStep >= (currentAssessment?.questions.length || 0)"
+                    v-if="
+                        assessmentStep >=
+                        (currentAssessment?.questions.length || 0)
+                    "
                     type="primary"
                     @click="showAssessmentDialog = false"
                 >
@@ -168,10 +183,7 @@
                         </div>
 
                         <div class="mood-actions">
-                            <el-button
-                                type="primary"
-                                @click="saveTodayMood"
-                            >
+                            <el-button type="primary" @click="saveTodayMood">
                                 <el-icon><Check /></el-icon>
                                 记录心情
                             </el-button>
@@ -184,10 +196,7 @@
                     <h4 class="section-title">近14日情绪曲线</h4>
                     <div class="chart-card">
                         <div class="chart-container">
-                            <svg
-                                viewBox="0 0 800 300"
-                                class="emotion-chart"
-                            >
+                            <svg viewBox="0 0 800 300" class="emotion-chart">
                                 <!-- 网格线 -->
                                 <g class="grid-lines">
                                     <line
@@ -220,7 +229,7 @@
                                 <g class="x-axis-labels">
                                     <text
                                         v-for="(date, i) in emotionHistory.map(
-                                            (h) => h.date
+                                            (h) => h.date,
                                         )"
                                         :key="i"
                                         :x="50 + i * 53.8"
@@ -254,9 +263,9 @@
                                     stroke-width="2"
                                     class="data-point"
                                 >
-                                    <title>{{
-                                        `${point.date}: ${point.score}分`
-                                    }}</title>
+                                    <title>
+                                        {{ `${point.date}: ${point.score}分` }}
+                                    </title>
                                 </circle>
                             </svg>
                         </div>
@@ -325,9 +334,7 @@
                             >
                                 <div class="assessment-icon">
                                     <el-icon :size="40">
-                                        <component
-                                            :is="assessment.icon"
-                                        />
+                                        <component :is="assessment.icon" />
                                     </el-icon>
                                 </div>
                                 <h5>{{ assessment.name }}</h5>
@@ -353,15 +360,14 @@
                             :sm="12"
                             :md="8"
                         >
-                            <el-card
-                                class="meditation-card"
-                                shadow="hover"
-                            >
+                            <el-card class="meditation-card" shadow="hover">
                                 <div class="meditation-header">
                                     <el-tag
-                                        :type="getMeditationTagType(
-                                            meditation.type
-                                        )"
+                                        :type="
+                                            getMeditationTagType(
+                                                meditation.type,
+                                            )
+                                        "
                                     >
                                         {{ meditation.type }}
                                     </el-tag>
@@ -392,12 +398,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-    ref,
-    reactive,
-    computed,
-    onMounted,
-} from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import {
     Edit,
     Check,
@@ -504,7 +505,7 @@ const yLabels = ["5", "4", "3", "2", "1"];
 
 const chartPoints = computed(() => {
     if (emotionHistory.value.length === 0) {
-        return '';
+        return "";
     }
     return emotionHistory.value
         .map((record, index) => {
@@ -524,7 +525,7 @@ function getYPosition(score: number): number {
 const weeklyAverage = computed(() => {
     const last7Days = emotionHistory.value.slice(-7);
     if (last7Days.length === 0) {
-        return '0.0';
+        return "0.0";
     }
     const sum = last7Days.reduce((acc, curr) => acc + curr.score, 0);
     return (sum / last7Days.length).toFixed(1);
@@ -534,7 +535,7 @@ const trendText = computed(() => {
     if (emotionHistory.value.length < 3) {
         return "➡️ 数据不足";
     }
-    
+
     const last3Days = emotionHistory.value.slice(-3);
     if (last3Days.length < 3) return "➡️ 数据不足";
 
@@ -558,10 +559,10 @@ const trendClass = computed(() => {
 
 const bestDay = computed(() => {
     if (emotionHistory.value.length === 0) {
-        return '暂无数据';
+        return "暂无数据";
     }
     const best = emotionHistory.value.reduce((prev, current) =>
-        prev.score > current.score ? prev : current
+        prev.score > current.score ? prev : current,
     );
     return `${best.date}（${best.score}分）`;
 });
@@ -794,24 +795,21 @@ const meditations: Meditation[] = [
         title: "焦虑舒缓·478呼吸",
         type: "呼吸训练",
         duration: 5,
-        description:
-            "通过4-7-8呼吸技巧，快速缓解焦虑情绪，恢复内心平静。",
+        description: "通过4-7-8呼吸技巧，快速缓解焦虑情绪，恢复内心平静。",
     },
     {
         id: 2,
         title: "正念扫描身体",
         type: "身体扫描",
         duration: 15,
-        description:
-            "从头到脚逐步觉察身体各部位的感受，释放累积的紧张感。",
+        description: "从头到脚逐步觉察身体各部位的感受，释放累积的紧张感。",
     },
     {
         id: 3,
         title: "晨间唤醒冥想",
         type: "清晨冥想",
         duration: 10,
-        description:
-            "以温和的方式开启新的一天，培养积极的心态和充沛的能量。",
+        description: "以温和的方式开启新的一天，培养积极的心态和充沛的能量。",
     },
 ];
 
@@ -819,7 +817,7 @@ const meditations: Meditation[] = [
 function saveTodayMood() {
     const today = new Date().toISOString().split("T")[0] || "";
     const existingIndex = emotionHistory.value.findIndex(
-        (r) => r.date === today
+        (r) => r.date === today,
     );
 
     const newRecord: MoodRecord = {
@@ -870,7 +868,7 @@ function calculateAssessmentResult() {
 
     const totalScore = assessmentAnswers.value.reduce(
         (sum, answer) => sum + answer,
-        0
+        0,
     );
     const maxScore = currentAssessment.value.questions.length * 4;
     const percentage = (totalScore / maxScore) * 100;

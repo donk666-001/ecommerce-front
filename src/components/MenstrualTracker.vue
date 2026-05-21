@@ -35,7 +35,9 @@
             </el-form>
             <template #footer>
                 <el-button @click="showSetupDialog = false">取消</el-button>
-                <el-button type="primary" @click="completeSetup">完成设置</el-button>
+                <el-button type="primary" @click="completeSetup"
+                    >完成设置</el-button
+                >
             </template>
         </el-dialog>
 
@@ -83,19 +85,13 @@
                     <h4 class="section-title">周期日历</h4>
                     <div class="calendar-container">
                         <div class="calendar-header">
-                            <el-button
-                                size="small"
-                                @click="changeMonth(-1)"
-                            >
+                            <el-button size="small" @click="changeMonth(-1)">
                                 <el-icon><ArrowLeft /></el-icon>
                             </el-button>
                             <span class="current-month">
                                 {{ currentYear }}年{{ currentMonth }}月
                             </span>
-                            <el-button
-                                size="small"
-                                @click="changeMonth(1)"
-                            >
+                            <el-button size="small" @click="changeMonth(1)">
                                 <el-icon><ArrowRight /></el-icon>
                             </el-button>
                         </div>
@@ -117,7 +113,10 @@
                                 @click="handleDateClick(date)"
                             >
                                 <div class="date-number">{{ date.day }}</div>
-                                <div v-if="date.hasRecord" class="record-indicator">
+                                <div
+                                    v-if="date.hasRecord"
+                                    class="record-indicator"
+                                >
                                     ●
                                 </div>
                             </div>
@@ -129,7 +128,9 @@
                                 <span>经期</span>
                             </div>
                             <div class="legend-item">
-                                <span class="legend-color period-predicted"></span>
+                                <span
+                                    class="legend-color period-predicted"
+                                ></span>
                                 <span>预测经期</span>
                             </div>
                             <div class="legend-item">
@@ -157,10 +158,16 @@
                                 :key="symptom.value"
                                 :label="symptom.value"
                                 class="symptom-item"
-                                @change="handleSymptomChange(symptom.value, $event)"
+                                @change="
+                                    handleSymptomChange(symptom.value, $event)
+                                "
                             >
-                                <span class="symptom-emoji">{{ symptom.emoji }}</span>
-                                <span class="symptom-name">{{ symptom.name }}</span>
+                                <span class="symptom-emoji">{{
+                                    symptom.emoji
+                                }}</span>
+                                <span class="symptom-name">{{
+                                    symptom.name
+                                }}</span>
                             </el-checkbox>
                         </el-checkbox-group>
 
@@ -183,7 +190,10 @@
                                 <el-button @click="showRatingDialog = false">
                                     取消
                                 </el-button>
-                                <el-button type="primary" @click="confirmRating">
+                                <el-button
+                                    type="primary"
+                                    @click="confirmRating"
+                                >
                                     确认
                                 </el-button>
                             </template>
@@ -232,7 +242,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { ArrowLeft, ArrowRight, Food, Operation, FirstAidKit } from "@element-plus/icons-vue";
+import {
+    ArrowLeft,
+    ArrowRight,
+    Food,
+    Operation,
+    FirstAidKit,
+} from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 
 // 类型定义
@@ -308,7 +324,7 @@ const currentPhase = computed(() => {
     const lastStart = new Date(setupForm.value.lastPeriodStart);
     const today = new Date();
     const diffDays = Math.floor(
-        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24)
+        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24),
     );
     const cycleDay = (diffDays % setupForm.value.cycleLength) + 1;
 
@@ -340,7 +356,7 @@ const currentPhaseDay = computed(() => {
     const lastStart = new Date(setupForm.value.lastPeriodStart);
     const today = new Date();
     const diffDays = Math.floor(
-        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24)
+        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24),
     );
     return (diffDays % setupForm.value.cycleLength) + 1;
 });
@@ -352,7 +368,7 @@ const countdownDays = computed(() => {
     const lastStart = new Date(setupForm.value.lastPeriodStart);
     const today = new Date();
     const diffDays = Math.floor(
-        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24)
+        (today.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24),
     );
     const daysSinceLastPeriod = diffDays % setupForm.value.cycleLength;
     return setupForm.value.cycleLength - daysSinceLastPeriod;
@@ -471,12 +487,12 @@ function isPredictedPeriod(date: Date): boolean {
     const lastStart = new Date(setupForm.value.lastPeriodStart);
     const nextPeriodStart = new Date(lastStart);
     nextPeriodStart.setDate(
-        nextPeriodStart.getDate() + setupForm.value.cycleLength
+        nextPeriodStart.getDate() + setupForm.value.cycleLength,
     );
 
     const predictedEnd = new Date(nextPeriodStart);
     predictedEnd.setDate(
-        predictedEnd.getDate() + setupForm.value.periodDuration - 1
+        predictedEnd.getDate() + setupForm.value.periodDuration - 1,
     );
 
     const dateStr = formatDate(date);
@@ -506,7 +522,7 @@ function isInOvulation(date: Date): boolean {
 function hasRecordOnDate(date: Date): boolean {
     const dateStr = formatDate(date);
     return periodRecords.value.some(
-        (record) => record.startDate === dateStr || record.endDate === dateStr
+        (record) => record.startDate === dateStr || record.endDate === dateStr,
     );
 }
 
@@ -563,7 +579,7 @@ function changeMonth(delta: number) {
 function handleDateClick(date: CalendarDate) {
     const dateStr = date.dateStr;
     const existingRecord = periodRecords.value.find(
-        (r) => r.startDate === dateStr || r.endDate === dateStr
+        (r) => r.startDate === dateStr || r.endDate === dateStr,
     );
 
     if (existingRecord) {
@@ -579,7 +595,10 @@ function handleDateClick(date: CalendarDate) {
     }
 }
 
-function handleSymptomChange(value: string, checked: boolean | string | number) {
+function handleSymptomChange(
+    value: string,
+    checked: boolean | string | number,
+) {
     if (checked) {
         const symptom = symptomOptions.find((s) => s.value === value);
         if (symptom) {
@@ -595,7 +614,7 @@ function confirmRating() {
         ElMessage.success(
             `已记录：${currentRatingSymptom.value.name} - ${
                 ["", "轻度", "中度", "重度"][currentRating.value]
-            }`
+            }`,
         );
         showRatingDialog.value = false;
     } else {
