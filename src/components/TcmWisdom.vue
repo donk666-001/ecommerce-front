@@ -24,7 +24,7 @@
                     <el-radio
                         v-for="option in questions[currentStep]?.options"
                         :key="option.value"
-                        :label="option.value"
+                        :value="option.value"
                         border
                     >
                         {{ option.label }}

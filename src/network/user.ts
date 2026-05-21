@@ -2,8 +2,21 @@ import { GAxios } from "@/plugins";
 
 class ApiUser {
     // 登录
-    static async login() {
-        const response = await GAxios.post("/user/auth/login", {});
+    static async login(data: { account: string; password: string }) {
+        const response = await GAxios.post("/user/auth/login", data);
+        const res = response.data;
+        if (res.code === 200) {
+            console.log(res);
+            return res.data;
+        } else {
+            console.log(res.message);
+            return null;
+        }
+    }
+
+    // 注册
+    static async register(data: { account: string; password: string; email: string }) {
+        const response = await GAxios.post("/user/auth/register", data);
         const res = response.data;
         if (res.code === 200) {
             console.log(res);

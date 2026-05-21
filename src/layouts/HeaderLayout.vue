@@ -39,17 +39,33 @@
                     clearable
                 />
             </div>
+            <div class="user-avatar" @click="handleAvatarClick">
+                <el-avatar 
+                    :size="40" 
+                    :src="userStore.G_UserInfo.avatar || defaultAvatar"
+                >
+                    {{ userStore.G_LoginInfo.isLogin ? userStore.G_LoginInfo.nickName.charAt(0) : '用' }}
+                </el-avatar>
+            </div>
         </div>
     </header>
+    
+    <!-- 登录弹窗 -->
+    <LoginDialog v-model="showLoginDialog" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useUserStore } from "@/store/user";
+import LoginDialog from "@/components/LoginDialog.vue";
 
 const router = useRouter();
 const route = useRoute();
+const userStore = useUserStore();
 const searchQuery = ref("");
+const showLoginDialog = ref(false);
+const defaultAvatar = "/images/default-avatar.svg"; // 默认头像
 
 // 根据当前路由设置激活的菜单项
 const activeMenu = computed(() => {
@@ -64,6 +80,13 @@ function navigateTo(path: string) {
 // 返回首页
 function goHome() {
     router.push("/");
+}
+
+// 处理头像点击事件
+function handleAvatarClick() {
+    if (!userStore.G_LoginInfo.isLogin) {
+        showLoginDialog.value = true;
+    }
 }
 </script>
 
@@ -105,6 +128,16 @@ function goHome() {
 
     .search-box {
         width: 250px;
+    }
+
+    .user-avatar {
+        margin-left: 20px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+
+        &:hover {
+            transform: scale(1.1);
+        }
     }
 }
 

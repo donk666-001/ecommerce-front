@@ -156,7 +156,7 @@
                             <el-checkbox
                                 v-for="symptom in symptomOptions"
                                 :key="symptom.value"
-                                :label="symptom.value"
+                                :value="symptom.value"
                                 class="symptom-item"
                                 @change="
                                     handleSymptomChange(symptom.value, $event)
@@ -548,15 +548,15 @@ function getDateClasses(date: CalendarDate): string[] {
     return classes;
 }
 
-function getPhaseTagType(phase: string): string {
-    const types: Record<string, string> = {
+function getPhaseTagType(phase: string): "primary" | "success" | "info" | "warning" | "danger" {
+    const types: Record<string, "primary" | "success" | "info" | "warning" | "danger"> = {
         menstrual: "danger",
         follicular: "success",
         ovulation: "warning",
         luteal: "info",
-        unknown: "",
+        unknown: "info",
     };
-    return types[phase] || "";
+    return types[phase] || "info";
 }
 
 // 事件处理

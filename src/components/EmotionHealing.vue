@@ -44,7 +44,7 @@
                                 assessmentStep
                             ]?.options || []"
                             :key="option.value"
-                            :label="option.value"
+                            :value="option.value"
                             border
                         >
                             {{ option.label }}
@@ -155,7 +155,7 @@
                                 <el-radio
                                     v-for="option in moodOptions"
                                     :key="option.value"
-                                    :label="option.value"
+                                    :value="option.value"
                                     class="mood-item"
                                 >
                                     <div class="mood-content">
