@@ -9,11 +9,19 @@
                     <div class="filter-section">
                         <el-radio-group v-model="selectedCategory" size="large">
                             <el-radio-button value="all">全部</el-radio-button>
-                            <el-radio-button value="routine">作息</el-radio-button>
+                            <el-radio-button value="routine"
+                                >作息</el-radio-button
+                            >
                             <el-radio-button value="diet">饮食</el-radio-button>
-                            <el-radio-button value="exercise">运动</el-radio-button>
-                            <el-radio-button value="emotion">情志</el-radio-button>
-                            <el-radio-button value="fat-loss">减脂</el-radio-button>
+                            <el-radio-button value="exercise"
+                                >运动</el-radio-button
+                            >
+                            <el-radio-button value="emotion"
+                                >情志</el-radio-button
+                            >
+                            <el-radio-button value="fat-loss"
+                                >减脂</el-radio-button
+                            >
                         </el-radio-group>
                     </div>
 
@@ -34,21 +42,33 @@
                             >
                                 <div class="challenge-cover">
                                     <el-tag
-                                        :type="getCategoryType(challenge.category)"
+                                        :type="
+                                            getCategoryType(challenge.category)
+                                        "
                                         size="small"
                                         class="category-tag"
                                     >
-                                        {{ getCategoryName(challenge.category) }}
+                                        {{
+                                            getCategoryName(challenge.category)
+                                        }}
                                     </el-tag>
-                                    <div class="challenge-icon">{{ challenge.icon }}</div>
+                                    <div class="challenge-icon">
+                                        {{ challenge.icon }}
+                                    </div>
                                 </div>
                                 <div class="challenge-info">
                                     <h4>{{ challenge.title }}</h4>
-                                    <p class="challenge-desc">{{ challenge.description }}</p>
+                                    <p class="challenge-desc">
+                                        {{ challenge.description }}
+                                    </p>
                                     <div class="challenge-meta">
                                         <div class="meta-item">
                                             <el-icon><User /></el-icon>
-                                            <span>{{ challenge.participants }}人参与</span>
+                                            <span
+                                                >{{
+                                                    challenge.participants
+                                                }}人参与</span
+                                            >
                                         </div>
                                         <div class="meta-item">
                                             <el-icon><Clock /></el-icon>
@@ -86,34 +106,63 @@
                             <el-card class="my-challenge-card" shadow="hover">
                                 <div class="challenge-header">
                                     <div class="challenge-title">
-                                        <span class="icon">{{ challenge.icon }}</span>
+                                        <span class="icon">{{
+                                            challenge.icon
+                                        }}</span>
                                         <h4>{{ challenge.title }}</h4>
                                     </div>
                                     <el-tag
-                                        :type="getChallengeStatusType(challenge.status)"
+                                        :type="
+                                            getChallengeStatusType(
+                                                challenge.status,
+                                            )
+                                        "
                                         size="small"
                                     >
-                                        {{ getChallengeStatusText(challenge.status) }}
+                                        {{
+                                            getChallengeStatusText(
+                                                challenge.status,
+                                            )
+                                        }}
                                     </el-tag>
                                 </div>
 
                                 <!-- 进度条 -->
                                 <div class="progress-section">
                                     <div class="progress-info">
-                                        <span>第 {{ challenge.currentDay }}/{{ challenge.days }} 天</span>
-                                        <span>完成率 {{ challenge.completionRate }}%</span>
+                                        <span
+                                            >第 {{ challenge.currentDay }}/{{
+                                                challenge.days
+                                            }}
+                                            天</span
+                                        >
+                                        <span
+                                            >完成率
+                                            {{
+                                                challenge.completionRate
+                                            }}%</span
+                                        >
                                     </div>
                                     <el-progress
                                         :percentage="challenge.completionRate"
-                                        :color="getProgressColor(challenge.completionRate)"
+                                        :color="
+                                            getProgressColor(
+                                                challenge.completionRate,
+                                            )
+                                        "
                                     />
                                 </div>
 
                                 <!-- 今日打卡 -->
-                                <div class="today-checkin" v-if="challenge.status === 'ongoing'">
+                                <div
+                                    class="today-checkin"
+                                    v-if="challenge.status === 'ongoing'"
+                                >
                                     <el-checkbox
                                         v-model="challenge.todayChecked"
-                                        @change="handleChallengeCheckin(challenge)"
+                                        @change="
+                                            handleChallengeCheckin(challenge)
+                                        "
                                     >
                                         今日打卡
                                     </el-checkbox>
@@ -156,28 +205,51 @@
             <!-- 排行榜 -->
             <el-tab-pane label="排行榜" name="leaderboard">
                 <div class="leaderboard-section">
-                    <el-radio-group v-model="leaderboardType" size="large" class="leaderboard-tabs">
+                    <el-radio-group
+                        v-model="leaderboardType"
+                        size="large"
+                        class="leaderboard-tabs"
+                    >
                         <el-radio-button value="total">总榜</el-radio-button>
-                        <el-radio-button value="friends">好友榜</el-radio-button>
+                        <el-radio-button value="friends"
+                            >好友榜</el-radio-button
+                        >
                     </el-radio-group>
 
-                    <el-table :data="leaderboardData" style="width: 100%" stripe>
+                    <el-table
+                        :data="leaderboardData"
+                        style="width: 100%"
+                        stripe
+                    >
                         <el-table-column label="排名" width="80">
                             <template #default="{ $index }">
-                                <div class="rank-badge" :class="getRankClass($index + 1)">
+                                <div
+                                    class="rank-badge"
+                                    :class="getRankClass($index + 1)"
+                                >
                                     {{ $index + 1 }}
                                 </div>
                             </template>
                         </el-table-column>
-                        <el-table-column prop="nickname" label="用户" min-width="150">
+                        <el-table-column
+                            prop="nickname"
+                            label="用户"
+                            min-width="150"
+                        >
                             <template #default="{ row }">
                                 <div class="user-info">
-                                    <el-avatar :size="32">{{ row.nickname.charAt(0) }}</el-avatar>
+                                    <el-avatar :size="32">{{
+                                        row.nickname.charAt(0)
+                                    }}</el-avatar>
                                     <span>{{ row.nickname }}</span>
                                 </div>
                             </template>
                         </el-table-column>
-                        <el-table-column prop="completionRate" label="完成率" width="120">
+                        <el-table-column
+                            prop="completionRate"
+                            label="完成率"
+                            width="120"
+                        >
                             <template #default="{ row }">
                                 <el-progress
                                     :percentage="row.completionRate"
@@ -187,8 +259,16 @@
                                 <span>{{ row.completionRate }}%</span>
                             </template>
                         </el-table-column>
-                        <el-table-column prop="completedDays" label="完成天数" width="100" />
-                        <el-table-column prop="streakDays" label="连续天数" width="100" />
+                        <el-table-column
+                            prop="completedDays"
+                            label="完成天数"
+                            width="100"
+                        />
+                        <el-table-column
+                            prop="streakDays"
+                            label="连续天数"
+                            width="100"
+                        />
                     </el-table>
                 </div>
             </el-tab-pane>
@@ -197,7 +277,10 @@
             <el-tab-pane label="徽章墙" name="badges">
                 <div class="badge-wall">
                     <div class="badge-stats">
-                        <el-statistic title="已点亮徽章" :value="unlockedBadgesCount">
+                        <el-statistic
+                            title="已点亮徽章"
+                            :value="unlockedBadgesCount"
+                        >
                             <template #suffix>/ {{ badges.length }}</template>
                         </el-statistic>
                     </div>
@@ -210,16 +293,23 @@
                             :md="6"
                             :lg="4"
                         >
-                            <div class="badge-item" :class="{ unlocked: badge.unlocked }">
+                            <div
+                                class="badge-item"
+                                :class="{ unlocked: badge.unlocked }"
+                            >
                                 <div class="badge-icon">
                                     <el-icon v-if="badge.unlocked" :size="40">
                                         <component :is="badge.icon" />
                                     </el-icon>
-                                    <el-icon v-else :size="40"><Lock /></el-icon>
+                                    <el-icon v-else :size="40"
+                                        ><Lock
+                                    /></el-icon>
                                 </div>
                                 <div class="badge-info">
                                     <h5>{{ badge.name }}</h5>
-                                    <p class="badge-condition">{{ badge.condition }}</p>
+                                    <p class="badge-condition">
+                                        {{ badge.condition }}
+                                    </p>
                                     <el-tag
                                         v-if="badge.unlocked"
                                         size="small"
@@ -227,7 +317,9 @@
                                     >
                                         已点亮
                                     </el-tag>
-                                    <el-tag v-else size="small" type="info">未解锁</el-tag>
+                                    <el-tag v-else size="small" type="info"
+                                        >未解锁</el-tag
+                                    >
                                 </div>
                             </div>
                         </el-col>
@@ -253,14 +345,21 @@
                                 <template #header>
                                     <div class="card-header">
                                         <h4>我的战队</h4>
-                                        <el-button type="primary" size="small" @click="createTeam">
+                                        <el-button
+                                            type="primary"
+                                            size="small"
+                                            @click="createTeam"
+                                        >
                                             <el-icon><Plus /></el-icon>
                                             创建战队
                                         </el-button>
                                     </div>
                                 </template>
 
-                                <el-empty v-if="teams.length === 0" description="暂未加入任何战队" />
+                                <el-empty
+                                    v-if="teams.length === 0"
+                                    description="暂未加入任何战队"
+                                />
 
                                 <div v-else class="team-items">
                                     <div
@@ -270,15 +369,25 @@
                                     >
                                         <div class="team-header">
                                             <h5>{{ team.name }}</h5>
-                                            <el-tag size="small">{{ team.members.length }}/5人</el-tag>
+                                            <el-tag size="small"
+                                                >{{
+                                                    team.members.length
+                                                }}/5人</el-tag
+                                            >
                                         </div>
                                         <div class="team-progress">
                                             <div class="progress-label">
                                                 <span>团队完成率</span>
-                                                <span>{{ team.completionRate }}%</span>
+                                                <span
+                                                    >{{
+                                                        team.completionRate
+                                                    }}%</span
+                                                >
                                             </div>
                                             <el-progress
-                                                :percentage="team.completionRate"
+                                                :percentage="
+                                                    team.completionRate
+                                                "
                                                 :color="'#409eff'"
                                             />
                                         </div>
@@ -289,7 +398,11 @@
                                                     :key="member.id"
                                                     :size="28"
                                                 >
-                                                    {{ member.nickname.charAt(0) }}
+                                                    {{
+                                                        member.nickname.charAt(
+                                                            0,
+                                                        )
+                                                    }}
                                                 </el-avatar>
                                             </el-avatar-group>
                                         </div>
@@ -311,11 +424,14 @@
                                     >
                                         <template #append>
                                             <el-button @click="copyInviteCode">
-                                                <el-icon><CopyDocument /></el-icon>
+                                                <el-icon
+                                                    ><CopyDocument
+                                                /></el-icon>
                                             </el-button>
                                         </template>
                                     </el-input>
-                                    <el-divider />n                                    <div class="quick-invite">
+                                    <el-divider />n
+                                    <div class="quick-invite">
                                         <p>快速邀请：</p>
                                         <el-button
                                             v-for="friend in availableFriends"
@@ -345,11 +461,20 @@
                             :md="8"
                         >
                             <el-card class="activity-card" shadow="hover">
-                                <div class="activity-banner" :style="{ background: activity.color }">
-                                    <el-tag type="danger" size="small" class="activity-type-tag">
+                                <div
+                                    class="activity-banner"
+                                    :style="{ background: activity.color }"
+                                >
+                                    <el-tag
+                                        type="danger"
+                                        size="small"
+                                        class="activity-type-tag"
+                                    >
                                         {{ activity.type }}
                                     </el-tag>
-                                    <div class="activity-icon">{{ activity.icon }}</div>
+                                    <div class="activity-icon">
+                                        {{ activity.icon }}
+                                    </div>
                                 </div>
                                 <div class="activity-info">
                                     <h4>{{ activity.title }}</h4>
@@ -384,7 +509,9 @@
                     <div class="detail-icon">{{ selectedChallenge.icon }}</div>
                     <div class="detail-title">
                         <h3>{{ selectedChallenge.title }}</h3>
-                        <el-tag :type="getCategoryType(selectedChallenge.category)">
+                        <el-tag
+                            :type="getCategoryType(selectedChallenge.category)"
+                        >
                             {{ getCategoryName(selectedChallenge.category) }}
                         </el-tag>
                     </div>
@@ -413,8 +540,12 @@
                 <div class="detail-section">
                     <h4>打卡要求</h4>
                     <ul>
-                        <li v-for="(req, index) in selectedChallenge.checkinRequirements"
-                            :key="index">
+                        <li
+                            v-for="(
+                                req, index
+                            ) in selectedChallenge.checkinRequirements"
+                            :key="index"
+                        >
                             {{ req }}
                         </li>
                     </ul>
@@ -528,11 +659,7 @@ const challenges = ref<Challenge[]>([
         reward: "健康饮食家 + 50元气积分",
         badge: "减糖先锋",
         rules: "7天内不摄入任何添加糖，包括饮料、甜点等",
-        checkinRequirements: [
-            "每日三餐拍照记录",
-            "标注食物成分",
-            "记录饮水量",
-        ],
+        checkinRequirements: ["每日三餐拍照记录", "标注食物成分", "记录饮水量"],
         startDate: "2026-05-22",
         endDate: "2026-05-28",
         joined: true,
@@ -644,7 +771,9 @@ const filteredChallenges = computed(() => {
     if (selectedCategory.value === "all") {
         return challenges.value;
     }
-    return challenges.value.filter((c) => c.category === selectedCategory.value);
+    return challenges.value.filter(
+        (c) => c.category === selectedCategory.value,
+    );
 });
 
 // 挑战详情
@@ -656,26 +785,114 @@ const leaderboardType = ref("total");
 
 // 排行榜数据（硬编码）
 const leaderboardData = ref([
-    { nickname: "健康小达人", completionRate: 95, completedDays: 57, streakDays: 28 },
-    { nickname: "运动狂人", completionRate: 92, completedDays: 55, streakDays: 25 },
-    { nickname: "早起鸟儿", completionRate: 88, completedDays: 52, streakDays: 21 },
-    { nickname: "冥想爱好者", completionRate: 85, completedDays: 51, streakDays: 18 },
-    { nickname: "减脂勇士", completionRate: 82, completedDays: 49, streakDays: 15 },
-    { nickname: "养生专家", completionRate: 78, completedDays: 46, streakDays: 12 },
-    { nickname: "跑步健将", completionRate: 75, completedDays: 45, streakDays: 10 },
-    { nickname: "饮食管家", completionRate: 72, completedDays: 43, streakDays: 8 },
+    {
+        nickname: "健康小达人",
+        completionRate: 95,
+        completedDays: 57,
+        streakDays: 28,
+    },
+    {
+        nickname: "运动狂人",
+        completionRate: 92,
+        completedDays: 55,
+        streakDays: 25,
+    },
+    {
+        nickname: "早起鸟儿",
+        completionRate: 88,
+        completedDays: 52,
+        streakDays: 21,
+    },
+    {
+        nickname: "冥想爱好者",
+        completionRate: 85,
+        completedDays: 51,
+        streakDays: 18,
+    },
+    {
+        nickname: "减脂勇士",
+        completionRate: 82,
+        completedDays: 49,
+        streakDays: 15,
+    },
+    {
+        nickname: "养生专家",
+        completionRate: 78,
+        completedDays: 46,
+        streakDays: 12,
+    },
+    {
+        nickname: "跑步健将",
+        completionRate: 75,
+        completedDays: 45,
+        streakDays: 10,
+    },
+    {
+        nickname: "饮食管家",
+        completionRate: 72,
+        completedDays: 43,
+        streakDays: 8,
+    },
 ]);
 
 // 徽章数据（硬编码）
 const badges = ref([
-    { id: 1, name: "早起达人", icon: "Timer", condition: "完成21天早起挑战", unlocked: true },
-    { id: 2, name: "减糖先锋", icon: "Star", condition: "完成7天减糖挑战", unlocked: true },
-    { id: 3, name: "跑步健将", icon: "Trophy", condition: "完成30天跑步挑战", unlocked: false },
-    { id: 4, name: "冥想大师", icon: "Medal", condition: "完成14天冥想挑战", unlocked: false },
-    { id: 5, name: "减脂王者", icon: "Trophy", condition: "完成30天减脂挑战", unlocked: false },
-    { id: 6, name: "早睡达人", icon: "Timer", condition: "完成14天早睡挑战", unlocked: false },
-    { id: 7, name: "百日毅力", icon: "Medal", condition: "连续打卡100天", unlocked: false },
-    { id: 8, name: "团队领袖", icon: "Star", condition: "创建并带领团队完成挑战", unlocked: false },
+    {
+        id: 1,
+        name: "早起达人",
+        icon: "Timer",
+        condition: "完成21天早起挑战",
+        unlocked: true,
+    },
+    {
+        id: 2,
+        name: "减糖先锋",
+        icon: "Star",
+        condition: "完成7天减糖挑战",
+        unlocked: true,
+    },
+    {
+        id: 3,
+        name: "跑步健将",
+        icon: "Trophy",
+        condition: "完成30天跑步挑战",
+        unlocked: false,
+    },
+    {
+        id: 4,
+        name: "冥想大师",
+        icon: "Medal",
+        condition: "完成14天冥想挑战",
+        unlocked: false,
+    },
+    {
+        id: 5,
+        name: "减脂王者",
+        icon: "Trophy",
+        condition: "完成30天减脂挑战",
+        unlocked: false,
+    },
+    {
+        id: 6,
+        name: "早睡达人",
+        icon: "Timer",
+        condition: "完成14天早睡挑战",
+        unlocked: false,
+    },
+    {
+        id: 7,
+        name: "百日毅力",
+        icon: "Medal",
+        condition: "连续打卡100天",
+        unlocked: false,
+    },
+    {
+        id: 8,
+        name: "团队领袖",
+        icon: "Star",
+        condition: "创建并带领团队完成挑战",
+        unlocked: false,
+    },
 ]);
 
 const unlockedBadgesCount = computed(() => {
@@ -811,11 +1028,15 @@ function joinChallenge(challenge: Challenge) {
 
 // 退出挑战
 function quitChallenge(challenge: Challenge) {
-    ElMessageBox.confirm(`确定要退出「${challenge.title}」吗？退出后将无法恢复`, "退出确认", {
-        confirmButtonText: "确定退出",
-        cancelButtonText: "取消",
-        type: "warning",
-    })
+    ElMessageBox.confirm(
+        `确定要退出「${challenge.title}」吗？退出后将无法恢复`,
+        "退出确认",
+        {
+            confirmButtonText: "确定退出",
+            cancelButtonText: "取消",
+            type: "warning",
+        },
+    )
         .then(() => {
             challenge.joined = false;
             challenge.status = undefined;
@@ -831,7 +1052,7 @@ function handleChallengeCheckin(challenge: Challenge) {
         // 模拟更新进度
         challenge.currentDay = (challenge.currentDay || 0) + 1;
         challenge.completionRate = Math.round(
-            ((challenge.currentDay || 0) / challenge.days) * 100
+            ((challenge.currentDay || 0) / challenge.days) * 100,
         );
     }
 }
@@ -940,7 +1161,11 @@ function joinActivity(activity: Activity) {
 
                 .challenge-cover {
                     height: 120px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: linear-gradient(
+                        135deg,
+                        #667eea 0%,
+                        #764ba2 100%
+                    );
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1120,7 +1345,11 @@ function joinActivity(activity: Activity) {
 
                 &.unlocked {
                     border-color: #67c23a;
-                    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2f1 100%);
+                    background: linear-gradient(
+                        135deg,
+                        #f0f9ff 0%,
+                        #e0f2f1 100%
+                    );
                 }
 
                 &:hover {
@@ -1139,7 +1368,11 @@ function joinActivity(activity: Activity) {
                     background-color: #f5f7fa;
 
                     .unlocked & {
-                        background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+                        background: linear-gradient(
+                            135deg,
+                            #67c23a 0%,
+                            #85ce61 100%
+                        );
                         color: white;
                     }
                 }

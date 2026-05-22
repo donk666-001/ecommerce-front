@@ -3,19 +3,21 @@ import axios, { type AxiosInstance } from "axios";
 // 创建基础实例
 const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     const instance = axios.create({
-        baseURL: import.meta.env.VITE_API_TARGET,
-        timeout: 10000, // 统一延长超时时间
-        withCredentials, // 动态设置凭证
+        // baseURL: import.meta.env.VITE_API_TARGET,
+        baseURL: "http://localhost:9090/e-commerce/api",
+        timeout: 10000,
+        withCredentials,
         headers: {
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
+            Accept: "application/json",
         },
     });
 
     // 通用请求拦截器
     instance.interceptors.request.use(
         (config) => {
-            // 可在此添加全局请求头逻辑
+            console.log("完整请求路径：", (config.baseURL || "") + config.url);
             if (withCredentials) {
                 console.log(`[携带cookie]请求参数:${JSON.stringify(config)}`);
             }
@@ -44,7 +46,7 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                 console.warn("认证过期", data.message);
                 // 此处应跳转登录页 router.push('/login')
             } else {
-                console.error(`服务异常 [${status}]`, data);
+                console.error(`服务异常 [${status}]`, error.response);
             }
             return Promise.reject(error);
         },

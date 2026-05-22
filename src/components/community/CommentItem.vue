@@ -1,7 +1,9 @@
 <template>
     <div class="comment-item">
         <div class="comment-header">
-            <el-avatar :size="32">{{ comment.user.nickname.charAt(0) }}</el-avatar>
+            <el-avatar :size="32">{{
+                comment.user.nickname.charAt(0)
+            }}</el-avatar>
             <div class="comment-info">
                 <div class="user-row">
                     <span class="nickname">{{ comment.user.nickname }}</span>
@@ -13,7 +15,11 @@
         </div>
 
         <div class="comment-actions">
-            <el-button size="small" text @click="$emit('likeComment', comment.id)">
+            <el-button
+                size="small"
+                text
+                @click="$emit('likeComment', comment.id)"
+            >
                 <el-icon :class="{ liked: comment.liked }"><Star /></el-icon>
                 <span>{{ comment.likes || "点赞" }}</span>
             </el-button>
@@ -24,7 +30,10 @@
         </div>
 
         <!-- 递归显示回复 -->
-        <div v-if="comment.replies && comment.replies.length > 0" class="replies">
+        <div
+            v-if="comment.replies && comment.replies.length > 0"
+            class="replies"
+        >
             <CommentItem
                 v-for="reply in comment.replies"
                 :key="reply.id"

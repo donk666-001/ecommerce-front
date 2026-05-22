@@ -317,9 +317,27 @@ interface Meal {
 
 // 餐食数据
 const meals = ref<Meal[]>([
-    { type: "breakfast", name: "早餐", icon: markRaw(Sunny), recorded: false, tags: [] },
-    { type: "lunch", name: "午餐", icon: markRaw(Food), recorded: false, tags: [] },
-    { type: "dinner", name: "晚餐", icon: markRaw(Moon), recorded: false, tags: [] },
+    {
+        type: "breakfast",
+        name: "早餐",
+        icon: markRaw(Sunny),
+        recorded: false,
+        tags: [],
+    },
+    {
+        type: "lunch",
+        name: "午餐",
+        icon: markRaw(Food),
+        recorded: false,
+        tags: [],
+    },
+    {
+        type: "dinner",
+        name: "晚餐",
+        icon: markRaw(Moon),
+        recorded: false,
+        tags: [],
+    },
     {
         type: "snack",
         name: "加餐/茶饮",

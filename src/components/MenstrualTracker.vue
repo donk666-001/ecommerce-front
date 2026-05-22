@@ -548,8 +548,13 @@ function getDateClasses(date: CalendarDate): string[] {
     return classes;
 }
 
-function getPhaseTagType(phase: string): "primary" | "success" | "info" | "warning" | "danger" {
-    const types: Record<string, "primary" | "success" | "info" | "warning" | "danger"> = {
+function getPhaseTagType(
+    phase: string,
+): "primary" | "success" | "info" | "warning" | "danger" {
+    const types: Record<
+        string,
+        "primary" | "success" | "info" | "warning" | "danger"
+    > = {
         menstrual: "danger",
         follicular: "success",
         ovulation: "warning",

@@ -40,16 +40,20 @@
                 />
             </div>
             <div class="user-avatar" @click="handleAvatarClick">
-                <el-avatar 
-                    :size="40" 
+                <el-avatar
+                    :size="40"
                     :src="userStore.G_UserInfo.avatar || defaultAvatar"
                 >
-                    {{ userStore.G_LoginInfo.isLogin ? userStore.G_LoginInfo.nickName.charAt(0) : '用' }}
+                    {{
+                        userStore.G_LoginInfo.isLogin
+                            ? userStore.G_LoginInfo.nickName.charAt(0)
+                            : "用"
+                    }}
                 </el-avatar>
             </div>
         </div>
     </header>
-    
+
     <!-- 登录弹窗 -->
     <LoginDialog v-model="showLoginDialog" />
 </template>
@@ -84,8 +88,13 @@ function goHome() {
 
 // 处理头像点击事件
 function handleAvatarClick() {
+    // 如果未登录，显示登录弹窗
     if (!userStore.G_LoginInfo.isLogin) {
         showLoginDialog.value = true;
+    } else {
+        // 如果已登录，可以显示用户菜单或其他操作
+        console.log("用户已登录:", userStore.G_LoginInfo.nickName);
+        // TODO: 后续可以添加用户下拉菜单
     }
 }
 </script>

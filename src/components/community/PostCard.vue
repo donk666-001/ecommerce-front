@@ -25,7 +25,10 @@
             <div v-if="post.topic" class="post-topic">
                 <el-tag size="small" type="info">#{{ post.topic }}</el-tag>
             </div>
-            <div v-if="post.mentions && post.mentions.length > 0" class="post-mentions">
+            <div
+                v-if="post.mentions && post.mentions.length > 0"
+                class="post-mentions"
+            >
                 <el-tag
                     v-for="mention in post.mentions"
                     :key="mention"

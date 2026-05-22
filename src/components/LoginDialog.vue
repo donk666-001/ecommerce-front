@@ -30,7 +30,11 @@
                 />
             </el-form-item>
 
-            <el-form-item v-if="!isLoginMode" label="确认密码" prop="confirmPassword">
+            <el-form-item
+                v-if="!isLoginMode"
+                label="确认密码"
+                prop="confirmPassword"
+            >
                 <el-input
                     v-model="formData.confirmPassword"
                     type="password"
@@ -52,18 +56,26 @@
         <template #footer>
             <div class="dialog-footer">
                 <el-button @click="handleClose">取消</el-button>
-                <el-button type="primary" @click="handleSubmit" :loading="loading">
-                    {{ isLoginMode ? '登录' : '注册' }}
+                <el-button
+                    type="primary"
+                    @click="handleSubmit"
+                    :loading="loading"
+                >
+                    {{ isLoginMode ? "登录" : "注册" }}
                 </el-button>
             </div>
             <div class="switch-mode">
                 <span v-if="isLoginMode">
                     还没有账号？
-                    <el-link type="primary" @click="switchMode">立即注册</el-link>
+                    <el-link type="primary" @click="switchMode"
+                        >立即注册</el-link
+                    >
                 </span>
                 <span v-else>
                     已有账号？
-                    <el-link type="primary" @click="switchMode">立即登录</el-link>
+                    <el-link type="primary" @click="switchMode"
+                        >立即登录</el-link
+                    >
                 </span>
             </div>
         </template>
@@ -71,18 +83,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
-import type { FormInstance, FormRules } from 'element-plus';
-import { ElMessage } from 'element-plus';
-import { useUserStore } from '@/store/user';
-import { ApiUser } from '@/network/user';
+import { ref, reactive, watch } from "vue";
+import type { FormInstance, FormRules } from "element-plus";
+import { ElMessage } from "element-plus";
+import { useUserStore } from "@/store/user";
+import { ApiUser } from "@/network/user";
 
 const props = defineProps<{
     modelValue: boolean;
 }>();
 
 const emit = defineEmits<{
-    (e: 'update:modelValue', value: boolean): void;
+    (e: "update:modelValue", value: boolean): void;
 }>();
 
 const userStore = useUserStore();
@@ -94,49 +106,62 @@ const dialogVisible = ref(props.modelValue);
 
 // 表单数据
 const formData = reactive({
-    account: '',
-    password: '',
-    confirmPassword: '',
-    email: ''
+    account: "",
+    password: "",
+    confirmPassword: "",
+    email: "",
 });
 
 // 表单验证规则
 const rules = reactive<FormRules>({
     account: [
-        { required: true, message: '请输入账号', trigger: 'blur' },
-        { min: 3, max: 20, message: '账号长度在 3 到 20 个字符', trigger: 'blur' }
+        { required: true, message: "请输入账号", trigger: "blur" },
+        {
+            min: 3,
+            max: 20,
+            message: "账号长度在 3 到 20 个字符",
+            trigger: "blur",
+        },
     ],
     password: [
-        { required: true, message: '请输入密码', trigger: 'blur' },
-        { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+        { required: true, message: "请输入密码", trigger: "blur" },
+        {
+            min: 6,
+            max: 20,
+            message: "密码长度在 6 到 20 个字符",
+            trigger: "blur",
+        },
     ],
     confirmPassword: [
-        { required: true, message: '请再次输入密码', trigger: 'blur' },
+        { required: true, message: "请再次输入密码", trigger: "blur" },
         {
             validator: (_rule, value, callback) => {
                 if (value !== formData.password) {
-                    callback(new Error('两次输入密码不一致'));
+                    callback(new Error("两次输入密码不一致"));
                 } else {
                     callback();
                 }
             },
-            trigger: 'blur'
-        }
+            trigger: "blur",
+        },
     ],
     email: [
-        { required: true, message: '请输入邮箱', trigger: 'blur' },
-        { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-    ]
+        { required: true, message: "请输入邮箱", trigger: "blur" },
+        { type: "email", message: "请输入正确的邮箱地址", trigger: "blur" },
+    ],
 });
 
 // 监听props变化
-watch(() => props.modelValue, (val) => {
-    dialogVisible.value = val;
-});
+watch(
+    () => props.modelValue,
+    (val) => {
+        dialogVisible.value = val;
+    },
+);
 
 // 监听dialogVisible变化
 watch(dialogVisible, (val) => {
-    emit('update:modelValue', val);
+    emit("update:modelValue", val);
 });
 
 // 切换登录/注册模式
@@ -163,40 +188,41 @@ const handleSubmit = async () => {
                 if (isLoginMode.value) {
                     // 登录逻辑
                     const result = await ApiUser.login({
-                        account: formData.account,
-                        password: formData.password
+                        username: formData.account,
+                        password: formData.password,
                     });
-                    
+
                     if (result) {
-                        ElMessage.success('登录成功');
+                        ElMessage.success("登录成功");
                         // 更新用户状态
                         userStore.G_LoginInfo.isLogin = true;
                         userStore.G_LoginInfo.account = formData.account;
-                        userStore.G_LoginInfo.nickName = result.nickName || formData.account;
+                        userStore.G_LoginInfo.nickName =
+                            result.nickName || formData.account;
                         handleClose();
                     } else {
-                        ElMessage.error('登录失败，请检查账号密码');
+                        ElMessage.error("登录失败，请检查账号密码");
                     }
                 } else {
                     // 注册逻辑
                     const result = await ApiUser.register({
                         account: formData.account,
                         password: formData.password,
-                        email: formData.email
+                        email: formData.email,
                     });
-                    
+
                     if (result) {
-                        ElMessage.success('注册成功，请登录');
+                        ElMessage.success("注册成功，请登录");
                         // 切换到登录模式
                         isLoginMode.value = true;
                         formRef.value?.resetFields();
                     } else {
-                        ElMessage.error('注册失败，请稍后重试');
+                        ElMessage.error("注册失败，请稍后重试");
                     }
                 }
             } catch (error) {
-                console.error('操作失败:', error);
-                ElMessage.error(isLoginMode.value ? '登录失败' : '注册失败');
+                console.error("操作失败:", error);
+                ElMessage.error(isLoginMode.value ? "登录失败" : "注册失败");
             } finally {
                 loading.value = false;
             }
@@ -217,7 +243,7 @@ const handleSubmit = async () => {
     text-align: center;
     font-size: 14px;
     color: #606266;
-    
+
     .el-link {
         margin-left: 5px;
     }

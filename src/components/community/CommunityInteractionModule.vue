@@ -95,7 +95,10 @@
                         </div>
                     </template>
 
-                    <el-tabs v-model="notificationTab" class="notification-tabs">
+                    <el-tabs
+                        v-model="notificationTab"
+                        class="notification-tabs"
+                    >
                         <el-tab-pane name="likes">
                             <template #label>
                                 <span>
@@ -230,7 +233,9 @@
                                     :class="{ unread: !notif.read }"
                                     @click="markAsRead(notif, 'system')"
                                 >
-                                    <el-icon class="system-icon"><Bell /></el-icon>
+                                    <el-icon class="system-icon"
+                                        ><Bell
+                                    /></el-icon>
                                     <div class="notif-content">
                                         <p>{{ notif.action }}</p>
                                         <span class="notif-time">{{
@@ -248,7 +253,11 @@
                     <template #header>
                         <div class="card-header">
                             <h4>我的关注</h4>
-                            <el-button text size="small" @click="showFollowingList">
+                            <el-button
+                                text
+                                size="small"
+                                @click="showFollowingList"
+                            >
                                 查看全部
                             </el-button>
                         </div>
@@ -294,10 +303,7 @@
                         class="message"
                         :class="{ 'message-self': msg.isSelf }"
                     >
-                        <el-avatar
-                            v-if="!msg.isSelf"
-                            :size="32"
-                        >
+                        <el-avatar v-if="!msg.isSelf" :size="32">
                             {{ msg.sender.nickname.charAt(0) }}
                         </el-avatar>
                         <div class="message-content">
@@ -356,7 +362,9 @@
                         placeholder="写下你的评论..."
                     />
                     <div class="comment-actions">
-                        <span class="char-count">{{ newComment.length }}/500</span>
+                        <span class="char-count"
+                            >{{ newComment.length }}/500</span
+                        >
                         <el-button
                             type="primary"
                             :disabled="!newComment.trim()"
@@ -441,7 +449,8 @@ const recommendPosts = ref<Post[]>([
     {
         id: 1,
         user: { id: 2, nickname: "健康小达人", bio: "分享健康生活经验" },
-        content: "今天完成了30天早起挑战！从最初的痛苦到现在的自然醒来，真的感受到了坚持的力量。#早起挑战 #健康生活",
+        content:
+            "今天完成了30天早起挑战！从最初的痛苦到现在的自然醒来，真的感受到了坚持的力量。#早起挑战 #健康生活",
         images: ["https://via.placeholder.com/300x200"],
         time: "2小时前",
         likes: 156,
@@ -456,7 +465,8 @@ const recommendPosts = ref<Post[]>([
     {
         id: 2,
         user: { id: 3, nickname: "运动狂人", bio: "每天运动一小时" },
-        content: "晨跑10公里打卡！今天的配速比昨天快了30秒，继续加油！@健康小达人 一起跑步吗？",
+        content:
+            "晨跑10公里打卡！今天的配速比昨天快了30秒，继续加油！@健康小达人 一起跑步吗？",
         time: "3小时前",
         likes: 89,
         comments: 15,
@@ -472,7 +482,8 @@ const followingPosts = ref<Post[]>([
     {
         id: 3,
         user: { id: 4, nickname: "冥想爱好者", bio: "平静内心，寻找自我" },
-        content: "今天的冥想练习让我感受到内心的平静。推荐大家试试15分钟的正念冥想。#冥想 #心理健康",
+        content:
+            "今天的冥想练习让我感受到内心的平静。推荐大家试试15分钟的正念冥想。#冥想 #心理健康",
         time: "1小时前",
         likes: 67,
         comments: 10,
@@ -673,7 +684,7 @@ function insertMention() {
 // 点赞
 function handleLike(postId: number) {
     const post = [...recommendPosts.value, ...followingPosts.value].find(
-        (p) => p.id === postId
+        (p) => p.id === postId,
     );
     if (post) {
         post.liked = !post.liked;
@@ -685,7 +696,7 @@ function handleLike(postId: number) {
 // 评论
 function handleComment(postId: number) {
     const post = [...recommendPosts.value, ...followingPosts.value].find(
-        (p) => p.id === postId
+        (p) => p.id === postId,
     );
     if (post) {
         currentPost.value = post;
@@ -696,7 +707,7 @@ function handleComment(postId: number) {
 // 收藏
 function handleCollect(postId: number) {
     const post = [...recommendPosts.value, ...followingPosts.value].find(
-        (p) => p.id === postId
+        (p) => p.id === postId,
     );
     if (post) {
         post.collected = !post.collected;

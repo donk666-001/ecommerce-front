@@ -4,20 +4,12 @@ import { defineStore } from "pinia";
 export const useUserStore = defineStore("user", {
     // State: 定义状态数据
     state: () => ({
-        // G_LoginInfo: {
-        //     id: NaN,
-        //     isLogin: false,
-        //     nickName: "",
-        //     account: "",
-        //     email: "",
-        //     status: 1,
-        // } as ILoginInfo, // 用户登录状态
         G_LoginInfo: {
-            id: 1,
-            isLogin: true,
-            nickName: "紫霞铃音",
-            account: "10000",
-            email: "2714...@qq.com",
+            id: NaN,
+            isLogin: false,
+            nickName: "",
+            account: "",
+            email: "",
             status: 1,
         } as ILoginInfo, // 用户登录状态
         G_UserInfo: {

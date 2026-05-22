@@ -1,5 +1,4 @@
 import vue from "@vitejs/plugin-vue";
-import fs from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
 import { defineConfig, loadEnv } from "vite";
@@ -34,6 +33,7 @@ export default defineConfig(({ mode }) => {
 
     // 从环境变量中读取 VITE_BASE_URL
     const baseUrl = projectEnv.VITE_BASE_URL || "/";
+    console.log("baseUrl:", baseUrl);
     // 只输出 VITE_ 开头的环境变量
     const viteEnv: Record<string, any> = {};
     Object.keys(projectEnv).forEach((key) => {
@@ -83,32 +83,31 @@ export default defineConfig(({ mode }) => {
             host: "localhost",
             // open: true, // 启动项目后，自动打开浏览器
 
-            // 启用 HTTPS
-            https: isDev
-                ? {
-                      key: fs.readFileSync(
-                          resolve(__dirname, "./resource/certs/key.pem"),
-                      ),
-                      cert: fs.readFileSync(
-                          resolve(__dirname, "./resource/certs/cert.pem"),
-                      ),
-                  }
-                : undefined,
-
-            // 禁用 WebSocket 功能
-            disableWebSocket: false,
+            // // 启用 HTTPS
+            // https: isDev
+            //     ? {
+            //           key: fs.readFileSync(
+            //               resolve(__dirname, "./resource/certs/key.pem"),
+            //           ),
+            //           cert: fs.readFileSync(
+            //               resolve(__dirname, "./resource/certs/cert.pem"),
+            //           ),
+            //       }
+            //     : undefined,
+            //
+            // // 禁用 WebSocket 功能
+            // disableWebSocket: false,
 
             // 代理配置 - 解决 HTTPS 证书问题和跨域问题
-            proxy: isDev
-                ? {
-                      "/e-commerce/api": {
-                          target: "https://localhost:3000",
-                          changeOrigin: true,
-                          secure: false, // 忽略 SSL 证书验证
-                          rewrite: (path) => path.replace(/^\/e-commerce\/api/, "/e-commerce/api"),
-                      },
-                  }
-                : undefined,
+          proxy: isDev
+            ? {
+              "/e-commerce/api": {
+                target: "http://localhost:9090",
+                changeOrigin: true,
+                secure: false,
+              },
+            }
+            : undefined,
         },
 
         // 优化依赖项
