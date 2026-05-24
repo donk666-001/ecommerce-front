@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
 import LoginDialog from "@/components/LoginDialog.vue";
@@ -70,6 +70,17 @@ const userStore = useUserStore();
 const searchQuery = ref("");
 const showLoginDialog = ref(false);
 const defaultAvatar = "/images/default-avatar.svg"; // 默认头像
+
+// 组件挂载时尝试刷新令牌
+onMounted(async () => {
+    // 尝试刷新令牌
+    const refreshResult = await userStore.refreshToken();
+    if (refreshResult) {
+        console.log("令牌刷新成功，用户已登录");
+    } else {
+        console.log("令牌刷新失败，需要重新登录");
+    }
+});
 
 // 根据当前路由设置激活的菜单项
 const activeMenu = computed(() => {

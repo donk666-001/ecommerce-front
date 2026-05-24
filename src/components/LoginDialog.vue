@@ -193,12 +193,13 @@ const handleSubmit = async () => {
                     });
 
                     if (result) {
-                        ElMessage.success("登录成功");
-                        // 更新用户状态
+                        // 登录成功，直接更新用户状态
                         userStore.G_LoginInfo.isLogin = true;
+                        userStore.G_LoginInfo.id = result.id;
                         userStore.G_LoginInfo.account = formData.account;
-                        userStore.G_LoginInfo.nickName =
-                            result.nickName || formData.account;
+                        userStore.G_LoginInfo.nickName = result.nickname || result.username || formData.account;
+                        userStore.G_LoginInfo.status = 1;
+                        ElMessage.success("登录成功");
                         handleClose();
                     } else {
                         ElMessage.error("登录失败，请检查账号密码");
@@ -215,7 +216,10 @@ const handleSubmit = async () => {
                         ElMessage.success("注册成功，请登录");
                         // 切换到登录模式
                         isLoginMode.value = true;
+                        // 重置表单，但保留账号信息方便直接登录
                         formRef.value?.resetFields();
+                        // 保留账号信息，方便用户直接登录
+                        formData.account = result.username || formData.account;
                     } else {
                         ElMessage.error("注册失败，请稍后重试");
                     }

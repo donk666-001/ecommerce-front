@@ -1,5 +1,6 @@
 import type { ILoginInfo, IUserInfo } from "@/types";
 import { defineStore } from "pinia";
+import { ApiUser } from "@/network/user";
 
 export const useUserStore = defineStore("user", {
     // State: 定义状态数据
@@ -35,5 +36,44 @@ export const useUserStore = defineStore("user", {
     getters: {},
 
     // Actions: 修改 State 的业务方法
-    actions: {},
+    actions: {
+        // 刷新令牌方法
+        async refreshToken() {
+            try {
+                const result = await ApiUser.refresh();
+                if (result) {
+                    // 令牌刷新成功，更新用户信息
+                    this.G_LoginInfo = {
+                        ...this.G_LoginInfo,
+                        id: result.id,
+                        isLogin: true,
+                        nickName: result.nickname || result.username,
+                        account: result.username,
+                        status: 1
+                    };
+                    return true;
+                } else {
+                    // 令牌刷新失败，需要重新登录
+                    this.clearLoginInfo();
+                    return false;
+                }
+            } catch (error) {
+                console.error('刷新令牌失败:', error);
+                this.clearLoginInfo();
+                return false;
+            }
+        },
+        
+        // 清除登录信息
+        clearLoginInfo() {
+            this.G_LoginInfo = {
+                id: NaN,
+                isLogin: false,
+                nickName: "",
+                account: "",
+                email: "",
+                status: 1,
+            };
+        }
+    },
 });
