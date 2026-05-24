@@ -3,7 +3,7 @@ import { GAxios } from "@/plugins";
 class ApiUser {
     // 登录
     static async login(data: { username: string; password: string }) {
-        const response = await GAxios.post("/auth/login", data);
+        const response = await GAxios.post("/users/login", data);
         const res = response.data;
         if (res.code === 200) {
             console.log(res);
@@ -16,11 +16,11 @@ class ApiUser {
 
     // 注册
     static async register(data: {
-        account: string;
+        username: string;
         password: string;
         email: string;
     }) {
-        const response = await GAxios.post("/user/auth/register", data);
+        const response = await GAxios.post("/users/register", data);
         const res = response.data;
         if (res.code === 200) {
             console.log(res);

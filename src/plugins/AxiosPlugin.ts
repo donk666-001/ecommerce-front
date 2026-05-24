@@ -4,7 +4,8 @@ import axios, { type AxiosInstance } from "axios";
 const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     const instance = axios.create({
         // baseURL: import.meta.env.VITE_API_TARGET,
-        baseURL: "http://localhost:9090/e-commerce/api",
+        // baseURL: "https://localhost:9090",
+        baseURL: "/e-commerce/api",
         timeout: 10000,
         withCredentials,
         headers: {

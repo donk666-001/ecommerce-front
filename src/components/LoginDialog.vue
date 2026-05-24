@@ -206,7 +206,7 @@ const handleSubmit = async () => {
                 } else {
                     // 注册逻辑
                     const result = await ApiUser.register({
-                        account: formData.account,
+                        username: formData.account,
                         password: formData.password,
                         email: formData.email,
                     });

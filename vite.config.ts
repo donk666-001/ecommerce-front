@@ -1,9 +1,10 @@
 import vue from "@vitejs/plugin-vue";
+import fs from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
+import VueRouter from "unplugin-vue-router/vite";
 import { defineConfig, loadEnv } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
-import VueRouter from "unplugin-vue-router/vite";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -50,9 +51,9 @@ export default defineConfig(({ mode }) => {
         // 插件配置
         plugins: [
             VueRouter({
-                dts: 'src/typed-router.d.ts',
-                routesFolder: 'src/pages',
-                importMode: 'sync',
+                dts: "src/typed-router.d.ts",
+                routesFolder: "src/pages",
+                importMode: "sync",
                 extendRoute: () => {
                     // 可以在这里扩展路由
                 },
@@ -81,33 +82,24 @@ export default defineConfig(({ mode }) => {
             // 监听地址（开放了 0.0.0.0 地址后，将监听当前设备所有可用的本地或网络 IP 地址）
             // host: isDev ? "0.0.0.0" : "localhost",
             host: "localhost",
+            https: {
+                rejectUnauthorized: false,
+                key: fs.readFileSync(
+                    resolve(__dirname, "./resource/certs/key.pem"),
+                ),
+                cert: fs.readFileSync(
+                    resolve(__dirname, "./resource/certs/cert.pem"),
+                ),
+            },
+            proxy: {
+                "/e-commerce/api": {
+                    target: "https://localhost:9090",
+                    changeOrigin: true,
+                    secure: false, // 相当于 Node 端的 rejectUnauthorized: false，允许代理到 https 且忽略证书校验
+                    rewrite: (path) => path.replace(/^\/e-commerce\/api/, ""), // 去掉路径前缀，因为后端没有这个路径
+                },
+            },
             // open: true, // 启动项目后，自动打开浏览器
-
-            // // 启用 HTTPS
-            // https: isDev
-            //     ? {
-            //           key: fs.readFileSync(
-            //               resolve(__dirname, "./resource/certs/key.pem"),
-            //           ),
-            //           cert: fs.readFileSync(
-            //               resolve(__dirname, "./resource/certs/cert.pem"),
-            //           ),
-            //       }
-            //     : undefined,
-            //
-            // // 禁用 WebSocket 功能
-            // disableWebSocket: false,
-
-            // 代理配置 - 解决 HTTPS 证书问题和跨域问题
-          proxy: isDev
-            ? {
-              "/e-commerce/api": {
-                target: "http://localhost:9090",
-                changeOrigin: true,
-                secure: false,
-              },
-            }
-            : undefined,
         },
 
         // 优化依赖项
