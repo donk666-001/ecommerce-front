@@ -18,6 +18,9 @@ coverage
 .vscode/*
 !.vscode/extensions.json
 .idea
+.agents
+.claude
+.impeccable
 *.suo
 *.ntvs*
 *.njsproj

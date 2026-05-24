@@ -4,7 +4,6 @@ import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
 import VueRouter from "unplugin-vue-router/vite";
 import { defineConfig, loadEnv } from "vite";
-import vueDevTools from "vite-plugin-vue-devtools";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -60,12 +59,6 @@ export default defineConfig(({ mode }) => {
                 },
             }),
             vue(),
-            isDev
-                ? vueDevTools({
-                      launchEditor: "idea",
-                      componentInspector: true,
-                  })
-                : null,
         ],
         // 别名配置
         resolve: {

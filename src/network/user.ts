@@ -1,4 +1,5 @@
 import { GAxios } from "@/plugins";
+import type { IUserInfo } from "@/types";
 
 class ApiUser {
     // 刷新令牌
@@ -7,14 +8,10 @@ class ApiUser {
             const response = await GAxios.get("/users/refresh");
             const res = response.data;
             if (res.code === 200) {
-                console.log("令牌刷新成功");
                 return res.data;
-            } else {
-                console.log("令牌刷新失败:", res.message);
-                return null;
             }
-        } catch (error) {
-            console.error("刷新令牌请求失败:", error);
+            return null;
+        } catch {
             return null;
         }
     }
@@ -24,7 +21,6 @@ class ApiUser {
         const response = await GAxios.post("/users/login", data);
         const res = response.data;
         if (res.code === 200) {
-            console.log(res);
             return res.data;
         } else {
             console.log(res.message);
@@ -41,7 +37,6 @@ class ApiUser {
         const response = await GAxios.post("/users/register", data);
         const res = response.data;
         if (res.code === 200) {
-            console.log(res);
             return res.data;
         } else {
             console.log(res.message);
@@ -49,16 +44,63 @@ class ApiUser {
         }
     }
 
-    // 获取用户信息
-    static async getUserInfo() {
-        const response = await GAxios.get("/user/info/1");
-        const res = response.data;
-        if (res.code === 200) {
-            console.log(res);
-            return res.data;
-        } else {
-            console.log(res.message);
+    // 获取用户信息（动态 ID）
+    static async getUserInfo(id: number) {
+        try {
+            const response = await GAxios.get(`/user/info/${id}`);
+            const res = response.data;
+            return res.code === 200 ? res.data : null;
+        } catch {
             return null;
+        }
+    }
+
+    // 退出登录
+    static async logout() {
+        try {
+            const response = await GAxios.post("/users/logout");
+            return response.data.code === 200;
+        } catch {
+            return false;
+        }
+    }
+
+    // 更新个人资料
+    static async updateProfile(data: Partial<IUserInfo>) {
+        try {
+            const response = await GAxios.put("/users/profile", data);
+            const res = response.data;
+            return res.code === 200 ? res.data : null;
+        } catch {
+            return null;
+        }
+    }
+
+    // 上传头像，返回头像 URL
+    static async uploadAvatar(file: File) {
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const response = await GAxios.post("/users/avatar", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            const res = response.data;
+            return res.code === 200 ? (res.data as string) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    // 修改密码
+    static async changePassword(data: {
+        oldPassword: string;
+        newPassword: string;
+    }) {
+        try {
+            const response = await GAxios.put("/users/password", data);
+            return response.data.code === 200;
+        } catch {
+            return false;
         }
     }
 }

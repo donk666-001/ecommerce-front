@@ -44,8 +44,14 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
             // 有响应错误
             const { status, data } = error.response;
             if (status === 401) {
-                console.warn("认证过期", data.message);
-                // 此处应跳转登录页 router.push('/login')
+                console.warn("认证过期", data?.message);
+                // 清除 store 状态后跳转登录页（懒加载避免循环依赖）
+                import("@/store/user").then(({ useUserStore }) => {
+                    useUserStore().clearLoginInfo();
+                });
+                const current = window.location.pathname;
+                const redirect = current !== "/login" ? `?redirect=${current}` : "";
+                window.location.href = `/login${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);
             }

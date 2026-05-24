@@ -26,38 +26,67 @@
                     🔔
                     <span class="badge-dot"></span>
                 </div>
-                <div class="avatar" @click="handleAvatarClick">
-                    {{ userStore.G_LoginInfo.isLogin ? userStore.G_LoginInfo.nickName.charAt(0) : '用' }}
+
+                <!-- 未登录：点击跳转登录页 -->
+                <div v-if="!userStore.G_LoginInfo.isLogin" class="avatar" @click="goToLogin">
+                    用
                 </div>
+
+                <!-- 已登录：下拉菜单 -->
+                <el-dropdown v-else trigger="click" @command="handleCommand">
+                    <div class="avatar">
+                        <img
+                            v-if="userStore.G_UserInfo.avatar"
+                            :src="userStore.G_UserInfo.avatar"
+                            alt="头像"
+                            class="avatar-img"
+                        />
+                        <span v-else>{{ displayInitial }}</span>
+                    </div>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item command="settings">我的设置</el-dropdown-item>
+                            <el-dropdown-item command="logout" divided style="color: var(--cinnabar)">
+                                退出登录
+                            </el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
             </div>
         </div>
     </header>
-
-    <LoginDialog v-model="showLoginDialog" />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
-import LoginDialog from "@/components/LoginDialog.vue";
+import { ElMessage } from "element-plus";
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
-const showLoginDialog = ref(false);
 
-onMounted(async () => {
-    await userStore.refreshToken();
+const displayInitial = computed(() => {
+    const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+    return name ? name.charAt(0) : "我";
 });
 
 function goHome() {
     router.push("/");
 }
 
-function handleAvatarClick() {
-    if (!userStore.G_LoginInfo.isLogin) {
-        showLoginDialog.value = true;
+function goToLogin() {
+    router.push("/login");
+}
+
+async function handleCommand(command: string) {
+    if (command === "settings") {
+        router.push("/settings");
+    } else if (command === "logout") {
+        await userStore.logout();
+        ElMessage.success("已退出登录");
+        router.push("/");
     }
 }
 </script>
@@ -207,8 +236,22 @@ function handleAvatarClick() {
     box-shadow: var(--shadow);
     flex-shrink: 0;
     transition: transform 0.2s;
+    overflow: hidden;
 
     &:hover { transform: scale(1.06); }
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+}
+
+// el-dropdown 触发器样式重置
+:deep(.el-dropdown) {
+    display: flex;
+    align-items: center;
 }
 
 @media (max-width: 900px) {
