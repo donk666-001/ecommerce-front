@@ -30,9 +30,30 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/ai-butler/': RouteRecordInfo<
+      '/ai-butler/',
+      '/ai-butler',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/community/': RouteRecordInfo<
       '/community/',
       '/community',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/consultation/': RouteRecordInfo<
+      '/consultation/',
+      '/consultation',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/shop/': RouteRecordInfo<
+      '/shop/',
+      '/shop',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -56,9 +77,27 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/ai-butler/index.vue': {
+      routes:
+        | '/ai-butler/'
+      views:
+        | never
+    }
     'src/pages/community/index.vue': {
       routes:
         | '/community/'
+      views:
+        | never
+    }
+    'src/pages/consultation/index.vue': {
+      routes:
+        | '/consultation/'
+      views:
+        | never
+    }
+    'src/pages/shop/index.vue': {
+      routes:
+        | '/shop/'
       views:
         | never
     }

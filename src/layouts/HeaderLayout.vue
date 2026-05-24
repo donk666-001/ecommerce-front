@@ -1,65 +1,43 @@
 <template>
-    <header class="header">
-        <div class="container">
-            <div class="logo" @click="goHome">颐养阁</div>
-            <el-menu
-                mode="horizontal"
-                :ellipsis="false"
-                class="nav-menu"
-                :default-active="activeMenu"
-            >
-                <el-menu-item index="/" @click="navigateTo('/')"
-                    >首页</el-menu-item
-                >
-                <el-menu-item index="/health" @click="navigateTo('/')"
-                    >养生智库</el-menu-item
-                >
-                <el-menu-item
-                    index="/community"
-                    @click="navigateTo('/community')"
-                    >元气社区</el-menu-item
-                >
-                <el-menu-item
-                    index="/consultation"
-                    @click="navigateTo('/consultation')"
-                    >名医问诊</el-menu-item
-                >
-                <el-menu-item index="/courses" @click="navigateTo('/courses')"
-                    >课程</el-menu-item
-                >
-                <el-menu-item index="/shop" @click="navigateTo('/shop')"
-                    >商城</el-menu-item
-                >
-            </el-menu>
-            <div class="search-box">
-                <el-input
-                    v-model="searchQuery"
-                    placeholder="搜索节气、食谱、穴位..."
-                    prefix-icon="Search"
-                    clearable
-                />
+    <header class="topbar">
+        <div class="topbar-inner">
+            <!-- Logo -->
+            <div class="logo" @click="goHome">
+                <div class="logo-seal">颐</div>
+                <span>颐养阁</span>
             </div>
-            <div class="user-avatar" @click="handleAvatarClick">
-                <el-avatar
-                    :size="40"
-                    :src="userStore.G_UserInfo.avatar || defaultAvatar"
-                >
-                    {{
-                        userStore.G_LoginInfo.isLogin
-                            ? userStore.G_LoginInfo.nickName.charAt(0)
-                            : "用"
-                    }}
-                </el-avatar>
+
+            <!-- Navigation -->
+            <nav class="top-nav">
+                <router-link to="/" :class="{ active: route.path === '/' }">养生智库</router-link>
+                <router-link to="/community" :class="{ active: route.path.startsWith('/community') }">元气社区</router-link>
+                <router-link to="/ai-butler" :class="{ active: route.path.startsWith('/ai-butler') }">AI 管家</router-link>
+                <router-link to="/consultation" :class="{ active: route.path.startsWith('/consultation') }">名医健康圈</router-link>
+                <router-link to="/shop" :class="{ active: route.path.startsWith('/shop') }">商城</router-link>
+            </nav>
+
+            <!-- Actions -->
+            <div class="top-actions">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <span class="search-placeholder">搜索节气、食谱、穴位…</span>
+                </div>
+                <div class="top-bell">
+                    🔔
+                    <span class="badge-dot"></span>
+                </div>
+                <div class="avatar" @click="handleAvatarClick">
+                    {{ userStore.G_LoginInfo.isLogin ? userStore.G_LoginInfo.nickName.charAt(0) : '用' }}
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- 登录弹窗 -->
     <LoginDialog v-model="showLoginDialog" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
 import LoginDialog from "@/components/LoginDialog.vue";
@@ -67,118 +45,175 @@ import LoginDialog from "@/components/LoginDialog.vue";
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
-const searchQuery = ref("");
 const showLoginDialog = ref(false);
-const defaultAvatar = "/images/default-avatar.svg"; // 默认头像
 
-// 组件挂载时尝试刷新令牌
 onMounted(async () => {
-    // 尝试刷新令牌
-    const refreshResult = await userStore.refreshToken();
-    if (refreshResult) {
-        console.log("令牌刷新成功，用户已登录");
-    } else {
-        console.log("令牌刷新失败，需要重新登录");
-    }
+    await userStore.refreshToken();
 });
 
-// 根据当前路由设置激活的菜单项
-const activeMenu = computed(() => {
-    return route.path;
-});
-
-// 导航到指定路径
-function navigateTo(path: string) {
-    router.push(path);
-}
-
-// 返回首页
 function goHome() {
     router.push("/");
 }
 
-// 处理头像点击事件
 function handleAvatarClick() {
-    // 如果未登录，显示登录弹窗
     if (!userStore.G_LoginInfo.isLogin) {
         showLoginDialog.value = true;
-    } else {
-        // 如果已登录，可以显示用户菜单或其他操作
-        console.log("用户已登录:", userStore.G_LoginInfo.nickName);
-        // TODO: 后续可以添加用户下拉菜单
     }
 }
 </script>
 
 <style scoped lang="scss">
-.header {
-    background-color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.topbar {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
     position: sticky;
     top: 0;
     z-index: 100;
+}
 
-    .container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 60px;
-    }
+.topbar-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 14px 40px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
 
-    .logo {
-        font-size: 24px;
-        font-weight: bold;
-        color: #409eff;
-        cursor: pointer;
-        transition: opacity 0.3s ease;
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "STKaiti", "KaiTi", serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--jade);
+    cursor: pointer;
+    flex-shrink: 0;
+    text-decoration: none;
+    transition: opacity 0.2s;
 
-        &:hover {
-            opacity: 0.8;
+    &:hover { opacity: 0.85; }
+}
+
+.logo-seal {
+    width: 36px;
+    height: 36px;
+    background: var(--cinnabar);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 16px;
+    font-family: "STKaiti", "KaiTi", serif;
+    box-shadow: 0 2px 6px rgba(179, 60, 44, 0.3);
+    flex-shrink: 0;
+}
+
+.top-nav {
+    display: flex;
+    gap: 26px;
+    font-size: 14px;
+    flex: 1;
+
+    a {
+        color: var(--ink-muted);
+        text-decoration: none;
+        padding: 4px 0;
+        position: relative;
+        transition: color 0.2s;
+        white-space: nowrap;
+
+        &:hover,
+        &.active {
+            color: var(--jade);
         }
-    }
 
-    .nav-menu {
-        flex: 1;
-        margin: 0 20px;
-        border-bottom: none;
-    }
-
-    .search-box {
-        width: 250px;
-    }
-
-    .user-avatar {
-        margin-left: 20px;
-        cursor: pointer;
-        transition: transform 0.3s ease;
-
-        &:hover {
-            transform: scale(1.1);
+        &.active::after {
+            content: '';
+            position: absolute;
+            bottom: -18px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--jade);
+            border-radius: 2px;
         }
     }
 }
 
-// 响应式设计
-@media (max-width: 768px) {
-    .header {
-        .container {
-            flex-direction: column;
-            height: auto;
-            padding: 10px;
-        }
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
 
-        .nav-menu {
-            margin: 10px 0;
-            width: 100%;
-        }
+.search-box {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    width: 220px;
+    color: var(--ink-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
 
-        .search-box {
-            width: 100%;
-            margin-top: 10px;
-        }
+    &:hover { border-color: var(--jade-light); }
+
+    .search-icon { font-size: 13px; flex-shrink: 0; }
+    .search-placeholder { color: var(--ink-muted); font-size: 13px; }
+}
+
+.top-bell {
+    font-size: 18px;
+    position: relative;
+    cursor: pointer;
+    line-height: 1;
+
+    .badge-dot {
+        position: absolute;
+        top: -2px;
+        right: -4px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--cinnabar);
+        border: 1.5px solid white;
     }
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--jade));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+
+    &:hover { transform: scale(1.06); }
+}
+
+@media (max-width: 900px) {
+    .topbar-inner { padding: 12px 20px; gap: 16px; }
+    .search-box { display: none; }
+    .top-nav { gap: 14px; font-size: 13px; }
 }
 </style>
