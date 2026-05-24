@@ -46,7 +46,8 @@ export default defineConfig(({ mode }) => {
 
     return {
         // 项目启动后的路由根路径（例如：http://localhost:5173/dev/ ），注意格式为 /yoursrc/，你可以写多层路径，如：/.env.development/yoursrc/，但必须保证左右都被斜杠包裹
-        base: baseUrl,
+        // base: baseUrl,
+        base: "/e-commerce", // 最好不要用环境变量读取，部署到云服务的时候，直接写死
         envDir: "./env", // 环境变量目录，用于读取环境变量
         // 插件配置
         plugins: [
@@ -93,7 +94,7 @@ export default defineConfig(({ mode }) => {
             },
             proxy: {
                 "/e-commerce/api": {
-                    target: "https://localhost:9090",
+                    target: "http://localhost:9090",
                     changeOrigin: true,
                     secure: false, // 相当于 Node 端的 rejectUnauthorized: false，允许代理到 https 且忽略证书校验
                     rewrite: (path) => path.replace(/^\/e-commerce\/api/, ""), // 去掉路径前缀，因为后端没有这个路径

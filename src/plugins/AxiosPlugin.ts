@@ -3,9 +3,9 @@ import axios, { type AxiosInstance } from "axios";
 // 创建基础实例
 const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     const instance = axios.create({
-        // baseURL: import.meta.env.VITE_API_TARGET,
-        // baseURL: "https://localhost:9090",
-        baseURL: "/e-commerce/api",
+        baseURL: "/e-commerce/api", // 开发时使用
+        // baseURL: "http://localhost:9090", // 本地虚拟机使用
+        // baseURL: "https://dev.ppsnav.cn/e-commerce/local/api", // 云服务器专用版
         timeout: 10000,
         withCredentials,
         headers: {
