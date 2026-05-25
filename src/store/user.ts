@@ -50,6 +50,11 @@ export const useUserStore = defineStore("user", {
                         account: result.username,
                         status: 1,
                     };
+                    // privileges 先行推导 role_id，loadUserInfo 会再精确覆盖一次
+                    const codes: number[] = result.privileges ?? [];
+                    const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+                    this.G_UserInfo = { ...this.G_UserInfo, role_id };
+                    await this.loadUserInfo();
                 } else {
                     this.clearLoginInfo();
                 }
@@ -67,7 +72,10 @@ export const useUserStore = defineStore("user", {
             if (!id || isNaN(id)) return;
             const result = await ApiUser.getUserInfo(id);
             if (result) {
-                this.G_UserInfo = { ...this.G_UserInfo, ...result };
+                // 后端返回 roleCodes（100=管理员 200=专家 300=普通用户），映射到 role_id
+                const codes: number[] = result.roleCodes ?? [];
+                const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+                this.G_UserInfo = { ...this.G_UserInfo, ...result, role_id };
             }
         },
 

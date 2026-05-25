@@ -25,7 +25,7 @@
         </section>
 
         <!-- Tabs -->
-        <nav class="tabs">
+        <nav class="tabs" :style="{ gridTemplateColumns: `repeat(${visibleTabs.length}, 1fr)` }">
             <button
                 v-for="tab in visibleTabs"
                 :key="tab.name"
@@ -52,30 +52,6 @@
                             <p style="color: var(--ink-muted); font-size:14px;">张景行主任带你从作息、饮食、运动三方面调养心阳，立夏专题已收录 12 篇医师原创内容。</p>
                         </div>
                         <button class="btn btn-gold">进入专题</button>
-                    </div>
-                </div>
-
-                <!-- Recommended doctors -->
-                <div class="card">
-                    <div class="card-title">
-                        <span class="dot"></span>推荐专家
-                        <span class="extra">在线 12 位 · <a href="#" style="color: var(--jade); text-decoration:none;">查看全部 →</a></span>
-                    </div>
-                    <div class="doctor-grid">
-                        <div v-for="doc in doctors" :key="doc.name" class="doctor-card">
-                            <div class="doctor-avatar">{{ doc.emoji }}</div>
-                            <div class="doctor-name font-serif">{{ doc.name }}</div>
-                            <div class="doctor-title">{{ doc.title }}</div>
-                            <div class="doctor-specs">
-                                <span v-for="spec in doc.specs" :key="spec" class="pill" :class="spec.class">{{ spec.label }}</span>
-                            </div>
-                            <div class="doctor-stats">
-                                <span>⭐ {{ doc.rating }}</span>
-                                <span>💬 {{ doc.consults }}</span>
-                                <span>📜 {{ doc.articles }}</span>
-                            </div>
-                            <button class="btn btn-sm" style="margin-top:12px; width:100%;">向{{ doc.gender === 'm' ? '他' : '她' }}咨询</button>
-                        </div>
                     </div>
                 </div>
 
@@ -131,22 +107,26 @@
         <!-- ===== Module 2: 在线咨询 ===== -->
         <div v-show="activeTab === 'm2'" class="panel">
             <div class="space-y">
-                <!-- AI flow diagram -->
+                <!-- Recommended experts - consultation entry -->
                 <div class="card">
                     <div class="card-title">
-                        <span class="dot"></span>咨询服务模式 · AI 与人工同页协同
-                        <span class="extra">同一会话页面 · 接待人从 AI 流转到专家</span>
+                        <span class="dot"></span>推荐专家
+                        <span class="extra">在线 12 位 · 选择专家开始咨询</span>
                     </div>
-                    <div class="flow-diagram">
-                        <div class="flow-grid">
-                            <div class="flow-node ai"><div class="ico">🤖</div><h6>AI 预问诊</h6><p>第一时间响应<br>追问症状细节</p></div>
-                            <div class="flow-node ai"><div class="ico">🔍</div><h6>风险初筛</h6><p>识别危急信号<br>给出生活建议</p></div>
-                            <div class="flow-node handoff"><div class="ico">🔄</div><h6>转人工</h6><p>关键词 / 意图 / 风控<br>三重触发</p></div>
-                            <div class="flow-node handoff"><div class="ico">📋</div><h6>AI 小结移交</h6><p>结构化预问诊<br>免重复问诊</p></div>
-                            <div class="flow-node expert"><div class="ico">👨‍⚕️</div><h6>专家接诊</h6><p>专业回答<br>调理建议</p></div>
-                        </div>
-                        <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--line); display:flex; gap:24px; flex-wrap:wrap; font-size:12px; color: var(--ink-muted);">
-                            <span>💡 <strong style="color:var(--ink);">"AI 咨询"和"转诊接待"是同一个会话页面</strong>。AI 助手先接待，识别到转人工意图后专家接入，整条消息时间线（含 AI 历史 + 小结 + 人工对话）完整保留 — 用户、专家看到的就是同一张对话。</span>
+                    <div class="doctor-grid">
+                        <div v-for="doc in doctors" :key="doc.name" class="doctor-card">
+                            <div class="doctor-avatar">{{ doc.emoji }}</div>
+                            <div class="doctor-name font-serif">{{ doc.name }}</div>
+                            <div class="doctor-title">{{ doc.title }}</div>
+                            <div class="doctor-specs">
+                                <span v-for="spec in doc.specs" :key="spec" class="pill" :class="spec.class">{{ spec.label }}</span>
+                            </div>
+                            <div class="doctor-stats">
+                                <span>⭐ {{ doc.rating }}</span>
+                                <span>💬 {{ doc.consults }}</span>
+                                <span>📜 {{ doc.articles }}</span>
+                            </div>
+                            <button class="btn btn-sm" style="margin-top:12px; width:100%;">向{{ doc.gender === 'm' ? '他' : '她' }}咨询</button>
                         </div>
                     </div>
                 </div>
@@ -591,11 +571,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
+import { useUserStore } from "@/store/user";
 
 // ---- Role view ----
-const isExpertView = ref(false);
+const userStore = useUserStore();
+const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
 const heroTitle = computed(() => isExpertView.value ? '专家工作台 · 名医健康圈' : '名医健康圈');
 const heroSub = computed(() =>
     isExpertView.value
@@ -612,7 +594,14 @@ const allTabs = [
     { name: "m4", icon: "📝", label: "专家认证" },
     { name: "m5", icon: "⚕️", label: "专家工作台", badge: "认证" },
 ];
-const visibleTabs = computed(() => allTabs);
+const visibleTabs = computed(() => {
+    const r = userStore.G_UserInfo.role_id;
+    return allTabs.filter(t => {
+        if (t.name === 'm4') return r === 1;  // 专家认证仅普通用户可见
+        if (t.name === 'm5') return r === 2;  // 专家工作台仅认证专家可见
+        return true;
+    });
+});
 
 function switchTab(name: string) {
     activeTab.value = name;
@@ -652,6 +641,11 @@ const courses = [
 
 // ---- Module 2: Consult ----
 const consultView = ref("user");
+watch(
+    () => userStore.G_UserInfo.role_id,
+    (roleId) => { consultView.value = roleId === 2 ? "expert" : "user"; },
+    { immediate: true }
+);
 const chatInputText = ref("");
 const showAiSummary = ref(false);
 const HANDOFF_WORDS = ["转人工", "找医生", "人工客服", "真人", "转专家"];

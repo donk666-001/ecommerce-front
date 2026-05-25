@@ -524,6 +524,7 @@ async function submitLogin() {
     if (loginForm.account === "root" && loginForm.password === "123456") {
         userStore.G_LoginInfo = { id: 1, isLogin: true, nickName: "Root", account: "root", email: "", status: 1 };
         userStore.isInitialized = true;
+        await userStore.loadUserInfo();
         ElMessage.success("登录成功（开发模式）");
         router.push(getRedirectPath());
         return;
@@ -541,7 +542,12 @@ async function submitLogin() {
                 account: loginForm.account,
                 status: 1,
             };
+            // 先从 login 响应的 privileges 快速推导 role_id
+            const codes: number[] = result.privileges ?? [];
+            const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+            userStore.G_UserInfo = { ...userStore.G_UserInfo, role_id };
             userStore.isInitialized = true;
+            await userStore.loadUserInfo();
             ElMessage.success("登录成功");
             router.push(getRedirectPath());
         } else {
