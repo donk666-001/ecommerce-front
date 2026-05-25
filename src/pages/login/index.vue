@@ -60,6 +60,7 @@
 
         <!-- 右侧表单区 -->
         <div class="form-panel">
+            <div class="deco-circle font-serif" aria-hidden="true">养</div>
             <div class="form-area">
                 <div class="mode-tabs">
                     <button :class="{ active: mode === 'login' }" @click="switchMode('login')">登录</button>
@@ -713,6 +714,7 @@ async function submitRegister() {
     padding: 36px 56px 56px;
     background: var(--paper-warm);
     position: relative;
+    overflow: hidden;
 
     &::before {
         content: '';
@@ -721,6 +723,28 @@ async function submitRegister() {
         height: 3px;
         background: var(--jade-soft);
     }
+}
+
+.deco-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 680px;
+    height: 680px;
+    border-radius: 50%;
+    background: var(--jade);
+    opacity: 0.1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 580px;
+    line-height: 1;
+    color: #fff;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
 }
 
 .form-area {
@@ -732,6 +756,8 @@ async function submitRegister() {
     margin: 0 auto;
     width: 100%;
     padding: 32px 0 64px;
+    position: relative;
+    z-index: 1;
 }
 
 // ── Tab 切换 ──────────────────────────────────────
@@ -782,14 +808,28 @@ async function submitRegister() {
     :deep(.el-form-item) { margin-bottom: 18px; }
 
     :deep(.el-input__wrapper) {
-        background: var(--paper);
-        border-radius: 6px;
-        box-shadow: 0 0 0 1px var(--line);
-        transition: box-shadow 0.18s ease-out;
+        background: var(--cream);
+        border-radius: 8px;
+        border: 1px solid rgba(232, 223, 208, 0.9);
+        box-shadow:
+            inset 0 1px 3px rgba(60, 50, 30, 0.08),
+            inset 0 1px 1px rgba(60, 50, 30, 0.04);
+        transition: box-shadow 0.18s ease-out, border-color 0.18s ease-out;
         padding: 0 14px;
 
-        &:hover { box-shadow: 0 0 0 1px var(--jade-light); }
-        &.is-focus { box-shadow: 0 0 0 1.5px var(--jade) !important; }
+        &:hover {
+            border-color: rgba(143, 168, 156, 0.6);
+            box-shadow:
+                inset 0 1px 3px rgba(60, 50, 30, 0.06),
+                inset 0 1px 1px rgba(60, 50, 30, 0.03);
+        }
+
+        &.is-focus {
+            border-color: rgba(92, 131, 116, 0.7) !important;
+            box-shadow:
+                inset 0 1px 2px rgba(60, 50, 30, 0.04),
+                0 0 0 3px rgba(92, 131, 116, 0.1) !important;
+        }
     }
 
     :deep(.el-input__inner) {
@@ -797,10 +837,10 @@ async function submitRegister() {
         font-size: 14px;
         color: var(--ink);
 
-        &::placeholder { color: var(--ink-muted); }
+        &::placeholder { color: var(--ink-muted); opacity: 0.65; }
     }
 
-    :deep(.el-input__prefix-icon) { color: var(--ink-muted); }
+    :deep(.el-input__prefix-icon) { color: var(--ink-muted); opacity: 0.75; }
 }
 
 .pw-eye {
@@ -817,19 +857,32 @@ async function submitRegister() {
     height: 48px;
     font-size: 15px;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--jade);
     border-color: var(--jade);
     letter-spacing: 0.06em;
-    transition: background 0.18s ease-out, transform 0.12s ease-out;
+    box-shadow:
+        0 2px 5px rgba(92, 131, 116, 0.28),
+        0 5px 16px rgba(92, 131, 116, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: background 0.15s ease-out, transform 0.12s ease-out, box-shadow 0.15s ease-out, border-color 0.15s;
 
     &:hover {
-        background: var(--bamboo);
-        border-color: var(--bamboo);
-        transform: translateY(-1px);
+        background: var(--bamboo) !important;
+        border-color: var(--bamboo) !important;
+        transform: translateY(-2px);
+        box-shadow:
+            0 4px 10px rgba(92, 131, 116, 0.32),
+            0 10px 26px rgba(92, 131, 116, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
-    &:active { transform: translateY(0); }
+    &:active {
+        transform: translateY(1px) !important;
+        box-shadow:
+            0 1px 3px rgba(92, 131, 116, 0.22),
+            inset 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    }
 }
 
 // ── 响应式 ────────────────────────────────────────
