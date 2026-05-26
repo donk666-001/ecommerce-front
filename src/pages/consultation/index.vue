@@ -174,14 +174,6 @@
                             </div>
 
                             <div class="chat-body" ref="chatBodyEl">
-                                <div class="msg-row">
-                                    <div class="msg-avatar ai">AI</div>
-                                    <div class="bubble-wrap">
-                                        <span class="bub-tag">智能预问诊</span>
-                                        <div class="bubble bub-ai">您好，我是{{ selectedExpert.realName }}医生的智能助手。先帮您做一个简短的预问诊，方便医生更高效为您解答。请问您主要想咨询哪方面的不适？</div>
-                                    </div>
-                                </div>
-
                                 <div v-for="(msg, idx) in consultMessages" :key="idx">
                                     <div v-if="msg.kind === 'me'" class="msg-row me">
                                         <div class="msg-avatar user">{{ userStore.G_LoginInfo.nickName?.charAt(0) || '我' }}</div>
@@ -527,6 +519,18 @@
 
         <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
 
+        <!-- 排队提示弹窗 -->
+        <Teleport to="body">
+            <div v-if="showQueueDialog" class="queue-dialog-overlay" @click.self="showQueueDialog = false">
+                <div class="queue-dialog">
+                    <div class="queue-dialog-icon">⏳</div>
+                    <h3 class="font-serif">正在排队中，请稍后…</h3>
+                    <p>您的咨询请求已提交，医生接入后会第一时间通知您。</p>
+                    <button class="btn btn-gold" @click="showQueueDialog = false">我知道了</button>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- ===== 全部专家弹窗 ===== -->
         <Teleport to="body">
             <div v-if="showExpertModal" class="expert-modal-overlay">
@@ -859,6 +863,7 @@ watch(
 );
 const chatInputText = ref("");
 const showAiSummary = ref(false);
+const showQueueDialog = ref(false);
 
 const consultMessages = ref<{ kind: string; text: string; tag?: string; handoff?: boolean; success?: boolean }[]>([]);
 
@@ -881,6 +886,11 @@ function sendMessage() {
 
 async function triggerHandoff() {
     if (!sessionId.value) return;
+    // 已转过人工，弹窗提示排队中
+    if (showAiSummary.value) {
+        showQueueDialog.value = true;
+        return;
+    }
     try {
         const res = await ApiConsult.transfer(sessionId.value);
         const data = res.data?.data;
@@ -1807,6 +1817,22 @@ const uploadSlots = [
     z-index: 1000; pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+/* 排队提示弹窗 */
+.queue-dialog-overlay {
+    position: fixed; inset: 0; background: rgba(20,20,20,.5);
+    z-index: 3000; display: flex; align-items: center; justify-content: center;
+    animation: modalBgIn .25s ease;
+}
+.queue-dialog {
+    background: var(--paper); border-radius: 20px; padding: 36px 40px;
+    text-align: center; max-width: 380px; width: 90%;
+    box-shadow: 0 24px 64px rgba(0,0,0,.18);
+    animation: modalSlideIn .3s cubic-bezier(.22,.61,.36,1);
+}
+.queue-dialog-icon { font-size: 48px; margin-bottom: 16px; }
+.queue-dialog h3 { font-family: "STKaiti", serif; font-size: 20px; color: var(--ink); margin-bottom: 10px; }
+.queue-dialog p { font-size: 14px; color: var(--ink-muted); line-height: 1.7; margin-bottom: 24px; }
 
 @media (max-width: 1024px) {
     .triage-shell { grid-template-columns: 180px 1fr; }
