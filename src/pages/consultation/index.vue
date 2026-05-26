@@ -210,10 +210,10 @@
                                 <div v-if="showAiSummary" class="ai-summary">
                                     <h6>📋 AI 预问诊小结（已自动移交医生）<span class="seal">已留痕</span></h6>
                                     <dl v-if="aiSummary">
-                                        <dt>主诉</dt><dd>{{ aiSummary.mainComplaint }}</dd>
-                                        <dt>病程</dt><dd>{{ aiSummary.courseOfDisease }}</dd>
+                                        <dt>主诉</dt><dd>{{ aiSummary.mainComplaint || '未提及' }}</dd>
+                                        <dt>病程</dt><dd>{{ aiSummary.courseOfDisease || '未提及' }}</dd>
                                         <dt>症状</dt><dd>{{ aiSummary.symptoms?.join('、') || '暂无' }}</dd>
-                                        <dt>诱因</dt><dd>{{ aiSummary.trigger }}</dd>
+                                        <dt>诱因</dt><dd>{{ aiSummary.trigger || '未提及' }}</dd>
                                         <dt>风险初筛</dt>
                                         <dd class="risk">{{ aiSummary.riskLevel === 'high' ? '高' : aiSummary.riskLevel === 'medium' ? '中' : '低' }}
                                             · {{ aiSummary.suggestionDirection }}</dd>
@@ -235,80 +235,110 @@
                 <!-- 认证专家视角：接诊队列 -->
                 <div v-if="isExpertView" class="view-pane">
                     <div class="triage-shell">
+                        <!-- 左侧队列 -->
                         <div class="triage-queue">
                             <div class="queue-tabs">
-                                <button class="queue-tab" :class="{ on: queueTab === 'pending' }" @click="queueTab = 'pending'">待接诊 3</button>
-                                <button class="queue-tab" :class="{ on: queueTab === 'active' }" @click="queueTab = 'active'">咨询中 2</button>
+                                <button class="queue-tab" :class="{ on: queueTab === 'pending' }" @click="queueTab = 'pending'">
+                                    待接诊 {{ pendingList.length }}
+                                </button>
+                                <button class="queue-tab" :class="{ on: queueTab === 'active' }" @click="queueTab = 'active'">
+                                    咨询中 {{ activeList.length }}
+                                </button>
                             </div>
                             <div class="queue-list">
-                                <div class="q-item" :class="{ active: activeQueueItem === 0 }" @click="activeQueueItem = 0">
-                                    <div class="q-head">
-                                        <div class="q-ava">荷</div>
-                                        <span class="q-name">小荷</span>
-                                        <span class="pill pill-cinnabar">转人工</span>
+                                <template v-if="queueTab === 'pending'">
+                                    <div v-if="pendingList.length === 0" class="q-empty">暂无待接诊用户</div>
+                                    <div
+                                        v-for="item in pendingList"
+                                        :key="item.sessionId"
+                                        class="q-item"
+                                        :class="{ active: expertSessionId === item.sessionId }"
+                                        @click="openExpertSession(item)"
+                                    >
+                                        <div class="q-head">
+                                            <div class="q-ava">{{ (item.userNickname || '?').charAt(0) }}</div>
+                                            <span class="q-name">{{ item.userNickname || '用户' }}</span>
+                                            <span class="pill pill-cinnabar">转人工</span>
+                                        </div>
+                                        <div class="q-preview">{{ item.lastMessage || '暂无消息' }}</div>
+                                        <div class="q-time urgent">{{ item.lastMessageAt ? formatTime(item.lastMessageAt) : '' }} · 请尽快接入</div>
+                                        <span class="red-dot"></span>
                                     </div>
-                                    <div class="q-preview">胸闷气短 3 天，下午加重…</div>
-                                    <div class="q-time urgent">12 秒前 · 请尽快接入</div>
-                                    <span class="red-dot"></span>
-                                </div>
-                                <div class="q-item" :class="{ active: activeQueueItem === 1 }" @click="activeQueueItem = 1">
-                                    <div class="q-head">
-                                        <div class="q-ava">月</div>
-                                        <span class="q-name">阿月</span>
-                                        <span class="pill pill-cinnabar">转人工</span>
+                                </template>
+                                <template v-else>
+                                    <div v-if="activeList.length === 0" class="q-empty">暂无咨询中用户</div>
+                                    <div
+                                        v-for="item in activeList"
+                                        :key="item.sessionId"
+                                        class="q-item"
+                                        :class="{ active: expertSessionId === item.sessionId }"
+                                        @click="openExpertSession(item)"
+                                    >
+                                        <div class="q-head">
+                                            <div class="q-ava">{{ (item.userNickname || '?').charAt(0) }}</div>
+                                            <span class="q-name">{{ item.userNickname || '用户' }}</span>
+                                            <span class="pill pill-jade">咨询中</span>
+                                        </div>
+                                        <div class="q-preview">{{ item.lastMessage || '暂无消息' }}</div>
+                                        <div class="q-time">{{ item.lastMessageAt ? formatTime(item.lastMessageAt) : '' }}</div>
                                     </div>
-                                    <div class="q-preview">经期腹痛较以往加重，热敷不缓解…</div>
-                                    <div class="q-time urgent">2 分钟前 · 请尽快接入</div>
-                                    <span class="red-dot"></span>
-                                </div>
-                                <div class="q-item" :class="{ active: activeQueueItem === 2 }" @click="activeQueueItem = 2">
-                                    <div class="q-head">
-                                        <div class="q-ava">林</div>
-                                        <span class="q-name">林先生</span>
-                                        <span class="pill pill-moon">AI 接待中</span>
-                                    </div>
-                                    <div class="q-preview">想了解一下我的体质类型…</div>
-                                    <div class="q-time">5 分钟前 · AI 处理中</div>
-                                </div>
+                                </template>
                             </div>
                         </div>
 
+                        <!-- 右侧会话面板 -->
                         <div class="triage-conv">
-                            <div class="chat-head">
-                                <div class="ava" style="background:linear-gradient(135deg,var(--gold),var(--cinnabar));">荷</div>
-                                <div class="who">
-                                    <h4>小荷 · 32 岁 · 女 <span class="pill pill-jade">首次咨询</span></h4>
-                                    <div class="sub">江南体质 · 来源：张医生主页「向他咨询」入口</div>
+                            <div v-if="!expertSessionId" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-muted);font-size:14px;">
+                                从左侧选择一位患者开始接诊
+                            </div>
+                            <template v-else>
+                                <div class="chat-head">
+                                    <div class="ava" style="background:linear-gradient(135deg,var(--gold),var(--cinnabar));">
+                                        {{ (currentExpertSession?.userNickname || '?').charAt(0) }}
+                                    </div>
+                                    <div class="who">
+                                        <h4>{{ currentExpertSession?.userNickname || '用户' }} <span class="pill pill-jade">咨询中</span></h4>
+                                        <div class="sub">会话 #{{ expertSessionId }}</div>
+                                    </div>
+                                    <button class="btn btn-ghost btn-sm">结束咨询</button>
                                 </div>
-                                <button class="btn btn-ghost btn-sm">结束咨询</button>
-                            </div>
 
-                            <div class="chat-body" style="max-height:540px;">
-                                <div class="msg-row"><div class="msg-avatar ai">AI</div><div class="bubble-wrap"><span class="bub-tag">智能预问诊 · 已结束</span><div class="bubble bub-ai">您好，我是张医生的智能助手。先帮您做一个简短的预问诊，方便医生更高效为您解答。请问您主要想咨询哪方面的不适？</div></div></div>
-                                <div class="msg-row me"><div class="msg-avatar user">荷</div><div class="bubble-wrap"><div class="bubble bub-user">最近三天总觉得胸闷气短，下午尤其明显。</div></div></div>
-                                <div class="msg-row"><div class="msg-avatar ai">AI</div><div class="bubble-wrap"><span class="bub-tag">AI · 追问</span><div class="bubble bub-ai">了解。① 有没有伴随心悸或冒汗？② 之前有过类似情况吗？③ 是否有高血压、心脏病史？</div></div></div>
-                                <div class="msg-row me"><div class="msg-avatar user">荷</div><div class="bubble-wrap"><div class="bubble bub-user">有轻微心悸，之前没有。最近一直加班、睡得很少，没有慢性病。</div></div></div>
-                                <div class="msg-row me"><div class="msg-avatar user">荷</div><div class="bubble-wrap"><div class="bubble bub-user" style="background:var(--cinnabar-soft); color:var(--cinnabar); border-color:rgba(179,60,44,.25);">转人工</div></div></div>
-                                <div class="msg-row sys"><div class="sys-tip">⏳ 用户请求转人工 · 触发词命中 · 会话已分配给你 · 12 秒前</div></div>
-                                <div class="ai-summary">
-                                    <h6>📋 AI 预问诊小结<span class="seal">已留痕</span></h6>
-                                    <dl>
-                                        <dt>主诉</dt><dd>胸闷气短 3 天，下午加重</dd>
-                                        <dt>伴随</dt><dd>轻微心悸</dd>
-                                        <dt>诱因</dt><dd>近期加班、睡眠不足</dd>
-                                        <dt>既往</dt><dd>无高血压 / 心脏病史</dd>
-                                        <dt>风险初筛</dt><dd class="risk">中 · 建议结合心电图排查心血管</dd>
-                                        <dt>建议方向</dt><dd>中医偏胸痹 / 气滞证；结合舌脉辨证</dd>
-                                    </dl>
+                                <div class="chat-body" style="max-height:540px;" ref="expertChatBodyEl">
+                                    <div v-if="expertLoadingMessages" style="text-align:center;padding:20px;color:var(--ink-muted);">加载中…</div>
+                                    <template v-else>
+                                        <div v-for="msg in expertMessages" :key="msg.id">
+                                            <div v-if="msg.senderType === 'user'" class="msg-row me">
+                                                <div class="msg-avatar user">{{ (currentExpertSession?.userNickname || '?').charAt(0) }}</div>
+                                                <div class="bubble-wrap"><div class="bubble bub-user">{{ msg.content }}</div></div>
+                                            </div>
+                                            <div v-else-if="msg.senderType === 'ai' && msg.contentType === 'text'" class="msg-row">
+                                                <div class="msg-avatar ai">AI</div>
+                                                <div class="bubble-wrap">
+                                                    <span class="bub-tag">智能预问诊</span>
+                                                    <div class="bubble bub-ai">{{ msg.content }}</div>
+                                                </div>
+                                            </div>
+                                            <div v-else-if="msg.contentType === 'ai_summary'" class="ai-summary">
+                                                <h6>📋 AI 预问诊小结<span class="seal">已留痕</span></h6>
+                                                <p style="font-size:12px;color:var(--ink-muted);">（小结已记录）</p>
+                                            </div>
+                                            <div v-else-if="msg.senderType === 'expert'" class="msg-row me">
+                                                <div class="msg-avatar expert">我</div>
+                                                <div class="bubble-wrap"><div class="bubble bub-me">{{ msg.content }}</div></div>
+                                            </div>
+                                            <div v-else-if="msg.contentType === 'system_event'" class="msg-row sys">
+                                                <div class="sys-tip">{{ msg.content }}</div>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
-                                <div class="msg-row sys"><div class="sys-tip" style="background:var(--paper-warm); color:var(--ink-muted); border-color:var(--line);">— 你尚未发言 · 请尽快接入 —</div></div>
-                            </div>
 
-                            <div class="chat-input">
-                                <button class="handoff-chip" style="background:var(--gold-soft); color:var(--gold-deep); border-color:rgba(201,165,92,.4);">💬 快捷回复</button>
-                                <input type="text" placeholder="输入回复 · 持证医师可发送图文调理方案" />
-                                <button class="btn btn-sm">发送</button>
-                            </div>
+                                <div class="chat-input">
+                                    <button class="handoff-chip" style="background:var(--gold-soft);color:var(--gold-deep);border-color:rgba(201,165,92,.4);">💬 快捷回复</button>
+                                    <input type="text" v-model="expertChatInput" placeholder="输入回复内容…" @keydown.enter="sendExpertMessage" />
+                                    <button class="btn btn-sm" @click="sendExpertMessage">发送</button>
+                                </div>
+                            </template>
                         </div>
 
                     </div>
@@ -866,8 +896,139 @@ async function triggerHandoff() {
 }
 
 // ---- Module 2: Expert view ----
-const queueTab = ref("pending");
-const activeQueueItem = ref(0);
+interface ExpertQueueItemVO {
+    sessionId: number;
+    status: 'HUMAN_PENDING' | 'HUMAN_CHATTING';
+    userId: number;
+    userNickname: string | null;
+    lastMessage: string | null;
+    lastMessageAt: string | null;
+    aiSummary: AiSummaryVO | null;
+}
+
+interface MessageVO {
+    id: number;
+    senderType: string;
+    contentType: string;
+    content: string;
+    createdAt: string;
+}
+
+const queueTab = ref<'pending' | 'active'>('pending');
+const pendingList = ref<ExpertQueueItemVO[]>([]);
+const activeList = ref<ExpertQueueItemVO[]>([]);
+const expertSessionId = ref<number | null>(null);
+const expertMessages = ref<MessageVO[]>([]);
+const expertChatInput = ref('');
+const expertLoadingMessages = ref(false);
+const expertChatBodyEl = ref<HTMLElement | null>(null);
+
+/** 当前展开的队列项（用于右侧面板展示昵称） */
+const currentExpertSession = computed(() =>
+    expertSessionId.value
+        ? pendingList.value.find(i => i.sessionId === expertSessionId.value)
+            ?? activeList.value.find(i => i.sessionId === expertSessionId.value)
+            ?? null
+        : null
+);
+
+/** 并发拉取待接诊 + 咨询中两个队列 */
+async function loadExpertQueues() {
+    try {
+        const [pendingRes, activeRes] = await Promise.all([
+            ApiConsult.listExpertSessions('HUMAN_PENDING'),
+            ApiConsult.listExpertSessions('HUMAN_CHATTING'),
+        ]);
+        if (pendingRes.data?.data) pendingList.value = pendingRes.data.data;
+        if (activeRes.data?.data) activeList.value = activeRes.data.data;
+    } catch {
+        toast('加载接诊队列失败');
+    }
+}
+
+/** 点击队列项：加载消息历史并订阅 STOMP */
+async function openExpertSession(item: ExpertQueueItemVO) {
+    expertSessionId.value = item.sessionId;
+    expertMessages.value = [];
+    expertLoadingMessages.value = true;
+    try {
+        const res = await ApiConsult.getMessages(item.sessionId);
+        if (res.data?.data) expertMessages.value = res.data.data;
+    } catch {
+        toast('加载消息失败');
+    } finally {
+        expertLoadingMessages.value = false;
+        nextTick(() => {
+            if (expertChatBodyEl.value) {
+                expertChatBodyEl.value.scrollTop = expertChatBodyEl.value.scrollHeight;
+            }
+        });
+    }
+    const { connect } = useConsultSocket();
+    connect(item.sessionId, (frame: any) => {
+        if (frame.event === 'consult.user_message') {
+            expertMessages.value.push(frame.data.message);
+            nextTick(() => {
+                if (expertChatBodyEl.value) {
+                    expertChatBodyEl.value.scrollTop = expertChatBodyEl.value.scrollHeight;
+                }
+            });
+        }
+    });
+}
+
+/** 专家发消息 */
+async function sendExpertMessage() {
+    const text = expertChatInput.value.trim();
+    if (!text || !expertSessionId.value) return;
+    expertChatInput.value = '';
+    try {
+        const res = await ApiConsult.expertReply(expertSessionId.value, text);
+        const data = res.data?.data;
+        if (data) {
+            expertMessages.value.push({
+                id: data.messageId,
+                senderType: 'expert',
+                contentType: 'text',
+                content: text,
+                createdAt: data.createdAt,
+            });
+            // 首次回复：将该项从 pendingList 移入 activeList
+            if (data.status === 'HUMAN_CHATTING') {
+                const idx = pendingList.value.findIndex(i => i.sessionId === expertSessionId.value);
+                if (idx !== -1) {
+                    const item = { ...pendingList.value[idx], status: 'HUMAN_CHATTING' as const };
+                    pendingList.value.splice(idx, 1);
+                    activeList.value.unshift(item);
+                    queueTab.value = 'active';
+                }
+            }
+            nextTick(() => {
+                if (expertChatBodyEl.value) {
+                    expertChatBodyEl.value.scrollTop = expertChatBodyEl.value.scrollHeight;
+                }
+            });
+        }
+    } catch {
+        toast('发送失败，请重试');
+    }
+}
+
+/** 相对时间格式化（列表预览用） */
+function formatTime(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    if (diff < 60000) return `${Math.floor(diff / 1000)} 秒前`;
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+    return `${Math.floor(diff / 3600000)} 小时前`;
+}
+
+// 切换到 m2 Tab 且为专家视角时自动拉队列
+watch(
+    () => activeTab.value === 'm2' && isExpertView.value,
+    (active) => { if (active) loadExpertQueues(); },
+    { immediate: true }
+);
+
 const switchStates = ref({ autoPreAsk: true, autoHandoff: true, offHours: false });
 function toggleSwitch(key: keyof typeof switchStates.value) {
     switchStates.value[key] = !switchStates.value[key];
@@ -1421,6 +1582,12 @@ const uploadSlots = [
 .q-item .q-preview { font-size: 12px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 40px; }
 .q-item .q-time { font-size: 11px; margin-top: 4px; margin-left: 40px; color: var(--ink-muted); }
 .q-item .q-time.urgent { color: var(--cinnabar); font-weight: 600; }
+.q-empty {
+    padding: 20px 16px;
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
+}
 .q-item .red-dot {
     position: absolute; top: 14px; right: 14px; width: 8px; height: 8px;
     background: var(--cinnabar); border-radius: 50%;
