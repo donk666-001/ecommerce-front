@@ -37,4 +37,12 @@ export const ApiConsult = {
     /** 提交评价 */
     review: (sessionId: number, body: ReviewRequest) =>
         GAxios.post(`/consult/sessions/${sessionId}/review`, body),
+
+    /** 专家接诊队列（status: HUMAN_PENDING | HUMAN_CHATTING） */
+    listExpertSessions: (status: 'HUMAN_PENDING' | 'HUMAN_CHATTING', page = 1, pageSize = 20) =>
+        GAxios.get('/consult/expert/sessions', { params: { status, page, pageSize } }),
+
+    /** 专家发消息（首次发消息自动将状态 HUMAN_PENDING → HUMAN_CHATTING） */
+    expertReply: (sessionId: number, content: string) =>
+        GAxios.post(`/consult/expert/sessions/${sessionId}/reply`, { content }),
 };
