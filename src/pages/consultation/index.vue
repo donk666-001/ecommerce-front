@@ -43,13 +43,13 @@
         <div v-show="activeTab === 'm1'" class="panel">
             <div class="space-y">
                 <!-- Solar term banner -->
-                <div class="card" style="background: linear-gradient(135deg, #F5EBD3 0%, #E8F0EC 100%); border: none;">
+                <div class="card" style="border: none;" :style="{ background: solarTerm ? `linear-gradient(135deg, ${solarTerm.gradientFrom} 0%, ${solarTerm.gradientTo} 100%)` : 'linear-gradient(135deg, #F5EBD3 0%, #E8F0EC 100%)' }">
                     <div style="display:flex; align-items:center; gap:24px;">
-                        <div style="font-family: 'STKaiti', serif; font-size:64px; color: var(--gold-deep); font-weight:700;">立夏</div>
+                        <div style="font-family: 'STKaiti', serif; font-size:64px; color: var(--gold-deep); font-weight:700;">{{ solarTerm?.name ?? '立夏' }}</div>
                         <div style="flex:1;">
-                            <div style="font-size:13px; color: var(--gold-deep); letter-spacing:3px; margin-bottom:4px;">2026 · 5 · 5 · 节气专题</div>
-                            <h3 style="font-family:'STKaiti',serif; font-size:22px; margin-bottom:6px;">名家说立夏 · 养心护阳，顺应天时</h3>
-                            <p style="color: var(--ink-muted); font-size:14px;">张景行主任带你从作息、饮食、运动三方面调养心阳，立夏专题已收录 12 篇医师原创内容。</p>
+                            <div style="font-size:13px; color: var(--gold-deep); letter-spacing:3px; margin-bottom:4px;">{{ solarTermDateLabel || '2026 · 5 · 5 · 节气专题' }}</div>
+                            <h3 style="font-family:'STKaiti',serif; font-size:22px; margin-bottom:6px;">名家说节气 · 顺应天时而养</h3>
+                            <p style="color: var(--ink-muted); font-size:14px;">{{ solarTerm?.name ?? '立夏' }}时节，中医专家带你从作息、饮食、运动三方面调养心阳，{{ solarTerm?.name ?? '立夏' }}专题已收录 12 篇医师原创内容。</p>
                         </div>
                         <button class="btn btn-gold">进入专题</button>
                     </div>
@@ -106,51 +106,71 @@
 
         <!-- ===== Module 2: 在线咨询 ===== -->
         <div v-show="activeTab === 'm2'" class="panel">
-            <div class="space-y">
-                <!-- Recommended experts - consultation entry -->
-                <div class="card">
+            <!-- 未登录提示 -->
+            <div v-if="!isLoggedIn" class="login-prompt-card">
+                <div class="login-prompt-icon">🔒</div>
+                <h3 class="font-serif">请先登录</h3>
+                <p>登录后即可查看推荐专家、发起在线咨询</p>
+                <button class="btn btn-gold" @click="router.push('/login')">立即登录</button>
+            </div>
+            <div v-else class="space-y">
+                <!-- 推荐专家（认证专家不显示） -->
+                <div v-if="!isExpertView" class="card">
                     <div class="card-title">
                         <span class="dot"></span>推荐专家
-                        <span class="extra">在线 12 位 · 选择专家开始咨询</span>
+                        <span class="extra">{{ expertList.length > 0 ? `共 ${expertList.length} 位 · 选择专家开始咨询` : '加载中…' }}</span>
                     </div>
                     <div class="doctor-grid">
-                        <div v-for="doc in doctors" :key="doc.name" class="doctor-card">
-                            <div class="doctor-avatar">{{ doc.emoji }}</div>
-                            <div class="doctor-name font-serif">{{ doc.name }}</div>
-                            <div class="doctor-title">{{ doc.title }}</div>
-                            <div class="doctor-specs">
-                                <span v-for="spec in doc.specs" :key="spec" class="pill" :class="spec.class">{{ spec.label }}</span>
+                        <div v-for="doc in displayedExperts" :key="doc.id" class="doctor-card">
+                            <!-- 山水背景装饰 -->
+                            <svg class="doctor-mountain" viewBox="0 0 400 120" fill="none">
+                                <path d="M0 80 C60 50 90 90 150 70 C210 50 260 95 320 65 C360 45 385 70 400 55 L400 120 L0 120 Z" fill="#6f8f7b"/>
+                            </svg>
+                            <!-- 头像（金色渐变边框环） -->
+                            <div class="doctor-avatar-wrap">
+                                <img v-if="avatarUrl(doc)" :src="avatarUrl(doc)!" class="doctor-avatar" />
+                                <div v-else class="doctor-avatar doctor-avatar-text">{{ avatarText(doc) }}</div>
                             </div>
-                            <div class="doctor-stats">
-                                <span>⭐ {{ doc.rating }}</span>
-                                <span>💬 {{ doc.consults }}</span>
-                                <span>📜 {{ doc.articles }}</span>
-                            </div>
-                            <button class="btn btn-sm" style="margin-top:12px; width:100%;">向{{ doc.gender === 'm' ? '他' : '她' }}咨询</button>
+                            <!-- 姓名 -->
+                            <div class="doctor-name font-serif">{{ doc.realName }}</div>
+                            <!-- 专家标签 -->
+                            <div class="doctor-tag">名医专家</div>
+                            <!-- 职称（带装饰横线） -->
+                            <div class="doctor-title">{{ roleLabel(doc.roleType) }}</div>
+                            <!-- 渐变分割线 -->
+                            <div class="doctor-divider"></div>
+                            <!-- 简介 -->
+                            <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
+                            <!-- 咨询按钮 -->
+                            <button class="doctor-consult-btn" @click.stop="startConsult(doc)">向TA咨询 ›</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- View switcher -->
-                <div class="view-switcher">
-                    <div class="view-switcher-label">演示视角 · 同一会话的两端：</div>
-                    <div class="view-tabs">
-                        <button class="view-tab" :class="{ active: consultView === 'user' }" @click="consultView = 'user'">👤 普通用户视角 · 我向医生咨询</button>
-                        <button class="view-tab" :class="{ active: consultView === 'expert' }" @click="consultView = 'expert'">⚕️ 认证专家视角 · 接诊队列 + 同一对话</button>
+                    <!-- 查看更多 -->
+                    <div v-if="expertList.length > 3" class="expert-expand">
+                        <button class="expert-expand-btn" @click="openExpertModal">
+                            查看更多 {{ expertList.length - 3 }} 位专家
+                        </button>
                     </div>
                 </div>
 
-                <!-- User-view pane -->
-                <div v-show="consultView === 'user'" class="view-pane">
-                    <div class="chat-shell">
+                <!-- 普通用户咨询区（认证专家不显示） -->
+                <div v-if="!isExpertView">
+                    <!-- 未选专家：引导提示 -->
+                    <div v-if="!selectedExpert" class="consult-placeholder">
+                        <div class="placeholder-icon">💬</div>
+                        <p>请从上方专家列表中选择一位，点击「向TA咨询」开始问诊</p>
+                    </div>
+
+                    <!-- 已选专家：聊天界面 -->
+                    <div v-else ref="chatShellRef" class="chat-shell">
                         <div class="chat-main">
                             <div class="chat-head">
-                                <div class="ava font-serif">張</div>
+                                <button class="btn btn-ghost btn-sm" @click="resetConsult">← 重新选择</button>
+                                <div class="ava font-serif">{{ avatarText(selectedExpert) }}</div>
                                 <div class="who">
-                                    <h4>张景行 主任医师 <span class="pill pill-jade">在线</span></h4>
-                                    <div class="sub">浙江省中医院 · 中医内科 · ⭐ 4.9</div>
+                                    <h4>{{ selectedExpert.realName }} {{ roleLabel(selectedExpert.roleType) }} <span class="pill pill-jade">在线</span></h4>
+                                    <div class="sub">{{ selectedExpert.bio || '暂无简介' }}</div>
                                 </div>
-                                <button class="btn btn-ghost btn-sm">查看主页</button>
                             </div>
 
                             <div class="chat-body" ref="chatBodyEl">
@@ -158,19 +178,17 @@
                                     <div class="msg-avatar ai">AI</div>
                                     <div class="bubble-wrap">
                                         <span class="bub-tag">智能预问诊</span>
-                                        <div class="bubble bub-ai">您好，我是张医生的智能助手。先帮您做一个简短的预问诊，方便医生更高效为您解答。请问您主要想咨询哪方面的不适？</div>
+                                        <div class="bubble bub-ai">您好，我是{{ selectedExpert.realName }}医生的智能助手。先帮您做一个简短的预问诊，方便医生更高效为您解答。请问您主要想咨询哪方面的不适？</div>
                                     </div>
                                 </div>
 
                                 <div v-for="(msg, idx) in consultMessages" :key="idx">
-                                    <!-- User message -->
                                     <div v-if="msg.kind === 'me'" class="msg-row me">
-                                        <div class="msg-avatar user">小</div>
+                                        <div class="msg-avatar user">{{ userStore.G_LoginInfo.nickName?.charAt(0) || '我' }}</div>
                                         <div class="bubble-wrap">
                                             <div class="bubble" :class="msg.handoff ? 'bub-me handoff' : 'bub-me'">{{ msg.text }}</div>
                                         </div>
                                     </div>
-                                    <!-- AI message -->
                                     <div v-else-if="msg.kind === 'ai'" class="msg-row">
                                         <div class="msg-avatar ai">AI</div>
                                         <div class="bubble-wrap">
@@ -178,13 +196,11 @@
                                             <div class="bubble bub-ai">{{ msg.text }}</div>
                                         </div>
                                     </div>
-                                    <!-- System message -->
                                     <div v-else-if="msg.kind === 'sys'" class="msg-row sys">
                                         <div class="sys-tip" :class="{ success: msg.success }">{{ msg.text }}</div>
                                     </div>
-                                    <!-- Expert message -->
                                     <div v-else-if="msg.kind === 'expert'" class="msg-row">
-                                        <div class="msg-avatar expert">張</div>
+                                        <div class="msg-avatar expert">{{ avatarText(selectedExpert) }}</div>
                                         <div class="bubble-wrap">
                                             <div class="bubble bub-user">{{ msg.text }}</div>
                                         </div>
@@ -193,14 +209,16 @@
 
                                 <div v-if="showAiSummary" class="ai-summary">
                                     <h6>📋 AI 预问诊小结（已自动移交医生）<span class="seal">已留痕</span></h6>
-                                    <dl>
-                                        <dt>主诉</dt><dd>胸闷气短 3 天，下午加重</dd>
-                                        <dt>伴随</dt><dd>轻微心悸</dd>
-                                        <dt>诱因</dt><dd>近期加班、睡眠不足</dd>
-                                        <dt>既往</dt><dd>无高血压 / 心脏病史，未规律服药</dd>
-                                        <dt>风险初筛</dt><dd class="risk">中 · 建议结合心电图排查心血管系统</dd>
-                                        <dt>建议方向</dt><dd>中医偏胸痹 / 气滞证；结合舌脉辨证，必要时转线下</dd>
+                                    <dl v-if="aiSummary">
+                                        <dt>主诉</dt><dd>{{ aiSummary.mainComplaint }}</dd>
+                                        <dt>病程</dt><dd>{{ aiSummary.courseOfDisease }}</dd>
+                                        <dt>症状</dt><dd>{{ aiSummary.symptoms?.join('、') || '暂无' }}</dd>
+                                        <dt>诱因</dt><dd>{{ aiSummary.trigger }}</dd>
+                                        <dt>风险初筛</dt>
+                                        <dd class="risk">{{ aiSummary.riskLevel === 'high' ? '高' : aiSummary.riskLevel === 'medium' ? '中' : '低' }}
+                                            · {{ aiSummary.suggestionDirection }}</dd>
                                     </dl>
+                                    <p v-else style="font-size:12px; color:var(--ink-muted);">AI 小结生成中…</p>
                                 </div>
                             </div>
 
@@ -211,50 +229,16 @@
                             </div>
                         </div>
 
-                        <aside class="chat-side">
-                            <h5><span class="dot"></span>三种触发"转人工"</h5>
-                            <div class="tip-list" style="font-size:12px;">
-                                <div class="tip-row" style="padding:10px;">
-                                    <span class="icon">🔤</span>
-                                    <div class="text" style="font-size:12px;"><strong>关键词触发</strong><br>转人工 / 找医生 / 人工客服 / 真人</div>
-                                </div>
-                                <div class="tip-row gold" style="padding:10px;">
-                                    <span class="icon">🧠</span>
-                                    <div class="text" style="font-size:12px;"><strong>意图模型</strong><br>"AI 我不要再聊了"等语义识别</div>
-                                </div>
-                                <div class="tip-row cinnabar" style="padding:10px;">
-                                    <span class="icon">🚨</span>
-                                    <div class="text" style="font-size:12px;"><strong>风控强制</strong><br>识别到危急信号自动转接 + 提示就医</div>
-                                </div>
-                            </div>
-
-                            <div class="side-section">
-                                <h5><span class="dot"></span>专家推荐内容</h5>
-                                <div class="recommend-item">
-                                    <div class="ico">📜</div>
-                                    <div class="info"><h6>立夏养心三要点</h6><div class="meta">张景行 · 图文</div></div>
-                                </div>
-                                <div class="recommend-item">
-                                    <div class="ico" style="background:var(--gold-soft); color:var(--gold-deep);">🎓</div>
-                                    <div class="info"><h6>21 天体质辨识与调理</h6><div class="meta">¥199 · 21 课时</div></div>
-                                </div>
-                            </div>
-                        </aside>
-                    </div>
-                    <div class="view-explain">
-                        <span class="ve-ico">👤</span>
-                        <div><strong>这是普通用户看到的咨询页面。</strong>用户进入后，AI 先接待预问诊；用户随时可在输入框点击「转人工」或直接输入"转人工"等触发词。专家接入后，对话在同一页面继续，无需重开。</div>
                     </div>
                 </div>
 
-                <!-- Expert-view pane -->
-                <div v-show="consultView === 'expert'" class="view-pane">
+                <!-- 认证专家视角：接诊队列 -->
+                <div v-if="isExpertView" class="view-pane">
                     <div class="triage-shell">
                         <div class="triage-queue">
                             <div class="queue-tabs">
                                 <button class="queue-tab" :class="{ on: queueTab === 'pending' }" @click="queueTab = 'pending'">待接诊 3</button>
                                 <button class="queue-tab" :class="{ on: queueTab === 'active' }" @click="queueTab = 'active'">咨询中 2</button>
-                                <button class="queue-tab" :class="{ on: queueTab === 'done' }" @click="queueTab = 'done'">已完成</button>
                             </div>
                             <div class="queue-list">
                                 <div class="q-item" :class="{ active: activeQueueItem === 0 }" @click="activeQueueItem = 0">
@@ -285,16 +269,6 @@
                                     </div>
                                     <div class="q-preview">想了解一下我的体质类型…</div>
                                     <div class="q-time">5 分钟前 · AI 处理中</div>
-                                </div>
-                                <div style="padding:10px 14px; font-size:11px; color:var(--ink-muted); font-family:'STKaiti',serif; border-top:1px solid var(--line);">— 已咨询 —</div>
-                                <div class="q-item" :class="{ active: activeQueueItem === 3 }" @click="activeQueueItem = 3">
-                                    <div class="q-head">
-                                        <div class="q-ava">王</div>
-                                        <span class="q-name">王女士</span>
-                                        <span class="pill pill-bamboo">已完成</span>
-                                    </div>
-                                    <div class="q-preview">非常感谢医生，按方调理后好多了！</div>
-                                    <div class="q-time">昨天 14:32</div>
                                 </div>
                             </div>
                         </div>
@@ -337,43 +311,6 @@
                             </div>
                         </div>
 
-                        <aside class="triage-side">
-                            <h5><span style="background:var(--cinnabar);width:3px;height:12px;display:inline-block;border-radius:2px;"></span>用户健康档案</h5>
-                            <div class="archive-list">
-                                <div class="ar-row"><span>体质</span><span>江南 · 气虚</span></div>
-                                <div class="ar-row"><span>年龄性别</span><span>32 岁 · 女</span></div>
-                                <div class="ar-row"><span>身高体重</span><span>165 / 54kg</span></div>
-                                <div class="ar-row"><span>既往病史</span><span>无</span></div>
-                                <div class="ar-row"><span>过敏史</span><span>无</span></div>
-                                <div class="ar-row"><span>近 30 天</span><span>首次咨询</span></div>
-                            </div>
-
-                            <div class="side-section">
-                                <h5><span style="background:var(--moon);width:3px;height:12px;display:inline-block;border-radius:2px;"></span>AI 接待设置</h5>
-                                <div class="switch-row" :class="{ off: !switchStates.autoPreAsk }" @click="toggleSwitch('autoPreAsk')"><span>AI 自动预问诊</span><span class="toggle"></span></div>
-                                <div class="switch-row" :class="{ off: !switchStates.autoHandoff }" @click="toggleSwitch('autoHandoff')"><span>转人工自动识别</span><span class="toggle"></span></div>
-                                <div class="switch-row" :class="{ off: !switchStates.offHours }" @click="toggleSwitch('offHours')"><span>非工作时间托管</span><span class="toggle"></span></div>
-                                <div style="margin-top:10px; font-size:11px; color:var(--ink-muted);">转人工触发词：</div>
-                                <div class="keyword-list">
-                                    <span>转人工</span><span>找医生</span><span>人工客服</span><span>真人</span><span>转专家</span>
-                                </div>
-                            </div>
-
-                            <div class="side-section">
-                                <h5><span style="background:var(--gold);width:3px;height:12px;display:inline-block;border-radius:2px;"></span>挂载推荐</h5>
-                                <div class="recommend-item">
-                                    <div class="ico">📜</div><div class="info"><h6>立夏养心三要点</h6><div class="meta">我的内容</div></div>
-                                </div>
-                                <div class="recommend-item">
-                                    <div class="ico" style="background:var(--gold-soft);color:var(--gold-deep);">🎓</div><div class="info"><h6>21 天体质辨识与调理</h6><div class="meta">¥199 · 我的课程</div></div>
-                                </div>
-                                <button class="btn btn-ghost btn-sm" style="width:100%; margin-top:6px; justify-content:center;">挂载到会话</button>
-                            </div>
-                        </aside>
-                    </div>
-                    <div class="view-explain expert">
-                        <span class="ve-ico">⚕️</span>
-                        <div><strong>这是认证专家看到的同一个页面。</strong>左侧是会话队列 — 既包含 AI 正在接待的（如「林先生 · AI 接待中」），也包含已请求转人工的（红点提醒）。中间打开的对话就是用户视角里那条会话的 <em>另一面</em>，AI 历史 + 预问诊小结自动呈现，免重复问诊。</div>
                     </div>
                 </div>
             </div>
@@ -383,9 +320,10 @@
         <div v-show="activeTab === 'm3'" class="panel">
             <div class="space-y">
                 <div class="profile-cover">
-                    <div class="ava-big">荷</div>
-                    <h2>小荷</h2>
-                    <p>普通用户 · 已注册 142 天 · 江南体质 · ID 88231</p>
+                    <img v-if="userStore.G_UserInfo.avatar" :src="userStore.G_UserInfo.avatar" class="ava-big" style="object-fit:cover;" />
+                    <div v-else class="ava-big">{{ profileAvatarText }}</div>
+                    <h2>{{ userStore.G_LoginInfo.nickName || '未登录' }}</h2>
+                    <p>{{ profileRole }} · 已注册 {{ profileDays }} 天 · ID {{ profileId }}</p>
                 </div>
 
                 <div class="stat-grid">
@@ -395,7 +333,8 @@
                     <div class="stat-cell"><div class="n">2</div><div class="l">关注专家</div></div>
                 </div>
 
-                <div class="grow-card">
+                <!-- 仅普通用户显示认证引导 -->
+                <div v-if="!isExpertView" class="grow-card">
                     <span class="new-tag">★ NEW</span>
                     <h3>成为颐养阁认证专家</h3>
                     <p>有医师 / 营养师 / 康复师 / 养生达人资质？加入名医健康圈，开启内容创作、课程发布与在线问诊三重通道，让专业被更多人看见。</p>
@@ -554,29 +493,69 @@
             </div>
         </div>
 
-        <!-- Legend -->
-        <div class="legend-strip">
-            <strong style="color:var(--ink);">消息图例：</strong>
-            <span><i style="background:#E8EDF3;"></i>AI 消息（月白蓝）</span>
-            <span><i style="background:#FFFFFF;border:1px solid #E8DFD0;"></i>用户消息（宣纸白）</span>
-            <span><i style="background:#5C8374;"></i>专家消息（竹青绿）</span>
-            <span><i style="background:#FAE5E0;"></i>系统提示（朱砂红）</span>
-            <span><i style="background:#FFFCF3;border:1.5px dashed #C9A55C;"></i>AI 预问诊小结（暗金）</span>
-        </div>
-
-        </main>
+</main>
 
         <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
+
+        <!-- ===== 全部专家弹窗 ===== -->
+        <Teleport to="body">
+            <div v-if="showExpertModal" class="expert-modal-overlay">
+                <div class="expert-modal">
+                    <!-- 头部：返回 + 标题 -->
+                    <div class="expert-modal-header">
+                        <button class="expert-modal-back" @click="showExpertModal = false">← 返回</button>
+                        <span class="expert-modal-title font-serif">全部专家 · {{ expertList.length }} 位</span>
+                    </div>
+                    <!-- 职称筛选 Tab -->
+                    <div class="expert-filter-bar">
+                        <button
+                            v-for="tab in roleFilterTabs"
+                            :key="tab.key"
+                            :class="['expert-filter-tab', { active: activeRoleFilter === tab.key }]"
+                            @click="activeRoleFilter = tab.key"
+                        >
+                            {{ tab.label }}（{{ tab.count }}）
+                        </button>
+                    </div>
+                    <!-- 卡片列表 -->
+                    <div class="expert-modal-body">
+                        <div v-if="filteredModalExperts.length > 0" class="doctor-grid">
+                            <div v-for="doc in filteredModalExperts" :key="doc.id" class="doctor-card">
+                                <svg class="doctor-mountain" viewBox="0 0 400 120" fill="none">
+                                    <path d="M0 80 C60 50 90 90 150 70 C210 50 260 95 320 65 C360 45 385 70 400 55 L400 120 L0 120 Z" fill="#6f8f7b"/>
+                                </svg>
+                                <div class="doctor-avatar-wrap">
+                                    <img v-if="avatarUrl(doc)" :src="avatarUrl(doc)!" class="doctor-avatar" />
+                                    <div v-else class="doctor-avatar doctor-avatar-text">{{ avatarText(doc) }}</div>
+                                </div>
+                                <div class="doctor-name font-serif">{{ doc.realName }}</div>
+                                <div class="doctor-tag">名医专家</div>
+                                <div class="doctor-title">{{ roleLabel(doc.roleType) }}</div>
+                                <div class="doctor-divider"></div>
+                                <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
+                                <button class="doctor-consult-btn" @click.stop="startConsultFromModal(doc)">向TA咨询 ›</button>
+                            </div>
+                        </div>
+                        <div v-else class="expert-empty">该职称下暂无专家</div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import { useUserStore } from "@/store/user";
+import { ApiCircle, ApiExpert, ApiConsult } from "@/network";
+import { useConsultSocket } from "@/composables/useConsultSocket";
 
 // ---- Role view ----
+const router = useRouter();
 const userStore = useUserStore();
+const isLoggedIn = computed(() => !!userStore.G_LoginInfo.id);
 const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
 const heroTitle = computed(() => isExpertView.value ? '专家工作台 · 名医健康圈' : '名医健康圈');
 const heroSub = computed(() =>
@@ -619,12 +598,214 @@ function toast(msg: string) {
     toastTimer = setTimeout(() => { toastVisible.value = false; }, 1800);
 }
 
+// ---- 个人主页动态信息 ----
+/** 用户 ID 补零至 5 位，如 1 → 00001 */
+const profileId = computed(() =>
+    String(userStore.G_LoginInfo.id || 0).padStart(5, '0')
+);
+/** 角色文字 */
+const profileRole = computed(() => {
+    const r = userStore.G_UserInfo.role_id;
+    if (r === 3) return '管理员';
+    if (r === 2) return '认证专家';
+    return '普通用户';
+});
+/** 从注册时间到今天的天数 */
+const profileDays = computed(() => {
+    const ct = userStore.G_UserInfo.create_time;
+    if (!ct) return 0;
+    return Math.floor((Date.now() - new Date(ct).getTime()) / 86400000);
+});
+/** 头像不存在时取昵称首字 */
+const profileAvatarText = computed(() =>
+    (userStore.G_LoginInfo.nickName || '?').charAt(0)
+);
+
+// ---- 节气数据 ----
+interface SolarTermVO {
+    name: string; solarDate: string; today: string;
+    gradientFrom: string; gradientTo: string;
+    tagline: string; description: string;
+}
+const solarTerm = ref<SolarTermVO | null>(null);
+
+/** "2026-05-25" → "2026 · 5 · 25 · 节气专题" */
+const solarTermDateLabel = computed(() => {
+    const dateStr = solarTerm.value?.today;
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${y} · ${parseInt(m)} · ${parseInt(d)} · 节气专题`;
+});
+
+onMounted(async () => {
+    try {
+        const [stRes, expRes] = await Promise.all([
+            ApiCircle.getSolarTerm(),
+            ApiExpert.getRecommendExperts(),
+        ]);
+        if (stRes.data?.data) solarTerm.value = stRes.data.data;
+        if (expRes.data?.data) expertList.value = expRes.data.data;
+    } catch {
+        // 接口异常时保持默认显示
+    }
+});
+
+// ---- Module 2: 推荐专家（API 数据） ----
+interface ExpertCardDTO {
+    id: number; realName: string; avatar: string | null;
+    roleType: string; bio: string | null;
+}
+const expertList = ref<ExpertCardDTO[]>([]);
+
+/** 主页面始终展示前 3 位 */
+const displayedExperts = computed(() => expertList.value.slice(0, 3));
+
+/** 当前选中咨询的专家（null 表示未选择） */
+const selectedExpert = ref<ExpertCardDTO | null>(null);
+const chatShellRef = ref<HTMLElement | null>(null);
+const chatBodyEl = ref<HTMLElement | null>(null);
+
+/** 当前会话 ID（后端创建后获得） */
+const sessionId = ref<number | null>(null);
+
+/** AI 预问诊小结（转人工后从接口获得） */
+interface AiSummaryVO {
+    mainComplaint: string;
+    courseOfDisease: string;
+    symptoms: string[];
+    trigger: string;
+    riskLevel: string;
+    suggestionDirection: string;
+}
+const aiSummary = ref<AiSummaryVO | null>(null);
+
+function scrollChatToBottom() {
+    if (chatBodyEl.value) {
+        chatBodyEl.value.scrollTop = chatBodyEl.value.scrollHeight;
+    }
+}
+
+/** STOMP 收到帧时的回调 */
+function onStompMessage(frame: any) {
+    const { event, data } = frame;
+    if (event === "consult.ai_message") {
+        consultMessages.value.push({ kind: "ai", text: data.message.content, tag: "AI · 回复" });
+    } else if (event === "consult.system_event") {
+        consultMessages.value.push({ kind: "sys", text: data.message.content });
+    } else if (event === "consult.transferred") {
+        aiSummary.value = data.summary;
+        showAiSummary.value = true;
+        consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成，等待医生接入…", success: true });
+    } else if (event === "consult.closed") {
+        consultMessages.value.push({ kind: "sys", text: "— 会话已关闭 —", success: true });
+    }
+    nextTick(scrollChatToBottom);
+}
+
+async function startConsult(doc: ExpertCardDTO) {
+    selectedExpert.value = doc;
+    consultMessages.value = [];
+    showAiSummary.value = false;
+    aiSummary.value = null;
+    sessionId.value = null;
+
+    try {
+        const res = await ApiConsult.createSession(doc.id);
+        const session = res.data?.data;
+        if (session) {
+            sessionId.value = session.sessionId;
+            for (const msg of session.messages ?? []) {
+                if (msg.senderType === "ai" && msg.contentType === "text") {
+                    consultMessages.value.push({ kind: "ai", text: msg.content, tag: "AI · 预问诊" });
+                } else if (msg.senderType === "user") {
+                    consultMessages.value.push({ kind: "me", text: msg.content });
+                } else if (msg.senderType === "system") {
+                    consultMessages.value.push({ kind: "sys", text: msg.content });
+                }
+            }
+            if (session.aiSummary) {
+                aiSummary.value = session.aiSummary;
+                showAiSummary.value = true;
+            }
+            const { connect } = useConsultSocket();
+            connect(session.sessionId, onStompMessage);
+        }
+    } catch (err) {
+        console.error("创建会话失败", err);
+        toast("连接失败，请稍后重试");
+    }
+
+    nextTick(() => {
+        chatShellRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+}
+
+function resetConsult() {
+    const { disconnect } = useConsultSocket();
+    disconnect();
+    selectedExpert.value = null;
+    sessionId.value = null;
+    consultMessages.value = [];
+    showAiSummary.value = false;
+    aiSummary.value = null;
+}
+
+/** Modal 内点击「向TA咨询」：关闭弹窗并切换到该专家 */
+function startConsultFromModal(doc: ExpertCardDTO) {
+    showExpertModal.value = false;
+    startConsult(doc);
+}
+
+/** 全部专家弹窗 */
+const showExpertModal = ref(false);
+const activeRoleFilter = ref('ALL');
+
+function openExpertModal() {
+    activeRoleFilter.value = 'ALL';
+    showExpertModal.value = true;
+}
+
+/** 根据 expertList 中实际存在的职称动态生成筛选 Tab */
+const roleFilterTabs = computed(() => {
+    const roleMap: Record<string, string> = {
+        DOCTOR: '执业医师', NUTRITIONIST: '注册营养师',
+        REHAB: '康复治疗师', GURU: '养生达人',
+    };
+    const present = [...new Set(expertList.value.map(e => e.roleType))];
+    const tabs = [{ key: 'ALL', label: '全部', count: expertList.value.length }];
+    present.forEach(r => {
+        tabs.push({
+            key: r,
+            label: roleMap[r] ?? r,
+            count: expertList.value.filter(e => e.roleType === r).length,
+        });
+    });
+    return tabs;
+});
+
+const filteredModalExperts = computed(() =>
+    activeRoleFilter.value === 'ALL'
+        ? expertList.value
+        : expertList.value.filter(e => e.roleType === activeRoleFilter.value)
+);
+
+/** roleType 枚举 → 中文职称 */
+function roleLabel(roleType: string) {
+    const map: Record<string, string> = {
+        DOCTOR: '执业医师', NUTRITIONIST: '注册营养师',
+        REHAB: '康复治疗师', GURU: '养生达人',
+    };
+    return map[roleType] ?? roleType;
+}
+/** 头像是完整 URL 时直接用，否则取姓名首字 */
+function avatarText(expert: ExpertCardDTO) {
+    return (expert.realName || '?').charAt(0);
+}
+function avatarUrl(expert: ExpertCardDTO) {
+    return expert.avatar?.startsWith('http') ? expert.avatar : null;
+}
+
 // ---- Module 1 data ----
-const doctors = [
-    { name: "张景行", emoji: "👨‍⚕️", title: "浙江省中医院 · 主任医师", specs: [{ label: "心脑血管", class: "pill-cinnabar" }, { label: "中医内科", class: "pill-jade" }], rating: "4.9", consults: "2.3k", articles: "86", gender: "m" },
-    { name: "李清和", emoji: "👩‍⚕️", title: "广州中医药大学一附院 · 副主任", specs: [{ label: "妇科", class: "pill-pink" }, { label: "调经种子", class: "pill-jade" }], rating: "4.8", consults: "1.8k", articles: "64", gender: "f" },
-    { name: "周一谦", emoji: "🥗", title: "注册营养师 · 公共营养硕士", specs: [{ label: "膳食营养", class: "pill-bamboo" }, { label: "体质调理", class: "pill-gold" }], rating: "4.7", consults: "956", articles: "42", gender: "m" },
-];
 
 const articles = [
     { title: "立夏后这样喝粥，养心宁神事半功倍", author: "张景行", tag: "图文", tagClass: "pill-jade", emoji: "📜", reads: "8.2k", stars: "312", coverBg: undefined },
@@ -648,39 +829,40 @@ watch(
 );
 const chatInputText = ref("");
 const showAiSummary = ref(false);
-const HANDOFF_WORDS = ["转人工", "找医生", "人工客服", "真人", "转专家"];
 
 const consultMessages = ref<{ kind: string; text: string; tag?: string; handoff?: boolean; success?: boolean }[]>([]);
 
 function sendMessage() {
     const text = chatInputText.value.trim();
-    if (!text) return;
-    consultMessages.value.push({ kind: "me", text, handoff: HANDOFF_WORDS.some(k => text.includes(k)) });
+    if (!text || !sessionId.value) return;
     chatInputText.value = "";
-    const isHandoff = HANDOFF_WORDS.some(k => text.includes(k));
-    if (isHandoff) {
-        setTimeout(() => {
-            consultMessages.value.push({ kind: "sys", text: "⏳ 已识别\"转人工\"意图 · 触发词命中 · 正在为您转接…" });
-            setTimeout(() => {
-                showAiSummary.value = true;
-                setTimeout(() => {
-                    consultMessages.value.push({ kind: "sys", text: "✓ 张景行 主任医师 已接入会话", success: true });
-                    setTimeout(() => {
-                        consultMessages.value.push({ kind: "expert", text: "您好，我看到了 AI 的初步问询。最近加班确实容易引发肝郁气滞型胸闷。请把舌头伸出来拍张照片我看一下，另外今晚之前避免饮浓茶咖啡。" });
-                    }, 600);
-                }, 300);
-            }, 1200);
-        }, 600);
-    } else {
-        setTimeout(() => {
-            consultMessages.value.push({ kind: "ai", text: "好的，已记录您的描述。请问还有其他症状吗？(随时可以发送「转人工」让医生本人接入)", tag: "AI · 跟进" });
-        }, 600);
+
+    // 乐观渲染：立即显示用户消息
+    consultMessages.value.push({ kind: "me", text });
+    nextTick(scrollChatToBottom);
+
+    // 通过 STOMP 发送（服务端收到后会推送 AI 回复）
+    const { send } = useConsultSocket();
+    if (!send(sessionId.value, text)) {
+        // STOMP 未连接时降级 HTTP
+        ApiConsult.sendMessage(sessionId.value, text).catch(console.error);
     }
 }
 
-function triggerHandoff() {
-    chatInputText.value = "转人工";
-    sendMessage();
+async function triggerHandoff() {
+    if (!sessionId.value) return;
+    try {
+        const res = await ApiConsult.transfer(sessionId.value);
+        const data = res.data?.data;
+        if (data) {
+            aiSummary.value = data.summary;
+            showAiSummary.value = true;
+            consultMessages.value.push({ kind: "sys", text: "⏳ 转人工请求已发送，等待医生接入…" });
+            nextTick(scrollChatToBottom);
+        }
+    } catch {
+        toast("转人工请求失败，请重试");
+    }
 }
 
 // ---- Module 2: Expert view ----
@@ -829,22 +1011,167 @@ const uploadSlots = [
 .tip-row .text strong { color: var(--jade); }
 
 // Doctor cards
-.doctor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.doctor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
 .doctor-card {
-    background: var(--paper-warm); border: 1px solid var(--line); border-radius: 14px;
-    padding: 18px; text-align: center; transition: all .2s; cursor: pointer;
+    position: relative; overflow: hidden; border-radius: 24px;
+    padding: 28px 22px 24px;
+    background: linear-gradient(180deg, #fbf8f3 0%, #f5efe7 100%);
+    border: 1px solid rgba(214, 200, 180, .5);
+    box-shadow: 0 8px 30px rgba(0,0,0,.05), inset 0 1px 0 rgba(255,255,255,.9);
+    text-align: center; display: flex; flex-direction: column; align-items: center;
+    transition: all .35s; cursor: pointer;
 }
-.doctor-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--jade-light); }
+.doctor-card:hover { transform: translateY(-5px); box-shadow: 0 18px 48px rgba(0,0,0,.1); }
+.doctor-card::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(circle at top left, rgba(117,144,122,.07), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(117,144,122,.05), transparent 35%);
+}
+
+.doctor-mountain {
+    position: absolute; left: 0; bottom: 0; width: 100%; opacity: .07; pointer-events: none;
+}
+
+.doctor-avatar-wrap {
+    width: 96px; height: 96px; margin: 0 auto; padding: 3px; border-radius: 50%;
+    background: linear-gradient(135deg, #d8c29a, #f5ead7, #cdb488);
+    box-shadow: 0 6px 20px rgba(0,0,0,.08); position: relative; z-index: 1; flex-shrink: 0;
+}
+
 .doctor-avatar {
-    width: 64px; height: 64px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--jade-soft), var(--gold-soft));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 30px; margin: 0 auto 10px;
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: white;
 }
-.doctor-name { font-family: "STKaiti", serif; font-size: 16px; font-weight: 600; margin-bottom: 2px; }
-.doctor-title { font-size: 11px; color: var(--ink-muted); margin-bottom: 8px; }
-.doctor-specs { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
-.doctor-stats { font-size: 11px; color: var(--ink-muted); display: flex; justify-content: center; gap: 10px; }
+
+.doctor-avatar-text {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-family: "STKaiti", serif; font-weight: 700; color: var(--jade);
+    background: linear-gradient(135deg, var(--jade-soft), var(--gold-soft));
+}
+
+.doctor-name {
+    margin-top: 14px; font-size: 22px; font-weight: 600; letter-spacing: 4px;
+    color: #24322b; position: relative; z-index: 1;
+}
+
+.doctor-tag {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-top: 8px; padding: 3px 12px; border-radius: 999px;
+    background: linear-gradient(135deg, #922727, #bc4040);
+    color: white; font-size: 11px; letter-spacing: 2px;
+    box-shadow: 0 4px 10px rgba(188,64,64,.2); position: relative; z-index: 1;
+}
+
+.doctor-title {
+    position: relative; margin-top: 10px; color: #6e7b72; font-size: 13px;
+    letter-spacing: 2px; z-index: 1;
+    &::before, &::after {
+        content: ''; display: inline-block; width: 28px; height: 1px;
+        margin: 0 7px; vertical-align: middle; background: #d9cfbf;
+    }
+}
+
+.doctor-divider {
+    width: 68%; height: 1px; margin: 16px auto;
+    background: linear-gradient(90deg, transparent, #d7cab2, transparent);
+    position: relative; z-index: 1;
+}
+
+.doctor-bio {
+    font-size: 12.5px; color: #4f5651; line-height: 1.8; letter-spacing: .5px;
+    padding: 0 4px; text-align: left;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    position: relative; z-index: 1; flex: 1;
+}
+
+.doctor-consult-btn {
+    width: 88%; height: 42px; margin-top: 18px; border: none; outline: none;
+    border-radius: 999px; cursor: pointer;
+    background: linear-gradient(135deg, #5d7c69, #73907d);
+    color: #f9f5ef; font-size: 14px; letter-spacing: 3px; font-family: inherit;
+    transition: all .3s; box-shadow: 0 8px 18px rgba(93,124,105,.22);
+    position: relative; z-index: 1;
+}
+.doctor-consult-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 24px rgba(93,124,105,.32); }
+
+// 未登录提示
+.login-prompt-card {
+    text-align: center; padding: 64px 24px;
+    background: var(--paper); border-radius: 16px; box-shadow: var(--shadow);
+    border: 1px solid rgba(232, 223, 208, 0.4);
+}
+.login-prompt-icon { font-size: 48px; margin-bottom: 16px; }
+.login-prompt-card h3 { font-size: 22px; color: var(--ink); margin-bottom: 8px; }
+.login-prompt-card p { font-size: 14px; color: var(--ink-muted); margin-bottom: 24px; }
+
+// 未选专家占位
+.consult-placeholder {
+    text-align: center; padding: 52px 24px;
+    background: var(--paper-warm); border-radius: 14px;
+    border: 1.5px dashed var(--line);
+}
+.placeholder-icon { font-size: 40px; margin-bottom: 14px; }
+.consult-placeholder p { font-size: 14px; color: var(--ink-muted); line-height: 1.8; }
+
+// 查看更多按钮
+.expert-expand { text-align: center; margin-top: 20px; }
+.expert-expand-btn {
+    background: transparent; border: 1px solid var(--jade); color: var(--jade);
+    padding: 10px 32px; border-radius: 22px; font-family: inherit;
+    font-size: 13px; cursor: pointer; transition: all .25s; letter-spacing: 1px;
+}
+.expert-expand-btn:hover { background: var(--jade); color: white; }
+
+// 全部专家弹窗
+.expert-modal-overlay {
+    position: fixed; inset: 0; background: rgba(20,20,20,.55);
+    z-index: 2000; display: flex; align-items: center; justify-content: center;
+    padding: 24px; animation: modalBgIn .25s ease;
+}
+@keyframes modalBgIn { from { opacity: 0; } to { opacity: 1; } }
+
+.expert-modal {
+    background: var(--paper); border-radius: 20px;
+    width: 100%; max-width: 1100px; max-height: 88vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 28px 80px rgba(0,0,0,.22); overflow: hidden;
+    animation: modalSlideIn .3s cubic-bezier(.22,.61,.36,1);
+}
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(.96) translateY(18px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+.expert-modal-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 16px;
+    background: var(--paper-warm); flex-shrink: 0;
+}
+.expert-modal-back {
+    background: transparent; border: 1px solid var(--jade); color: var(--jade);
+    padding: 7px 16px; border-radius: 20px; font-family: inherit;
+    font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.expert-modal-back:hover { background: var(--jade); color: white; }
+.expert-modal-title {
+    font-size: 18px; font-weight: 600; color: var(--ink);
+}
+
+.expert-filter-bar {
+    padding: 14px 24px; border-bottom: 1px solid var(--line-soft);
+    display: flex; gap: 8px; flex-wrap: wrap;
+    background: var(--paper); flex-shrink: 0;
+}
+.expert-filter-tab {
+    background: var(--paper-warm); border: 1px solid var(--line); color: var(--ink-muted);
+    padding: 6px 16px; border-radius: 20px; font-family: inherit;
+    font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.expert-filter-tab.active { background: var(--jade); border-color: var(--jade); color: white; }
+.expert-filter-tab:hover:not(.active) { border-color: var(--jade); color: var(--jade); }
+
+.expert-modal-body { flex: 1; overflow-y: auto; padding: 24px; }
+.expert-empty { text-align: center; padding: 48px; color: var(--ink-muted); font-size: 14px; }
 
 // Content List
 .content-list { display: flex; flex-direction: column; gap: 14px; }
@@ -948,12 +1275,13 @@ const uploadSlots = [
 .chat-shell {
     background: var(--paper); border-radius: 14px; box-shadow: var(--shadow);
     border: 1px solid rgba(232, 223, 208, 0.4); overflow: hidden;
-    display: grid; grid-template-columns: 1fr 280px; min-height: 600px;
+    display: flex; flex-direction: column; width: 100%; height: 640px;
 }
-.chat-main { display: flex; flex-direction: column; border-right: 1px solid var(--line-soft); }
+.chat-main { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 .chat-head {
     padding: 16px 20px; border-bottom: 1px solid var(--line-soft);
     display: flex; align-items: center; gap: 12px; background: var(--paper-warm);
+    flex-shrink: 0;
 }
 .chat-head .ava {
     width: 44px; height: 44px; border-radius: 50%;
@@ -967,7 +1295,11 @@ const uploadSlots = [
     flex: 1; padding: 20px; overflow-y: auto;
     display: flex; flex-direction: column; gap: 14px;
     background: linear-gradient(to bottom, var(--cream) 0%, var(--paper-warm) 100%);
-    max-height: 480px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 }
 .msg-row { display: flex; gap: 10px; max-width: 80%; }
 .msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
@@ -1016,7 +1348,7 @@ const uploadSlots = [
 
 .chat-input {
     background: var(--paper); border-top: 1px solid var(--line-soft); padding: 14px;
-    display: flex; gap: 10px; align-items: center;
+    display: flex; gap: 10px; align-items: center; flex-shrink: 0;
 }
 .handoff-chip {
     background: var(--cinnabar-soft); color: var(--cinnabar); border: 1px solid rgba(179, 60, 44, 0.25);
@@ -1056,7 +1388,7 @@ const uploadSlots = [
 .triage-shell {
     background: var(--paper); border-radius: 14px; box-shadow: var(--shadow);
     border: 1px solid rgba(232, 223, 208, 0.4); overflow: hidden;
-    display: grid; grid-template-columns: 220px 1fr 240px; min-height: 640px;
+    display: grid; grid-template-columns: 220px 1fr; min-height: 640px;
 }
 .triage-queue {
     background: var(--paper-warm); border-right: 1px solid var(--line-soft);
@@ -1095,7 +1427,14 @@ const uploadSlots = [
 }
 
 .triage-conv { display: flex; flex-direction: column; background: var(--paper); }
-.triage-conv .chat-body { max-height: 540px; }
+.triage-conv .chat-body {
+    max-height: 540px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+}
 .triage-side { padding: 18px; background: var(--paper-warm); border-left: 1px solid var(--line-soft); overflow-y: auto; }
 
 .switch-row {
@@ -1292,16 +1631,6 @@ const uploadSlots = [
 .work-row .meta { font-size: 12px; color: var(--ink-muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .work-row .actions { display: flex; gap: 6px; }
 
-// Legend
-.legend-strip {
-    display: flex; gap: 18px; flex-wrap: wrap; padding: 14px 18px;
-    background: var(--paper-warm); border: 1px dashed var(--line); border-radius: 10px;
-    font-size: 12px; color: var(--ink-muted); margin-top: 18px;
-}
-.legend-strip i {
-    display: inline-block; width: 14px; height: 14px; border-radius: 3px;
-    vertical-align: middle; margin-right: 6px;
-}
 
 // Toast
 .toast {
@@ -1314,7 +1643,6 @@ const uploadSlots = [
 
 @media (max-width: 1024px) {
     .triage-shell { grid-template-columns: 180px 1fr; }
-    .triage-side { display: none; }
     .quick-grid { grid-template-columns: repeat(3, 1fr); }
     .role-grid { grid-template-columns: repeat(2, 1fr); }
     .flow-grid { grid-template-columns: 1fr 1fr; }
