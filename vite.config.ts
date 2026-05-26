@@ -92,6 +92,11 @@ export default defineConfig(({ mode }) => {
                     secure: false, // 相当于 Node 端的 rejectUnauthorized: false，允许代理到 https 且忽略证书校验
                     rewrite: (path) => path.replace(/^\/e-commerce\/api/, ""), // 去掉路径前缀，因为后端没有这个路径
                 },
+                "/ws": {
+                    target: "ws://localhost:9090",
+                    ws: true,
+                    changeOrigin: true,
+                },
             },
             // open: true, // 启动项目后，自动打开浏览器
         },
