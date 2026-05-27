@@ -25,6 +25,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@stomp/stompjs": "^7.3.0",
     "axios": "^1.13.2",
+    "echarts": "^6.1.0",
     "element-plus": "^2.13.1",
     "pinia": "^3.0.4",
     "sass-embedded": "^1.97.1",
