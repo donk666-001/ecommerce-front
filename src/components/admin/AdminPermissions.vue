@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="perms-panel">
 
     <div class="section-header">
@@ -160,25 +160,12 @@ tr:hover td     { background:rgba(250,246,238,0.6); }
 .pill-ok .led   { background:var(--jade); }
 .pill-no        { background:var(--cinnabar-soft); color:var(--cinnabar); }
 .pill-no .led   { background:var(--cinnabar); }
-.auto-restore   { font-size:11px; color:var(--ink-muted); margin-top:3px; }
+
 .btn-group      { display:flex; gap:6px; justify-content:flex-end; }
 .btn            { border:1px solid var(--line); background:white; padding:6px 12px; font-size:12px; border-radius:7px; cursor:pointer; font-family:inherit; transition:all 0.15s; }
 .btn-jade       { background:var(--jade); color:white; border-color:var(--jade); }
 .btn-cinnabar   { border-color:var(--cinnabar); color:var(--cinnabar); background:white; }
 .btn-cinnabar:hover { background:var(--cinnabar); color:white; }
-.modal-mask     { display:none; position:fixed; inset:0; background:rgba(44,54,57,0.42); backdrop-filter:blur(3px); z-index:1000; justify-content:center; align-items:center; padding:20px; }
-.modal-mask.show { display:flex; }
-.modal          { background:white; border-radius:14px; max-width:480px; width:100%; box-shadow:0 8px 28px rgba(60,50,30,0.12); }
-.modal-header   { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
-.modal-header h3 { font-family:"STKaiti",serif; font-size:18px; color:var(--ink); }
-.modal-close    { background:transparent; border:none; cursor:pointer; color:var(--ink-muted); font-size:22px; }
-.modal-body     { padding:20px; }
-.modal-body label { font-size:13px; color:var(--ink-muted); display:block; margin-bottom:6px; }
-.modal-body input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:7px; font-family:inherit; font-size:14px; color:var(--ink); outline:none; box-sizing:border-box; }
-.modal-body input:focus { border-color:var(--jade); }
-.modal-footer   { padding:14px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
-.modal-btn      { padding:8px 20px; border-radius:7px; font-size:14px; border:1px solid var(--line); background:white; color:var(--ink); cursor:pointer; font-family:inherit; }
-.modal-btn.primary-cinnabar { background:var(--cinnabar); color:white; border-color:var(--cinnabar); }
 .pill-lock     { background:var(--gold-soft); color:var(--gold-deep,#A07840); }
 .pill-lock .led { background:var(--gold-deep,#A07840); }
 .pagination     { padding:14px 18px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
