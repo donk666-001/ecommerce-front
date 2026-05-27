@@ -1082,8 +1082,10 @@ function truncateText(text: string | null, maxLen: number): string {
     return text.slice(0, maxLen) + '…';
 }
 
-// 切换到 m2 Tab 且为专家视角时：拉取队列 + 订阅实时更新通知
+// 切换到 m2 Tab 且为专家视角时：拉取队列 + 订阅实时更新通知 + 启动轮询
 const { subscribe: subscribeExpertQueue, unsubscribe: unsubscribeExpertQueue } = useExpertQueueSocket();
+/** 待接诊队列 15 秒轮询定时器，兜底捕获 STOMP 未覆盖的数据库变更 */
+const pollTimer = ref<ReturnType<typeof setInterval> | null>(null);
 
 watch(
     () => activeTab.value === 'm2' && isExpertView.value,
@@ -1092,16 +1094,21 @@ watch(
             loadExpertQueues();
             const userId = userStore.G_LoginInfo.id;
             if (userId) subscribeExpertQueue(userId, loadExpertQueues);
+            pollTimer.value = setInterval(loadExpertQueues, 15_000);
         } else {
             unsubscribeExpertQueue();
+            clearInterval(pollTimer.value!);
+            pollTimer.value = null;
         }
     },
     { immediate: true }
 );
 
-// 组件卸载时断开连接，防止内存泄漏
+// 组件卸载时断开连接、清除轮询，防止内存泄漏
 onUnmounted(() => {
     unsubscribeExpertQueue();
+    clearInterval(pollTimer.value!);
+    pollTimer.value = null;
 });
 
 const switchStates = ref({ autoPreAsk: true, autoHandoff: true, offHours: false });
