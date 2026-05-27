@@ -10,142 +10,131 @@
         <h3 class="font-serif">账号权限管理</h3>
         <div class="search-input">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input v-model="keyword" type="text" placeholder="搜索姓名 / 手机号 / 用户 ID" />
+          <input v-model="keyword" type="text" placeholder="搜索姓名 / 用户 ID / 邮箱" @keyup.enter="onSearch" />
         </div>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>姓名</th><th>用户 ID</th><th>手机号</th><th>角色</th>
-            <th>加入时间</th><th>状态</th><th style="text-align:right">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="filtered.length === 0">
-            <td colspan="7" style="text-align:center;padding:48px;color:var(--ink-muted)">未找到匹配的账号</td>
-          </tr>
-          <tr v-for="a in filtered" :key="a.id">
-            <td><span class="applicant-name">{{ a.name }}</span></td>
-            <td style="color:var(--ink-muted);font-size:13px">{{ a.id }}</td>
-            <td>{{ a.phone }}</td>
-            <td>
-              <select class="sel" :value="a.role" @change="updateRole(a.id, ($event.target as HTMLSelectElement).value)">
-                <option value="admin">管理员</option>
-                <option value="expert">专家</option>
-                <option value="user">普通用户</option>
-              </select>
-            </td>
-            <td style="color:var(--ink-muted);font-size:13px">{{ a.joinedAt }}</td>
-            <td>
-              <span class="status-pill" :class="a.enabled ? 'pill-ok' : 'pill-no'">
-                <span class="led"></span>
-                {{ a.enabled ? '已启用' : '已禁用' }}
-              </span>
-              <div v-if="!a.enabled && a.disabledUntil" class="auto-restore">自动恢复：{{ a.disabledUntil }}</div>
-            </td>
-            <td>
-              <div class="btn-group">
-                <button v-if="a.enabled"  class="btn btn-cinnabar" @click="openDisable(a.id)">禁用</button>
-                <button v-else            class="btn btn-jade"     @click="enableAccount(a.id)">启用</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
 
-    <!-- Disable modal -->
-    <div v-if="disableModal" class="modal-mask show" @click.self="disableModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 class="font-serif">禁用账号</h3>
-          <button class="modal-close" @click="disableModal = false">×</button>
+      <!-- Loading -->
+      <div v-if="loading" style="text-align:center;padding:48px;color:var(--ink-muted)">加载中…</div>
+
+      <!-- Empty -->
+      <div v-else-if="users.length === 0" style="text-align:center;padding:48px;color:var(--ink-muted)">未找到匹配的账号</div>
+
+      <!-- Table -->
+      <template v-else>
+        <table>
+          <thead>
+            <tr>
+              <th>用户名</th><th>用户 ID</th><th>邮箱</th><th>角色</th>
+              <th>加入时间</th><th>状态</th><th style="text-align:right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="u in users" :key="u.userId">
+              <td><span class="applicant-name">{{ u.nickname }}</span></td>
+              <td style="color:var(--ink-muted);font-size:13px">{{ u.displayId }}</td>
+              <td>{{ u.email }}</td>
+              <td>
+                <select class="sel" :value="u.roleCode" @change="updateRole(u.userId, Number(($event.target as HTMLSelectElement).value))">
+                  <option :value="100">管理员</option>
+                  <option :value="200">专家</option>
+                  <option :value="300">普通用户</option>
+                </select>
+              </td>
+              <td style="color:var(--ink-muted);font-size:13px">{{ formatDate(u.createdAt) }}</td>
+              <td>
+                <span class="status-pill" :class="u.status === 1 ? 'pill-ok' : u.status === 2 ? 'pill-lock' : 'pill-no'">
+                  <span class="led"></span>
+                  {{ u.status === 1 ? '已启用' : u.status === 2 ? '已锁定' : '已禁用' }}
+                </span>
+              </td>
+              <td>
+                <div class="btn-group" v-if="u.status !== 2">
+                  <button v-if="u.status === 1" class="btn btn-cinnabar" @click="toggleStatus(u.userId, u.status)">禁用</button>
+                  <button v-else class="btn btn-jade" @click="toggleStatus(u.userId, u.status)">启用</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <div class="page-summary">共 <strong>{{ total }}</strong> 条</div>
+          <div class="page-controls">
+            <button class="page-btn" :disabled="currentPage <= 1" @click="onPageChange(currentPage - 1)">‹</button>
+            <span style="font-size:13px;color:var(--ink-muted);padding:0 8px">{{ currentPage }} / {{ totalPages }}</span>
+            <button class="page-btn" :disabled="currentPage >= totalPages" @click="onPageChange(currentPage + 1)">›</button>
+          </div>
         </div>
-        <div class="modal-body">
-          <p style="margin-bottom:14px">即将禁用：<strong>{{ disableTarget?.name }}</strong></p>
-          <label>自动启用时间（留空则永久禁用）</label>
-          <input v-model="disableUntil" type="datetime-local" />
-          <p style="font-size:12px;color:var(--ink-muted);margin-top:8px">到达指定时间后系统将自动重新启用该账号。</p>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn" @click="disableModal = false">取消</button>
-          <button class="modal-btn primary-cinnabar" @click="confirmDisable">确认禁用</button>
-        </div>
-      </div>
+      </template>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ApiAdmin, type UserAdminVO } from '@/network/admin'
 
-interface Account {
-  id: string; name: string; phone: string; role: string
-  enabled: boolean; joinedAt: string; disabledUntil?: string
-}
+const users     = ref<UserAdminVO[]>([])
+const loading   = ref(false)
+const keyword   = ref('')
+const currentPage = ref(1)
+const pageSize    = 10
+const total       = ref(0)
+const totalPages  = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
-const accounts = ref<Account[]>([
-  { id:'U10001', name:'小雅',    phone:'138****8888', role:'user',   enabled:true,  joinedAt:'2026-01-12' },
-  { id:'U10002', name:'王淑华',  phone:'139****6532', role:'expert', enabled:true,  joinedAt:'2025-08-03' },
-  { id:'U10003', name:'李明德',  phone:'137****1245', role:'expert', enabled:true,  joinedAt:'2025-09-21' },
-  { id:'U10004', name:'系统管理员', phone:'186****0001', role:'admin', enabled:true, joinedAt:'2025-06-01' },
-  { id:'U10005', name:'张三',    phone:'135****7788', role:'user',   enabled:false, joinedAt:'2026-03-14' },
-  { id:'U10006', name:'陈雅琴',  phone:'136****1100', role:'expert', enabled:true,  joinedAt:'2025-10-12' },
-  { id:'U10007', name:'李四',    phone:'134****2233', role:'user',   enabled:true,  joinedAt:'2026-04-02' },
-  { id:'U10008', name:'王五',    phone:'133****3344', role:'user',   enabled:true,  joinedAt:'2026-04-20' },
-  { id:'U10009', name:'赵六',    phone:'132****4455', role:'user',   enabled:false, joinedAt:'2026-05-01', disabledUntil:'2026-06-01 00:00' },
-])
+onMounted(() => loadUsers())
 
-const keyword = ref('')
-const filtered = computed(() =>
-  accounts.value.filter(a =>
-    !keyword.value || a.name.includes(keyword.value) || a.phone.includes(keyword.value) || a.id.includes(keyword.value),
-  ),
-)
-
-function updateRole(id: string, role: string) {
-  const a = accounts.value.find(x => x.id === id)
-  if (a) a.role = role
-}
-
-const disableModal  = ref(false)
-const disableUntil  = ref('')
-const disableTarget = ref<Account | null>(null)
-
-function openDisable(id: string) {
-  disableTarget.value = accounts.value.find(a => a.id === id) ?? null
-  disableUntil.value  = ''
-  disableModal.value  = true
-}
-function confirmDisable() {
-  if (!disableTarget.value) return
-  disableTarget.value.enabled = false
-  if (disableUntil.value) {
-    disableTarget.value.disabledUntil = disableUntil.value.replace('T', ' ')
-  } else {
-    delete disableTarget.value.disabledUntil
+async function loadUsers() {
+  loading.value = true
+  try {
+    const res = await ApiAdmin.listUsers(keyword.value, currentPage.value, pageSize)
+    const data = (res as any)?.data?.data
+    users.value = data?.records ?? []
+    total.value = data?.total   ?? 0
+  } finally {
+    loading.value = false
   }
-  disableModal.value = false
-}
-function enableAccount(id: string) {
-  const a = accounts.value.find(x => x.id === id)
-  if (a) { a.enabled = true; delete a.disabledUntil }
 }
 
-// Auto-restore check
-let timer: ReturnType<typeof setInterval>
-onMounted(() => {
-  timer = setInterval(() => {
-    const now = new Date()
-    accounts.value.forEach(a => {
-      if (!a.enabled && a.disabledUntil && new Date(a.disabledUntil.replace(' ', 'T')) <= now) {
-        a.enabled = true; delete a.disabledUntil
-      }
-    })
-  }, 30_000)
-})
-onUnmounted(() => clearInterval(timer))
+function onSearch() {
+  currentPage.value = 1
+  loadUsers()
+}
+
+function onPageChange(page: number) {
+  currentPage.value = page
+  loadUsers()
+}
+
+async function updateRole(userId: number, roleCode: number) {
+  try {
+    await ApiAdmin.updateUserRole(userId, roleCode)
+    const u = users.value.find(x => x.userId === userId)
+    if (u) {
+      u.roleCode = roleCode
+      const labels: Record<number, string> = { 100: '管理员', 200: '专家', 300: '普通用户' }
+      u.roleName = labels[roleCode] ?? '普通用户'
+    }
+  } catch (e: any) { alert(e?.response?.data?.message ?? '操作失败') }
+}
+
+async function toggleStatus(userId: number, currentStatus: number) {
+  const newStatus = currentStatus === 1 ? 0 : 1
+  const label = newStatus === 0 ? '禁用' : '启用'
+  if (!confirm(`确认${label}该账号？`)) return
+  try {
+    await ApiAdmin.updateUserStatus(userId, newStatus)
+    const u = users.value.find(x => x.userId === userId)
+    if (u) u.status = newStatus
+  } catch (e: any) { alert(e?.response?.data?.message ?? '操作失败') }
+}
+
+function formatDate(s: string): string {
+  return s ? new Date(s).toLocaleDateString('zh-CN') : '—'
+}
 </script>
 
 <style scoped>
@@ -190,4 +179,13 @@ tr:hover td     { background:rgba(250,246,238,0.6); }
 .modal-footer   { padding:14px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
 .modal-btn      { padding:8px 20px; border-radius:7px; font-size:14px; border:1px solid var(--line); background:white; color:var(--ink); cursor:pointer; font-family:inherit; }
 .modal-btn.primary-cinnabar { background:var(--cinnabar); color:white; border-color:var(--cinnabar); }
+.pill-lock     { background:var(--gold-soft); color:var(--gold-deep,#A07840); }
+.pill-lock .led { background:var(--gold-deep,#A07840); }
+.pagination     { padding:14px 18px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+.page-summary   { font-size:13px; color:var(--ink-muted); }
+.page-summary strong { color:var(--ink); font-weight:600; }
+.page-controls  { display:flex; align-items:center; gap:8px; }
+.page-btn       { min-width:32px; height:32px; border:1px solid var(--line); background:white; border-radius:6px; cursor:pointer; font-family:inherit; font-size:14px; color:var(--ink); }
+.page-btn:hover:not(:disabled) { background:var(--cream); }
+.page-btn:disabled { opacity:0.4; cursor:not-allowed; }
 </style>
