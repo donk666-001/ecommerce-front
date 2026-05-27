@@ -44,14 +44,18 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
             // 有响应错误
             const { status, data } = error.response;
             if (status === 401) {
+                // refresh 接口 401 是正常行为（未登录），由 router guard 处理，不触发跳转
+                if (error.config?.url?.includes('/users/refresh')) {
+                    return Promise.reject(error);
+                }
                 console.warn("认证过期", data?.message);
                 // 清除 store 状态后跳转登录页（懒加载避免循环依赖）
                 import("@/store/user").then(({ useUserStore }) => {
                     useUserStore().clearLoginInfo();
                 });
                 const current = window.location.pathname;
-                const redirect = current !== "/login" ? `?redirect=${current}` : "";
-                window.location.href = `/login${redirect}`;
+                const redirect = current !== "/e-commerce/login" ? `?redirect=${encodeURIComponent(current)}` : "";
+                window.location.href = `/e-commerce/login${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);
             }

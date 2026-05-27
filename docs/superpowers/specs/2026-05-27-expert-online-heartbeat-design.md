@@ -243,7 +243,7 @@ unsubscribe()
 | `ec-consult/.../ExpertPresenceListener.java` | 新增 |
 | `ec-consult/.../ExpertPresenceController.java` | 新增 |
 | `ec-api-expert/.../ExpertBasicDTO.java` | 无需改动（已有 id/userId） |
-| `ec-api-consult`（新建 API 模块或内部接口） | 新增 ConsultFeignClient 接口 |
+| `ec-api-consult`（新建 API 模块，与 ec-api-expert 同级） | 新增 `ConsultFeignClient` 接口（`GET /internal/online-experts → Set<Long>`） |
 | `ec-expert/.../ExpertCardDTO.java` | 改动（加 isOnline 字段） |
 | `ec-expert/.../ExpertServiceImpl.java` | 改动（填充 isOnline） |
 
