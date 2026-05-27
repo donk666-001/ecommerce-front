@@ -252,7 +252,7 @@
                                             <span class="q-name">{{ item.userNickname || '用户' }}</span>
                                             <span class="pill pill-cinnabar">转人工</span>
                                         </div>
-                                        <div class="q-preview">{{ item.lastMessage || '暂无消息' }}</div>
+                                        <div class="q-preview">{{ truncateText(item.aiSummary?.mainComplaint, 12) || '暂无主诉' }}</div>
                                         <div class="q-time urgent">{{ item.lastMessageAt ? formatTime(item.lastMessageAt) : '' }} · 请尽快接入</div>
                                         <span class="red-dot"></span>
                                     </div>
@@ -271,7 +271,7 @@
                                             <span class="q-name">{{ item.userNickname || '用户' }}</span>
                                             <span class="pill pill-jade">咨询中</span>
                                         </div>
-                                        <div class="q-preview">{{ item.lastMessage || '暂无消息' }}</div>
+                                        <div class="q-preview">{{ truncateText(item.aiSummary?.mainComplaint, 12) || '暂无主诉' }}</div>
                                         <div class="q-time">{{ item.lastMessageAt ? formatTime(item.lastMessageAt) : '' }}</div>
                                     </div>
                                 </template>
@@ -289,8 +289,7 @@
                                         {{ (currentExpertSession?.userNickname || '?').charAt(0) }}
                                     </div>
                                     <div class="who">
-                                        <h4>{{ currentExpertSession?.userNickname || '用户' }} <span class="pill pill-jade">咨询中</span></h4>
-                                        <div class="sub">会话 #{{ expertSessionId }}</div>
+                                        <h4>{{ currentExpertSession?.userNickname || '用户' }} · {{ genderLabel(currentExpertSession?.userGender) }} <span class="pill pill-jade">咨询中</span></h4>
                                     </div>
                                     <button class="btn btn-ghost btn-sm">结束咨询</button>
                                 </div>
@@ -298,10 +297,10 @@
                                 <div class="chat-body" style="max-height:540px;" ref="expertChatBodyEl">
                                     <div v-if="expertLoadingMessages" style="text-align:center;padding:20px;color:var(--ink-muted);">加载中…</div>
                                     <template v-else>
-                                        <div v-for="msg in expertMessages" :key="msg.id">
-                                            <div v-if="msg.senderType === 'user'" class="msg-row me">
+                                        <div v-for="msg in displayedExpertMessages" :key="msg.id">
+                                            <div v-if="msg.senderType === 'user'" class="msg-row">
                                                 <div class="msg-avatar user">{{ (currentExpertSession?.userNickname || '?').charAt(0) }}</div>
-                                                <div class="bubble-wrap"><div class="bubble bub-user">{{ msg.content }}</div></div>
+                                                <div class="bubble-wrap"><div class="bubble bub-ai">{{ msg.content }}</div></div>
                                             </div>
                                             <div v-else-if="msg.senderType === 'ai' && msg.contentType === 'text'" class="msg-row">
                                                 <div class="msg-avatar ai">AI</div>
@@ -312,7 +311,16 @@
                                             </div>
                                             <div v-else-if="msg.contentType === 'ai_summary'" class="ai-summary">
                                                 <h6>📋 AI 预问诊小结<span class="seal">已留痕</span></h6>
-                                                <p style="font-size:12px;color:var(--ink-muted);">（小结已记录）</p>
+                                                <dl v-if="currentExpertSession?.aiSummary">
+                                                    <dt>主诉</dt><dd>{{ currentExpertSession.aiSummary.mainComplaint || '未提及' }}</dd>
+                                                    <dt>病程</dt><dd>{{ currentExpertSession.aiSummary.courseOfDisease || '未提及' }}</dd>
+                                                    <dt>症状</dt><dd>{{ currentExpertSession.aiSummary.symptoms?.join('、') || '暂无' }}</dd>
+                                                    <dt>诱因</dt><dd>{{ currentExpertSession.aiSummary.trigger || '未提及' }}</dd>
+                                                    <dt>风险初筛</dt>
+                                                    <dd class="risk">{{ currentExpertSession.aiSummary.riskLevel === 'high' ? '高' : currentExpertSession.aiSummary.riskLevel === 'medium' ? '中' : '低' }}
+                                                        · {{ currentExpertSession.aiSummary.suggestionDirection }}</dd>
+                                                </dl>
+                                                <p v-else style="font-size:12px;color:var(--ink-muted);">（小结已记录）</p>
                                             </div>
                                             <div v-else-if="msg.senderType === 'expert'" class="msg-row me">
                                                 <div class="msg-avatar expert">我</div>
@@ -579,12 +587,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, nextTick, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import { useUserStore } from "@/store/user";
 import { ApiCircle, ApiExpert, ApiConsult } from "@/network";
 import { useConsultSocket } from "@/composables/useConsultSocket";
+import { useExpertQueueSocket } from "@/composables/useExpertQueueSocket";
 
 // ---- Role view ----
 const router = useRouter();
@@ -720,16 +729,25 @@ function scrollChatToBottom() {
 }
 
 /** STOMP 收到帧时的回调 */
+/** STOMP 收到帧时的回调（用户侧） */
 function onStompMessage(frame: any) {
     const { event, data } = frame;
     if (event === "consult.ai_message") {
+        // AI 预问诊阶段的 AI 回复
         consultMessages.value.push({ kind: "ai", text: data.message.content, tag: "AI · 回复" });
     } else if (event === "consult.system_event") {
         consultMessages.value.push({ kind: "sys", text: data.message.content });
     } else if (event === "consult.transferred") {
+        // 转人工成功，展示 AI 小结
         aiSummary.value = data.summary;
         showAiSummary.value = true;
         consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成，等待医生接入…", success: true });
+    } else if (event === "consult.expert_joined") {
+        // 专家首次回复，状态切换到 HUMAN_CHATTING，给用户提示
+        consultMessages.value.push({ kind: "sys", text: "✓ 医生已接入，开始为您诊疗", success: true });
+    } else if (event === "consult.expert_message") {
+        // ✅ 专家发出的消息实时推送到用户端（此前缺失导致用户看不到专家回复）
+        consultMessages.value.push({ kind: "expert", text: data.message.content });
     } else if (event === "consult.closed") {
         consultMessages.value.push({ kind: "sys", text: "— 会话已关闭 —", success: true });
     }
@@ -835,6 +853,11 @@ function roleLabel(roleType: string) {
 function avatarText(expert: ExpertCardDTO) {
     return (expert.realName || '?').charAt(0);
 }
+function genderLabel(gender: number | null | undefined) {
+    if (gender === 1) return '男';
+    if (gender === 2) return '女';
+    return '未知';
+}
 function avatarUrl(expert: ExpertCardDTO) {
     return expert.avatar?.startsWith('http') ? expert.avatar : null;
 }
@@ -911,6 +934,7 @@ interface ExpertQueueItemVO {
     status: 'HUMAN_PENDING' | 'HUMAN_CHATTING';
     userId: number;
     userNickname: string | null;
+    userGender: number | null;
     lastMessage: string | null;
     lastMessageAt: string | null;
     aiSummary: AiSummaryVO | null;
@@ -941,6 +965,18 @@ const currentExpertSession = computed(() =>
             ?? null
         : null
 );
+
+/** 去重后的专家消息列表（防止并发转人工导致 ai_summary 重复渲染） */
+const displayedExpertMessages = computed(() => {
+    let seenAiSummary = false;
+    return expertMessages.value.filter(msg => {
+        if (msg.contentType === 'ai_summary') {
+            if (seenAiSummary) return false;
+            seenAiSummary = true;
+        }
+        return true;
+    });
+});
 
 /** 并发拉取待接诊 + 咨询中两个队列 */
 async function loadExpertQueues() {
@@ -976,14 +1012,21 @@ async function openExpertSession(item: ExpertQueueItemVO) {
     }
     const { connect } = useConsultSocket();
     connect(item.sessionId, (frame: any) => {
+        /** 专家端 STOMP 事件处理 */
+        const scrollToBottom = () => nextTick(() => {
+            if (expertChatBodyEl.value) {
+                expertChatBodyEl.value.scrollTop = expertChatBodyEl.value.scrollHeight;
+            }
+        });
         if (frame.event === 'consult.user_message') {
+            // ✅ 用户发送的消息实时推送到专家端
             expertMessages.value.push(frame.data.message);
-            nextTick(() => {
-                if (expertChatBodyEl.value) {
-                    expertChatBodyEl.value.scrollTop = expertChatBodyEl.value.scrollHeight;
-                }
-            });
+            scrollToBottom();
+        } else if (frame.event === 'consult.expert_joined') {
+            // 专家首次回复后服务端推送状态变更确认（自己触发，通常已通过 HTTP 返回值处理）
+            toast('已成功接入，开始问诊');
         }
+        // consult.expert_message 是专家自己发出的回显，HTTP 返回值已处理，忽略避免重复
     });
 }
 
@@ -1032,12 +1075,34 @@ function formatTime(dateStr: string): string {
     return `${Math.floor(diff / 3600000)} 小时前`;
 }
 
-// 切换到 m2 Tab 且为专家视角时自动拉队列
+/** 文本截断：超过 maxLen 时截取前 maxLen 个字符并追加省略号 */
+function truncateText(text: string | null, maxLen: number): string {
+    if (!text) return '';
+    if (text.length <= maxLen) return text;
+    return text.slice(0, maxLen) + '…';
+}
+
+// 切换到 m2 Tab 且为专家视角时：拉取队列 + 订阅实时更新通知
+const { subscribe: subscribeExpertQueue, unsubscribe: unsubscribeExpertQueue } = useExpertQueueSocket();
+
 watch(
     () => activeTab.value === 'm2' && isExpertView.value,
-    (active) => { if (active) loadExpertQueues(); },
+    (active) => {
+        if (active) {
+            loadExpertQueues();
+            const userId = userStore.G_LoginInfo.id;
+            if (userId) subscribeExpertQueue(userId, loadExpertQueues);
+        } else {
+            unsubscribeExpertQueue();
+        }
+    },
     { immediate: true }
 );
+
+// 组件卸载时断开连接，防止内存泄漏
+onUnmounted(() => {
+    unsubscribeExpertQueue();
+});
 
 const switchStates = ref({ autoPreAsk: true, autoHandoff: true, offHours: false });
 function toggleSwitch(key: keyof typeof switchStates.value) {
@@ -1473,8 +1538,8 @@ const uploadSlots = [
     &::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 }
 .msg-row { display: flex; gap: 10px; max-width: 80%; }
-.msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
-.msg-row.sys { align-self: center; max-width: 88%; }
+.msg-row.me { margin-left: auto; flex-direction: row-reverse; }
+.msg-row.sys { margin-left: auto; margin-right: auto; max-width: 88%; }
 .msg-avatar {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
