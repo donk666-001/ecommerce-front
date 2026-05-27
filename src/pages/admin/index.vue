@@ -1,252 +1,151 @@
 <template>
-    <div class="admin-page">
-        <header class="admin-header">
-            <div class="admin-header-inner">
-                <h2 class="font-serif">⚕️ 专家认证审核后台</h2>
-                <button class="btn btn-ghost btn-sm" @click="$router.push('/')">← 返回首页</button>
-            </div>
-        </header>
+  <div class="admin-app">
 
-        <main class="admin-body">
-            <!-- 状态筛选 -->
-            <div class="status-tabs">
-                <button v-for="tab in statusTabs" :key="tab.value"
-                        class="s-tab" :class="{ active: activeStatus === tab.value }"
-                        @click="activeStatus = tab.value; currentPage = 1; loadList()">
-                    {{ tab.label }}
-                </button>
-            </div>
-
-            <!-- 加载中 -->
-            <div v-if="loading" style="text-align:center; padding:60px; color:var(--ink-muted);">
-                加载中...
-            </div>
-
-            <!-- 空状态 -->
-            <div v-else-if="applications.length === 0"
-                 style="text-align:center; padding:60px; color:var(--ink-muted);">
-                暂无申请
-            </div>
-
-            <!-- 申请列表 -->
-            <div v-else class="app-list">
-                <div v-for="app in applications" :key="app.id" class="app-row">
-                    <div class="app-main" @click="toggleDetail(app.id)">
-                        <div class="app-info">
-                            <span class="app-name">{{ app.realName ?? '—' }}</span>
-                            <span class="app-role pill" :class="rolePillClass(app.roleType)">{{ roleLabel(app.roleType) }}</span>
-                            <span class="app-status pill" :class="statusPillClass(app.status)">{{ statusLabel(app.status) }}</span>
-                        </div>
-                        <div class="app-meta">
-                            <span>用户 ID：{{ app.userId }}</span>
-                            <span>手机：{{ app.phone ?? '加载详情可见' }}</span>
-                            <span>提交：{{ formatDate(app.createdAt) }}</span>
-                        </div>
-                        <div class="app-bio">{{ app.bio ?? '—' }}</div>
-                    </div>
-
-                    <!-- 展开详情 -->
-                    <div v-if="expandedId === app.id" class="app-detail">
-                        <div v-if="detailLoading" style="padding:12px; color:var(--ink-muted);">加载中...</div>
-                        <template v-else-if="detail">
-                            <div style="margin-bottom:12px;">
-                                <strong>手机号：</strong>{{ detail.phone ?? '未填写' }}
-                            </div>
-                            <!-- 附件图片 -->
-                            <div class="attachment-grid">
-                                <div v-for="att in detail.attachments" :key="att.docType" class="att-item">
-                                    <div class="att-label">{{ docTypeLabel(att.docType) }}</div>
-                                    <img :src="`${MINIO_BASE}/${att.url}`" :alt="att.fileName"
-                                         class="att-img"
-                                         @error="($event.target as HTMLImageElement).style.display = 'none'" />
-                                    <div class="att-name">{{ att.fileName }}</div>
-                                </div>
-                            </div>
-
-                            <!-- 操作按钮（仅 SUBMITTED/REVIEWING 可操作） -->
-                            <div v-if="detail.status === 'SUBMITTED' || detail.status === 'REVIEWING'"
-                                 class="review-actions">
-                                <button class="btn" @click="handleApprove(detail.id)">✅ 通过</button>
-                                <button class="btn btn-cinnabar" @click="showRejectDialog(detail)">❌ 驳回</button>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 分页 -->
-            <div class="pagination">
-                <button class="btn btn-ghost btn-sm" :disabled="currentPage <= 1"
-                        @click="currentPage--; loadList()">上一页</button>
-                <span style="padding:0 16px;">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
-                <button class="btn btn-ghost btn-sm" :disabled="currentPage >= totalPages"
-                        @click="currentPage++; loadList()">下一页</button>
-            </div>
-        </main>
-
-        <!-- 驳回弹窗 -->
-        <div v-if="rejectDialogVisible" class="dialog-overlay" @click.self="rejectDialogVisible = false">
-            <div class="dialog">
-                <h3 class="font-serif" style="margin-bottom:16px;">驳回申请</h3>
-                <label style="font-size:13px; color:var(--ink-muted);">驳回原因 *</label>
-                <textarea v-model="rejectReason" rows="3" placeholder="请填写驳回原因"
-                          style="width:100%; margin:6px 0 12px; padding:8px 12px; border:1px solid var(--gold-soft); border-radius:8px; font-family:inherit; box-sizing:border-box; resize:none;"></textarea>
-                <label style="font-size:13px; color:var(--ink-muted);">驳回建议（可选）</label>
-                <textarea v-model="rejectSuggestion" rows="2" placeholder="给申请者的改进建议"
-                          style="width:100%; margin:6px 0 16px; padding:8px 12px; border:1px solid var(--gold-soft); border-radius:8px; font-family:inherit; box-sizing:border-box; resize:none;"></textarea>
-                <div style="display:flex; gap:12px; justify-content:flex-end;">
-                    <button class="btn btn-ghost" @click="rejectDialogVisible = false">取消</button>
-                    <button class="btn btn-cinnabar" @click="confirmReject">确认驳回</button>
-                </div>
-            </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-seal font-serif">颐</div>
+        <div>
+          <div class="sidebar-title font-serif">颐养阁</div>
+          <div class="sidebar-sub">管理后台</div>
         </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-section">运营</div>
+        <button class="nav-item" :class="{ active: activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          <span>数据看板</span>
+        </button>
+        <button class="nav-item" :class="{ active: activeTab === 'review' }" @click="activeTab = 'review'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+          <span>专家审核</span>
+          <span v-if="pendingCount > 0" class="nav-badge">{{ pendingCount }}</span>
+        </button>
+
+        <div class="nav-section">系统</div>
+        <button class="nav-item" :class="{ active: activeTab === 'permissions' }" @click="activeTab = 'permissions'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <span>权限设置</span>
+        </button>
+        <button class="nav-item" :class="{ active: activeTab === 'agents' }" @click="activeTab = 'agents'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>客服管理</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">顺应天时 · 颐养天年</div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">
+          颐养阁 <span class="sep">›</span>
+          <span class="current">{{ breadcrumbMap[activeTab] }}</span>
+        </div>
+        <div class="topbar-actions">
+          <div class="admin-info">
+            <div class="admin-avatar font-serif">管</div>
+            <span class="admin-name">{{ nickName }}</span>
+          </div>
+          <button class="logout-btn" @click="handleLogout">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            退出
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <AdminDashboard   v-show="activeTab === 'dashboard'" />
+        <AdminReview      v-show="activeTab === 'review'"      @pending-count="pendingCount = $event" />
+        <AdminPermissions v-show="activeTab === 'permissions'" />
+        <AdminAgents      v-show="activeTab === 'agents'" />
+      </main>
     </div>
+
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { ApiExpert, type AdminApplicationVO } from '@/network/expert';
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/user'
+import AdminDashboard   from '@/components/admin/AdminDashboard.vue'
+import AdminReview      from '@/components/admin/AdminReview.vue'
+import AdminPermissions from '@/components/admin/AdminPermissions.vue'
+import AdminAgents      from '@/components/admin/AdminAgents.vue'
 
-const MINIO_BASE = 'http://localhost:9000/mingyi-public';
+const router    = useRouter()
+const userStore = useUserStore()
 
-const statusTabs = [
-    { label: '待审核', value: 'SUBMITTED' },
-    { label: '审核中', value: 'REVIEWING' },
-    { label: '已通过', value: 'APPROVED' },
-    { label: '已驳回', value: 'REJECTED' },
-    { label: '全部',   value: '' },
-];
+const activeTab    = ref('dashboard')
+const pendingCount = ref(0)
 
-const activeStatus = ref('SUBMITTED');
-const applications = ref<AdminApplicationVO[]>([]);
-const loading = ref(false);
-const currentPage = ref(1);
-const pageSize = 20;
-const total = ref(0);
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
-
-const expandedId = ref<number | null>(null);
-const detail = ref<AdminApplicationVO | null>(null);
-const detailLoading = ref(false);
-
-const rejectDialogVisible = ref(false);
-const rejectReason = ref('');
-const rejectSuggestion = ref('');
-let rejectTargetId = 0;
-
-onMounted(() => loadList());
-
-async function loadList() {
-    loading.value = true;
-    try {
-        const res = await ApiExpert.adminListApplications(activeStatus.value || undefined, currentPage.value, pageSize);
-        const data = (res as any)?.data?.data;
-        applications.value = data?.records ?? [];
-        total.value = data?.total ?? 0;
-    } finally {
-        loading.value = false;
-    }
+const breadcrumbMap: Record<string, string> = {
+  dashboard:   '数据看板',
+  review:      '专家审核',
+  permissions: '权限设置',
+  agents:      '客服管理',
 }
 
-async function toggleDetail(id: number) {
-    if (expandedId.value === id) {
-        expandedId.value = null;
-        detail.value = null;
-        return;
-    }
-    expandedId.value = id;
-    detail.value = null;
-    detailLoading.value = true;
-    try {
-        const res = await ApiExpert.adminGetApplication(id);
-        detail.value = (res as any)?.data?.data ?? null;
-    } finally {
-        detailLoading.value = false;
-    }
-}
+const nickName = computed(() => userStore.G_LoginInfo.nickName || '管理员')
 
-async function handleApprove(appId: number) {
-    if (!confirm('确认审核通过？通过后将自动创建专家账号并升级用户权限。')) return;
-    try {
-        await ApiExpert.adminReviewApplication(appId, 'APPROVE');
-        alert('已通过！');
-        expandedId.value = null;
-        await loadList();
-    } catch (e: any) {
-        alert(e?.response?.data?.message ?? '操作失败');
-    }
-}
-
-function showRejectDialog(app: AdminApplicationVO) {
-    rejectTargetId = app.id;
-    rejectReason.value = '';
-    rejectSuggestion.value = '';
-    rejectDialogVisible.value = true;
-}
-
-async function confirmReject() {
-    if (!rejectReason.value.trim()) { alert('请填写驳回原因'); return; }
-    try {
-        await ApiExpert.adminReviewApplication(rejectTargetId, 'REJECT',
-            rejectReason.value.trim(), rejectSuggestion.value.trim() || undefined);
-        rejectDialogVisible.value = false;
-        expandedId.value = null;
-        await loadList();
-    } catch (e: any) {
-        alert(e?.response?.data?.message ?? '操作失败');
-    }
-}
-
-// 工具函数
-function roleLabel(r: string) {
-    return { DOCTOR: '执业医师', NUTRITIONIST: '营养师', REHAB: '康复治疗师', GURU: '养生达人' }[r] ?? r;
-}
-function statusLabel(s: string) {
-    return { SUBMITTED: '待审核', REVIEWING: '审核中', APPROVED: '已通过',
-             REJECTED: '已驳回', WITHDRAWN: '已撤回', SIGNED: '已签约', ACTIVATED: '已开通' }[s] ?? s;
-}
-function rolePillClass(r: string) {
-    return { DOCTOR: 'pill-jade', NUTRITIONIST: 'pill-gold', REHAB: 'pill-moon', GURU: 'pill-cinnabar' }[r] ?? '';
-}
-function statusPillClass(s: string) {
-    return { SUBMITTED: 'pill-gold', REVIEWING: 'pill-gold', APPROVED: 'pill-jade',
-             REJECTED: 'pill-cinnabar', WITHDRAWN: 'pill-gray' }[s] ?? '';
-}
-function docTypeLabel(d: string) {
-    return { id_card_front: '身份证人像面', id_card_back: '身份证国徽面',
-             medical_license: '医师资格证', practice_cert: '执业医师证',
-             title_cert: '职称证明', nutrition_cert: '营养师资质证',
-             rehab_cert: '康复治疗师执业证', other_cert: '其他资质' }[d] ?? d;
-}
-function formatDate(s: string) {
-    return s ? new Date(s).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+async function handleLogout() {
+  await userStore.logout()
+  router.push('/login')
 }
 </script>
 
-<style scoped lang="scss">
-.admin-page { min-height: 100vh; background: var(--cream, #FDFAF3); }
-.admin-header { background: var(--paper, white); border-bottom: 1px solid var(--gold-soft, #e8d5a3); padding: 0 40px; }
-.admin-header-inner { max-width: 1200px; margin: 0 auto; padding: 20px 0; display: flex; align-items: center; justify-content: space-between; }
-.admin-body { max-width: 1200px; margin: 0 auto; padding: 32px 40px; }
-.status-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
-.s-tab { padding: 8px 20px; border-radius: 20px; border: 1px solid var(--gold-soft, #e8d5a3); background: white; cursor: pointer; font-family: inherit; font-size: 13px; transition: all .2s; }
-.s-tab.active { background: var(--jade, #5c8374); color: white; border-color: var(--jade, #5c8374); }
-.app-list { display: flex; flex-direction: column; gap: 12px; }
-.app-row { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1px solid rgba(232,223,208,.4); overflow: hidden; }
-.app-main { padding: 16px 20px; cursor: pointer; transition: background .2s; }
-.app-main:hover { background: var(--cream, #fdfaf3); }
-.app-info { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.app-name { font-weight: 600; font-size: 15px; }
-.app-meta { font-size: 12px; color: var(--ink-muted, #6b7280); display: flex; gap: 16px; margin-bottom: 4px; }
-.app-bio { font-size: 13px; color: var(--ink-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 600px; }
-.app-detail { padding: 16px 20px; border-top: 1px solid var(--gold-soft, #e8d5a3); background: #fdfaf3; }
-.attachment-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.att-item { width: 140px; }
-.att-label { font-size: 11px; color: var(--ink-muted); margin-bottom: 4px; }
-.att-img { width: 140px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gold-soft); display: block; }
-.att-name { font-size: 11px; color: var(--ink-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.review-actions { display: flex; gap: 12px; margin-top: 12px; }
-.pagination { display: flex; align-items: center; justify-content: center; margin-top: 24px; }
-.dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.dialog { background: white; border-radius: 14px; padding: 28px; width: 440px; max-width: 90vw; }
+<style scoped>
+/* Layout */
+.admin-app { display: flex; min-height: 100vh; background: var(--cream, #FAF6EE); }
+
+/* Sidebar */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: linear-gradient(180deg, #EAF1E4 0%, #D5E3D0 100%);
+  border-right: 1px solid rgba(92,131,116,0.18);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-header {
+  height: 64px; display: flex; align-items: center; gap: 12px;
+  padding: 0 20px; border-bottom: 1px solid rgba(92,131,116,0.15); flex-shrink: 0;
+}
+.logo-seal  { width:42px; height:42px; background:var(--cinnabar,#B33C2C); color:white; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:20px; font-weight:700; box-shadow:0 3px 10px rgba(179,60,44,0.28); flex-shrink:0; }
+.sidebar-title { font-size:18px; font-weight:600; color:var(--ink,#2C3639); }
+.sidebar-sub   { font-size:11px; color:var(--ink-muted,#6B7C7A); margin-top:1px; letter-spacing:0.5px; }
+
+.nav           { flex:1; padding:12px 10px; }
+.nav-section   { font-size:11px; color:var(--ink-muted,#6B7C7A); letter-spacing:1px; text-transform:uppercase; padding:12px 10px 6px; font-weight:500; }
+.nav-item      { width:100%; background:transparent; border:none; padding:10px 12px; display:flex; align-items:center; gap:10px; font-family:inherit; font-size:14px; color:var(--ink-light,#4A565A); cursor:pointer; border-radius:9px; transition:background 0.18s,color 0.18s; text-align:left; margin-bottom:2px; }
+.nav-item:hover { background:rgba(255,255,255,0.5); color:#456660; }
+.nav-item.active { background:rgba(255,255,255,0.82); color:var(--cinnabar,#B33C2C); font-weight:600; box-shadow:0 2px 12px rgba(60,50,30,0.06); }
+.nav-icon      { width:18px; height:18px; flex-shrink:0; }
+.nav-badge     { margin-left:auto; background:var(--cinnabar,#B33C2C); color:white; font-size:11px; padding:1px 7px; border-radius:9px; font-weight:700; line-height:18px; }
+.sidebar-footer { padding:14px 16px; border-top:1px solid rgba(92,131,116,0.15); font-size:11px; color:var(--ink-muted,#6B7C7A); text-align:center; font-family:"STKaiti",serif; letter-spacing:1px; flex-shrink:0; }
+
+/* Main */
+.main    { flex:1; display:flex; flex-direction:column; min-width:0; }
+.topbar  { height:64px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--line,#E8DFD0); padding:0 28px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+.breadcrumb  { font-size:14px; color:var(--ink-muted,#6B7C7A); display:flex; align-items:center; gap:8px; }
+.breadcrumb .sep     { opacity:0.5; }
+.breadcrumb .current { color:var(--ink,#2C3639); font-weight:500; }
+.topbar-actions { display:flex; align-items:center; gap:16px; }
+.admin-info  { display:flex; align-items:center; gap:9px; font-size:13px; }
+.admin-avatar { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,var(--jade,#5C8374),#456660); color:white; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.admin-name  { color:var(--ink,#2C3639); font-weight:500; }
+.logout-btn  { background:transparent; border:none; color:var(--ink-muted,#6B7C7A); cursor:pointer; font-size:13px; display:flex; align-items:center; gap:4px; font-family:inherit; padding:6px 10px; border-radius:7px; transition:all 0.15s; }
+.logout-btn:hover { background:var(--cinnabar-soft,#FAE5E0); color:var(--cinnabar,#B33C2C); }
+
+.content { flex:1; overflow:auto; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar { width: 200px; }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+}
 </style>

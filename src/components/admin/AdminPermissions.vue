@@ -120,8 +120,12 @@ function openDisable(id: string) {
 }
 function confirmDisable() {
   if (!disableTarget.value) return
-  disableTarget.value.enabled      = false
-  disableTarget.value.disabledUntil = disableUntil.value ? disableUntil.value.replace('T', ' ') : undefined
+  disableTarget.value.enabled = false
+  if (disableUntil.value) {
+    disableTarget.value.disabledUntil = disableUntil.value.replace('T', ' ')
+  } else {
+    delete disableTarget.value.disabledUntil
+  }
   disableModal.value = false
 }
 function enableAccount(id: string) {

@@ -177,9 +177,9 @@ const statusItems = ref([
   { name: 'CDN',         status: 'warn', val: '1.2 MB/s', sub: '带宽占用', bar: 62 },
 ])
 function refreshStatus() {
-  statusItems.value[0].val = Math.floor(38 + Math.random() * 20) + 'ms'
-  statusItems.value[1].val = Math.floor(18 + Math.random() * 15) + '/100'
-  statusItems.value[2].val = (93 + Math.random() * 3).toFixed(1) + '%'
+  statusItems.value[0]!.val = Math.floor(38 + Math.random() * 20) + 'ms'
+  statusItems.value[1]!.val = Math.floor(18 + Math.random() * 15) + '/100'
+  statusItems.value[2]!.val = (93 + Math.random() * 3).toFixed(1) + '%'
 }
 
 // ── ECharts helpers ────────────────────────────────────────────────────────
