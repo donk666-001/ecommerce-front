@@ -1,5 +1,4 @@
 import { GAxios } from "@/plugins";
-import type { IUserInfo } from "@/types";
 
 class ApiUser {
     // 刷新令牌
@@ -33,6 +32,7 @@ class ApiUser {
         username: string;
         password: string;
         email: string;
+        gender?: number;
     }) {
         const response = await GAxios.post("/users/register", data);
         const res = response.data;
@@ -44,10 +44,10 @@ class ApiUser {
         }
     }
 
-    // 获取用户信息（动态 ID）
-    static async getUserInfo(id: number) {
+    // 获取当前登录用户信息
+    static async getUserInfo() {
         try {
-            const response = await GAxios.get(`/user/info/${id}`);
+            const response = await GAxios.get("/users/info");
             const res = response.data;
             return res.code === 200 ? res.data : null;
         } catch {
@@ -65,8 +65,13 @@ class ApiUser {
         }
     }
 
-    // 更新个人资料
-    static async updateProfile(data: Partial<IUserInfo>) {
+    // 更新个人资料（昵称、性别、邮箱、手机号均可选）
+    static async updateProfile(data: {
+        nickname?: string;
+        gender?: number;
+        email?: string;
+        phone?: string;
+    }) {
         try {
             const response = await GAxios.put("/users/profile", data);
             const res = response.data;

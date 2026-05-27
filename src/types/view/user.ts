@@ -13,7 +13,7 @@ export interface IUserInfo {
     id: number; // 用户ID
     role_id: number; // 角色ID
     avatar: string; // 头像
-    gender: string; // 性别
+    gender: number; // 性别：0-未知，1-男，2-女
     birthday: Date; // 生日
     introduction: string; // 简介
     location: string; // 位置
