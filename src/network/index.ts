@@ -1,4 +1,5 @@
 export * from "./system.ts";
+export * from "./seasonalHealth.ts";
 export * from "./user.ts";
 export * from "./circle.ts";
 export * from "./expert.ts";

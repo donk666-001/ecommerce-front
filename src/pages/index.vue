@@ -6,15 +6,33 @@
             <!-- Hero -->
             <section class="hero">
                 <div class="hero-text">
-                    <div class="hero-label font-serif">YǍNG SHĒNG ZHÌ KÙ · 顺应节气 调和阴阳</div>
+                    <div class="hero-label font-serif">
+                        YǍNG SHĒNG ZHÌ KÙ · 顺应节气 调和阴阳
+                    </div>
                     <h1 class="font-serif">养生智库</h1>
-                    <p class="hero-sub">集二十四节气、睡眠作息、经期管理、中医养生、情绪疗愈与个性推荐于一体</p>
+                    <p class="hero-sub">
+                        集二十四节气、睡眠作息、经期管理、中医养生、情绪疗愈与个性推荐于一体
+                    </p>
                 </div>
                 <div class="hero-meta">
-                    <span class="meta-item">🌿 今日节气 <strong>立夏·第3日</strong></span>
-                    <span class="meta-item" style="cursor:pointer" @click="switchTab('sleep')">🌙 昨夜睡眠 <strong>7h 42min</strong></span>
-                    <span class="meta-item" style="cursor:pointer" @click="switchTab('menstrual')">🌸 经期阶段 <strong>黄体期 D18</strong></span>
-                    <span class="meta-item">⚖️ 体质 <strong>阴虚兼气郁</strong></span>
+                    <span class="meta-item"
+                        >🌿 今日节气 <strong>立夏·第3日</strong></span
+                    >
+                    <span
+                        class="meta-item"
+                        style="cursor: pointer"
+                        @click="switchTab('sleep')"
+                        >🌙 昨夜睡眠 <strong>7h 42min</strong></span
+                    >
+                    <span
+                        class="meta-item"
+                        style="cursor: pointer"
+                        @click="switchTab('menstrual')"
+                        >🌸 经期阶段 <strong>黄体期 D18</strong></span
+                    >
+                    <span class="meta-item"
+                        >⚖️ 体质 <strong>阴虚兼气郁</strong></span
+                    >
                 </div>
             </section>
 
@@ -33,30 +51,17 @@
             </div>
 
             <!-- Tab Panels -->
-            <div v-show="activeTab === 'solar-term'" class="panel-wrap">
-                <SolarTermKnowledge />
-            </div>
-            <div v-show="activeTab === 'sleep'" class="panel-wrap">
-                <SleepTracker />
-            </div>
-            <div v-show="activeTab === 'menstrual'" class="panel-wrap">
-                <MenstrualTracker />
-            </div>
-            <div v-show="activeTab === 'tcm'" class="panel-wrap">
-                <TcmWisdom />
-            </div>
-            <div v-show="activeTab === 'emotion'" class="panel-wrap">
-                <EmotionHealing />
-            </div>
-            <div v-show="activeTab === 'recommendation'" class="panel-wrap">
-                <PersonalizedRecommendation />
-            </div>
+            <Transition name="panel-swap" mode="out-in">
+                <div :key="activeTab" class="panel-wrap">
+                    <component :is="activeComponent" />
+                </div>
+            </Transition>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SolarTermKnowledge from "@/components/SolarTermKnowledge.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
@@ -76,6 +81,19 @@ const tabs = [
     { name: "recommendation", icon: "✨", label: "个性推荐" },
 ];
 
+const tabComponents = {
+    "solar-term": SolarTermKnowledge,
+    sleep: SleepTracker,
+    menstrual: MenstrualTracker,
+    tcm: TcmWisdom,
+    emotion: EmotionHealing,
+    recommendation: PersonalizedRecommendation,
+};
+
+const activeComponent = computed(
+    () => tabComponents[activeTab.value as keyof typeof tabComponents],
+);
+
 function switchTab(name: string) {
     activeTab.value = name;
 }
@@ -94,7 +112,7 @@ function switchTab(name: string) {
 
 // Hero
 .hero {
-    background: linear-gradient(135deg, #FDFAF3 0%, #F0E8D5 100%);
+    background: linear-gradient(135deg, #fdfaf3 0%, #f0e8d5 100%);
     border: 1px solid var(--gold-soft);
     border-radius: 20px;
     padding: 36px 40px;
@@ -103,7 +121,7 @@ function switchTab(name: string) {
     overflow: hidden;
 
     &::before {
-        content: '養';
+        content: "養";
         position: absolute;
         right: 30px;
         top: 50%;
@@ -111,7 +129,7 @@ function switchTab(name: string) {
         font-family: "STKaiti", serif;
         font-size: 200px;
         color: var(--gold);
-        opacity: 0.10;
+        opacity: 0.1;
         line-height: 1;
         font-weight: 900;
         pointer-events: none;
@@ -203,19 +221,44 @@ function switchTab(name: string) {
 }
 
 .panel-wrap {
-    animation: fadeIn 0.35s ease;
+    min-height: 360px;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+.panel-swap-enter-active,
+.panel-swap-leave-active {
+    transition:
+        opacity 0.24s ease,
+        transform 0.24s ease,
+        filter 0.24s ease;
+}
+
+.panel-swap-enter-from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+    filter: blur(3px);
+}
+
+.panel-swap-leave-to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.995);
+    filter: blur(2px);
 }
 
 @media (max-width: 768px) {
-    .hub { padding: 20px 16px 60px; }
-    .hero { padding: 24px 20px; }
-    .hero::before { display: none; }
-    .tabs { grid-template-columns: repeat(3, 1fr); }
-    .hero-meta { gap: 12px; }
+    .hub {
+        padding: 20px 16px 60px;
+    }
+    .hero {
+        padding: 24px 20px;
+    }
+    .hero::before {
+        display: none;
+    }
+    .tabs {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .hero-meta {
+        gap: 12px;
+    }
 }
 </style>
