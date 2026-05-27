@@ -197,20 +197,20 @@
                                             <div class="bubble bub-user">{{ msg.text }}</div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div v-if="showAiSummary" class="ai-summary">
-                                    <h6>📋 AI 预问诊小结（已自动移交医生）<span class="seal">已留痕</span></h6>
-                                    <dl v-if="aiSummary">
-                                        <dt>主诉</dt><dd>{{ aiSummary.mainComplaint || '未提及' }}</dd>
-                                        <dt>病程</dt><dd>{{ aiSummary.courseOfDisease || '未提及' }}</dd>
-                                        <dt>症状</dt><dd>{{ aiSummary.symptoms?.join('、') || '暂无' }}</dd>
-                                        <dt>诱因</dt><dd>{{ aiSummary.trigger || '未提及' }}</dd>
-                                        <dt>风险初筛</dt>
-                                        <dd class="risk">{{ aiSummary.riskLevel === 'high' ? '高' : aiSummary.riskLevel === 'medium' ? '中' : '低' }}
-                                            · {{ aiSummary.suggestionDirection }}</dd>
-                                    </dl>
-                                    <p v-else style="font-size:12px; color:var(--ink-muted);">AI 小结生成中…</p>
+                                    <!-- AI 预问诊小结：内联于消息流，确保专家-用户对话出现在小结下方 -->
+                                    <div v-else-if="msg.kind === 'ai_summary'" class="ai-summary">
+                                        <h6>📋 AI 预问诊小结（已自动移交医生）<span class="seal">已留痕</span></h6>
+                                        <dl v-if="aiSummary">
+                                            <dt>主诉</dt><dd>{{ aiSummary.mainComplaint || '未提及' }}</dd>
+                                            <dt>病程</dt><dd>{{ aiSummary.courseOfDisease || '未提及' }}</dd>
+                                            <dt>症状</dt><dd>{{ aiSummary.symptoms?.join('、') || '暂无' }}</dd>
+                                            <dt>诱因</dt><dd>{{ aiSummary.trigger || '未提及' }}</dd>
+                                            <dt>风险初筛</dt>
+                                            <dd class="risk">{{ aiSummary.riskLevel === 'high' ? '高' : aiSummary.riskLevel === 'medium' ? '中' : '低' }}
+                                                · {{ aiSummary.suggestionDirection }}</dd>
+                                        </dl>
+                                        <p v-else style="font-size:12px; color:var(--ink-muted);">AI 小结生成中…</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -738,10 +738,11 @@ function onStompMessage(frame: any) {
     } else if (event === "consult.system_event") {
         consultMessages.value.push({ kind: "sys", text: data.message.content });
     } else if (event === "consult.transferred") {
-        // 转人工成功，展示 AI 小结
+        // 转人工成功：更新小结数据，推入系统提示，再推入内联小结帧（使后续对话显示在小结下方）
         aiSummary.value = data.summary;
         showAiSummary.value = true;
         consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成，等待医生接入…", success: true });
+        consultMessages.value.push({ kind: "ai_summary", text: "" });
     } else if (event === "consult.expert_joined") {
         // 专家首次回复，状态切换到 HUMAN_CHATTING，给用户提示
         consultMessages.value.push({ kind: "sys", text: "✓ 医生已接入，开始为您诊疗", success: true });
@@ -778,6 +779,8 @@ async function startConsult(doc: ExpertCardDTO) {
             if (session.aiSummary) {
                 aiSummary.value = session.aiSummary;
                 showAiSummary.value = true;
+                // 会话已转人工时，将小结帧插入消息流末尾，保证后续消息出现在小结下方
+                consultMessages.value.push({ kind: "ai_summary", text: "" });
             }
             const { connect } = useConsultSocket();
             connect(session.sessionId, onStompMessage);
