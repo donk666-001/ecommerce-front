@@ -20,6 +20,8 @@ function buildClient(): Client {
     return new Client({
         brokerURL,
         reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
         onConnect: () => {
             // 连接/重连时恢复所有注册订阅
             for (const entry of registry.values()) {

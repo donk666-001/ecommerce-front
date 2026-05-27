@@ -19,6 +19,8 @@ export function useExpertOnlineSocket() {
         onlineStatusClient = new Client({
             brokerURL: `${protocol}//${window.location.host}/ws/consult`,
             reconnectDelay: 5000,
+            heartbeatIncoming: 10000,
+            heartbeatOutgoing: 10000,
             onConnect: () => {
                 onlineStatusClient!.subscribe(
                     "/topic/expert.online.status",

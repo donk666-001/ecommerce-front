@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
 import { ElMessage } from "element-plus";
@@ -91,6 +91,16 @@ onUnmounted(() => {
         disconnect();
     }
 });
+
+// 监听 userStore 异步加载完成后的变化，处理 onMounted 时 store 尚未就绪的竞态
+watch(
+    () => ({ expert: isExpertView.value, id: userStore.G_LoginInfo.id }),
+    ({ expert, id }) => {
+        if (expert && id) connect();
+        else if (!expert) disconnect();
+    },
+    { immediate: true }
+);
 
 function goHome() {
     router.push("/");
