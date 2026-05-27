@@ -1,20 +1,24 @@
 <template>
-    <div>
+    <div class="solar-term-panel" :style="heroStyle">
         <div class="grid-2" style="grid-template-columns: 1.2fr 1fr">
-            <div
-                class="solar-hero"
-                :style="heroStyle"
-                :data-decor="currentTerm.decor"
-            >
-                <span class="solar-tag">{{ currentTerm.tag }}</span>
+            <div class="solar-hero" :data-decor="currentTerm.decor">
+                <div class="solar-actions">
+                    <span class="solar-tag">{{ currentTerm.tag }}</span>
+                    <button
+                        v-if="canReturnToday"
+                        class="today-return"
+                        type="button"
+                        aria-label="回到今日节气"
+                        @click="returnToToday"
+                    >
+                        回到今日
+                    </button>
+                </div>
                 <div class="solar-name">{{ currentTerm.name }}</div>
                 <div class="solar-date">
                     {{ currentTerm.dateRange }} · {{ currentTerm.subtitle }}
                 </div>
                 <p class="solar-desc">{{ currentTerm.desc }}</p>
-                <div v-if="isLoading || apiError" class="api-state">
-                    {{ isLoading ? "正在同步后端节气数据..." : apiError }}
-                </div>
                 <div class="term-selector">
                     <button
                         class="term-nav"
@@ -29,12 +33,18 @@
                             v-for="term in solarTerms"
                             :key="term"
                             class="term-chip"
-                            :class="{ now: term === currentTerm.name }"
+                            :class="{
+                                now: term === currentTerm.name,
+                                today:
+                                    term === todayTermName &&
+                                    term !== currentTerm.name,
+                            }"
                             type="button"
                             :data-term="term"
                             @click="selectTerm(term)"
                         >
                             {{ term }}
+                            <span v-if="term === todayTermName">今日</span>
                         </button>
                     </div>
                     <button
@@ -46,9 +56,14 @@
                         ›
                     </button>
                 </div>
+                <Transition name="term-mask">
+                    <div v-if="isLoading" class="sync-mask" aria-hidden="true">
+                        <span></span>
+                    </div>
+                </Transition>
             </div>
 
-            <div class="card">
+            <div class="card health-points-card">
                 <div class="card-title">
                     <span class="dot"></span>{{ currentTerm.name }}养生要点
                 </div>
@@ -62,19 +77,32 @@
                         {{ cat }}
                     </button>
                 </div>
-                <div class="tip-list">
+                <div class="tip-list" :aria-busy="isLoading">
                     <div
-                        v-for="tip in currentTips"
-                        :key="tip.title"
-                        class="tip-row"
+                        v-if="!isLoading && currentTips.length === 0"
+                        class="tip-state"
                     >
-                        <span class="icon">{{ tip.icon }}</span>
-                        <div class="text">
-                            <strong>{{ tip.title }}</strong
-                            ><br />{{ tip.content }}
-                        </div>
+                        暂无{{ activeTipTab }}要点
                     </div>
+                    <template v-else>
+                        <div
+                            v-for="tip in currentTips"
+                            :key="tip.title"
+                            class="tip-row"
+                        >
+                            <span class="icon">{{ tip.icon }}</span>
+                            <div class="text">
+                                <strong>{{ tip.title }}</strong
+                                ><br />{{ tip.content }}
+                            </div>
+                        </div>
+                    </template>
                 </div>
+                <Transition name="term-mask">
+                    <div v-if="isLoading" class="sync-mask" aria-hidden="true">
+                        <span></span>
+                    </div>
+                </Transition>
             </div>
         </div>
 
@@ -102,7 +130,7 @@
                 >
                     <div class="recipe-img">{{ recipe.emoji }}</div>
                     <div class="recipe-name">{{ recipe.name }}</div>
-                    <div class="recipe-tag">{{ recipe.tag }}</div>
+                    <div class="recipe-tag">{{ recipe.usageNote }}</div>
                 </div>
             </div>
         </div>
@@ -526,10 +554,10 @@ termInfo["立夏"] = {
 };
 
 const selectedTermName = ref("小满");
+const todayTermName = ref("小满");
 const seasonalHealth = ref<SeasonalHealthDTO | null>(null);
 const isCurrentTermData = ref(false);
 const isLoading = ref(false);
-const apiError = ref("");
 let requestSerial = 0;
 
 const currentTerm = computed<SolarTermInfo>(() => {
@@ -558,82 +586,24 @@ const heroStyle = computed<Record<string, string>>(() => ({
 const activeTipTab = ref("饮食");
 const termWheelRef = ref<HTMLElement | null>(null);
 
-const fallbackTips: Record<string, HealthTip[]> = {
-    饮食: [
-        {
-            icon: "🥗",
-            title: "清心降火",
-            content: "多食苦瓜、莲子心、绿豆，助养心血、清心火。",
-        },
-        {
-            icon: "🍵",
-            title: "益气养阴",
-            content: "推荐麦冬、太子参泡水代茶饮，缓解暮春疲乏。",
-        },
-        {
-            icon: "⚠️",
-            title: "忌生冷油腻",
-            content: "立夏脾胃尚弱，过食冰品易致腹泻、湿困。",
-        },
-    ],
-    起居: [
-        {
-            icon: "🌅",
-            title: "晚睡早起",
-            content: "22:30入睡，06:00起床，中午小憩20分钟养心阳。",
-        },
-        {
-            icon: "🏠",
-            title: "避免贪凉",
-            content: "空调温度不低于26°C，避免直吹，夜间盖薄被。",
-        },
-        {
-            icon: "🛁",
-            title: "温水泡脚",
-            content: "睡前温水泡脚15分钟，引火归元、助眠安神。",
-        },
-    ],
-    运动: [
-        {
-            icon: "🧘",
-            title: "适度运动",
-            content: "推荐八段锦、太极、傍晚散步，避免大汗淋漓伤阴。",
-        },
-        {
-            icon: "🌳",
-            title: "户外活动",
-            content: "清晨或傍晚户外活动30分钟，接地气、舒畅肝气。",
-        },
-        {
-            icon: "💪",
-            title: "勿过劳",
-            content: "运动以微出汗为度，汗为心之液，过汗伤心阴。",
-        },
-    ],
-    情志: [
-        {
-            icon: "😊",
-            title: "保持平和",
-            content: "立夏心阳偏旺，忌大喜大怒，宜养花、听琴、冥想。",
-        },
-        {
-            icon: "🎵",
-            title: "五音疗心",
-            content: "多听徵调音乐（如《紫竹调》），入心经、安神定志。",
-        },
-        {
-            icon: "🧘",
-            title: "午间静坐",
-            content: "午时（11-13点）静坐闭目养神10分钟，心肾相交。",
-        },
-    ],
-};
-
-const contentTypeName: Record<number, string> = {
-    1: "饮食",
-    2: "起居",
-    3: "运动",
-    4: "情志",
+const contentTypeName: Record<string, string> = {
+    "1": "饮食",
+    diet: "饮食",
+    food: "饮食",
+    饮食: "饮食",
+    "2": "起居",
+    daily: "起居",
+    rest: "起居",
+    routine: "起居",
+    起居: "起居",
+    "3": "运动",
+    sport: "运动",
+    exercise: "运动",
+    运动: "运动",
+    "4": "情志",
+    emotion: "情志",
+    mood: "情志",
+    情志: "情志",
 };
 
 const backendTips = computed<Record<string, HealthTip[]>>(() => {
@@ -648,7 +618,7 @@ const backendTips = computed<Record<string, HealthTip[]>>(() => {
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .forEach((content) => {
-            const groupName = contentTypeName[content.contentType];
+            const groupName = getHealthContentGroup(content);
             if (!groupName) return;
             tips[groupName]?.push({
                 icon: content.contentIcon,
@@ -660,12 +630,35 @@ const backendTips = computed<Record<string, HealthTip[]>>(() => {
     return tips;
 });
 
+function getHealthContentGroup(content: SeasonalHealthContentDTO) {
+    const normalizedType = String(content.contentType).trim().toLowerCase();
+    const matchedByType = contentTypeName[normalizedType];
+    if (matchedByType) return matchedByType;
+
+    const searchableText = `${content.contentTitle}${content.contentText}`;
+    if (/饮食|食|蔬果|汤|粥|脾胃|清润|辛辣|油腻/.test(searchableText)) {
+        return "饮食";
+    }
+    if (/起居|作息|睡|早起|熬夜|衣物|久坐/.test(searchableText)) {
+        return "起居";
+    }
+    if (/运动|散步|八段锦|太极|微汗|大汗/.test(searchableText)) {
+        return "运动";
+    }
+    if (/情志|情绪|心态|焦虑|静坐|呼吸|放松/.test(searchableText)) {
+        return "情志";
+    }
+}
+
 const currentTips = computed(() => {
-    const fromBackend = backendTips.value[activeTipTab.value];
-    return fromBackend && fromBackend.length > 0
-        ? fromBackend
-        : fallbackTips[activeTipTab.value] || [];
+    return backendTips.value[activeTipTab.value] || [];
 });
+
+const canReturnToday = computed(
+    () =>
+        Boolean(todayTermName.value) &&
+        currentTerm.value.name !== todayTermName.value,
+);
 
 const showRecipeModal = ref(false);
 const selectedRecipe = ref<Recipe | null>(null);
@@ -795,14 +788,7 @@ async function selectTerm(term: string) {
     selectedTermName.value = term;
     activeTipTab.value = "饮食";
     await nextTick();
-    const selectedChip = Array.from(
-        termWheelRef.value?.querySelectorAll<HTMLElement>(".term-chip") ?? [],
-    ).find((chip) => chip.dataset.term === term);
-    selectedChip?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-    });
+    scrollTermIntoView(term);
     await loadSeasonalHealthByName(term);
 }
 
@@ -813,12 +799,43 @@ function scrollTerms(direction: number) {
     });
 }
 
+async function returnToToday() {
+    activeTipTab.value = "饮食";
+    await loadCurrentSeasonalHealth();
+    await nextTick();
+    scrollTermIntoView(todayTermName.value);
+}
+
+function scrollTermIntoView(term: string) {
+    const selectedChip = Array.from(
+        termWheelRef.value?.querySelectorAll<HTMLElement>(".term-chip") ?? [],
+    ).find((chip) => chip.dataset.term === term);
+    selectedChip?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+    });
+}
+
+const propertyLevelText: Record<number, string> = {
+    1: "大寒",
+    2: "性寒",
+    3: "性凉",
+    4: "微凉",
+    5: "性平",
+    6: "平和",
+    7: "微温",
+    8: "性温",
+    9: "性热",
+    10: "大热",
+};
+
 function mapRecipeFromBackend(recipe: SeasonalRecipeDTO): Recipe {
     return {
         id: recipe.id,
         name: recipe.foodName,
         emoji: getRecipeEmoji(recipe.foodName),
-        tag: `属性等级 ${recipe.propertyLevel}`,
+        tag: propertyLevelText[recipe.propertyLevel] || "寒热程度未知",
         effect: recipe.effectText,
         usageNote: recipe.usageNote,
         propertyLevel: recipe.propertyLevel,
@@ -846,7 +863,7 @@ function formatDate(value: string) {
 async function loadCurrentSeasonalHealth() {
     await loadSeasonalHealth(
         () => ApiSeasonalHealth.getCurrent(),
-        "小满",
+        todayTermName.value || "小满",
         true,
     );
 }
@@ -866,7 +883,6 @@ async function loadSeasonalHealth(
 ) {
     const currentRequest = ++requestSerial;
     isLoading.value = true;
-    apiError.value = "";
     selectedTermName.value = fallbackTermName;
     seasonalHealth.value = null;
     isCurrentTermData.value = isCurrent;
@@ -874,6 +890,9 @@ async function loadSeasonalHealth(
     try {
         const data = await loader();
         if (currentRequest !== requestSerial) return;
+        if (isCurrent) {
+            todayTermName.value = data.solarTerm.termName;
+        }
         selectedTermName.value = data.solarTerm.termName;
         seasonalHealth.value = data;
         isCurrentTermData.value = isCurrent;
@@ -883,7 +902,6 @@ async function loadSeasonalHealth(
         seasonalHealth.value = null;
         isCurrentTermData.value = false;
         selectedTermName.value = fallbackTermName;
-        apiError.value = "后端接口暂不可用，已显示本地兜底内容";
     } finally {
         if (currentRequest === requestSerial) {
             isLoading.value = false;
@@ -914,6 +932,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+.solar-term-panel {
+    --term-scroll-track: rgba(255, 255, 255, 0.62);
+}
+
 .solar-hero {
     background: linear-gradient(
         135deg,
@@ -925,6 +947,74 @@ onBeforeUnmount(() => {
     position: relative;
     overflow: hidden;
     transition: background 0.28s ease;
+}
+.health-points-card {
+    position: relative;
+    overflow: hidden;
+}
+.sync-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--term-accent-soft) 56%, transparent),
+            rgba(255, 255, 255, 0.7)
+        ),
+        color-mix(in srgb, var(--term-hero-start) 30%, transparent);
+    backdrop-filter: saturate(1.08);
+}
+.sync-mask::before {
+    content: "";
+    position: absolute;
+    inset: 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.18);
+}
+.sync-mask span {
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    left: -48%;
+    width: 42%;
+    transform: rotate(14deg);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.55),
+        transparent
+    );
+    animation: term-mask-sweep 0.72s ease-out infinite;
+}
+.term-mask-enter-active,
+.term-mask-leave-active {
+    transition: opacity 0.18s ease;
+}
+.term-mask-enter-from,
+.term-mask-leave-to {
+    opacity: 0;
+}
+@keyframes term-mask-sweep {
+    from {
+        transform: translateX(0) rotate(14deg);
+    }
+    to {
+        transform: translateX(360%) rotate(14deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sync-mask span {
+        left: 0;
+        width: 100%;
+        opacity: 0.28;
+        animation: none;
+        transform: none;
+    }
 }
 .solar-hero::after {
     content: attr(data-decor);
@@ -940,6 +1030,11 @@ onBeforeUnmount(() => {
     position: relative;
     z-index: 1;
 }
+.solar-hero > .sync-mask,
+.health-points-card > .sync-mask {
+    position: absolute;
+    z-index: 6;
+}
 .solar-tag {
     display: inline-block;
     background: var(--term-accent);
@@ -947,7 +1042,63 @@ onBeforeUnmount(() => {
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 12px;
+}
+.solar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
     margin-bottom: 12px;
+}
+.today-return {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    border: 1px solid color-mix(in srgb, var(--term-accent) 24%, white);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--term-accent-soft) 72%, white);
+    color: var(--term-accent);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px 4px 8px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.72),
+        0 6px 14px rgba(60, 50, 30, 0.06);
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
+}
+.today-return::before {
+    content: "↺";
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--term-accent);
+    color: white;
+    font-size: 11px;
+    line-height: 1;
+    transition:
+        background-color 0.25s ease,
+        transform 0.25s ease;
+}
+.today-return:hover {
+    background: var(--term-accent-soft);
+    border-color: var(--term-accent);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.78),
+        0 10px 20px rgba(60, 50, 30, 0.1);
+    transform: translateY(-1px);
+}
+.today-return:hover::before {
+    transform: rotate(-25deg);
 }
 .solar-name {
     font-family: "STKaiti", serif;
@@ -967,18 +1118,6 @@ onBeforeUnmount(() => {
     line-height: 1.7;
     font-size: 14px;
 }
-.api-state {
-    display: inline-flex;
-    align-items: center;
-    margin-top: 12px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.72);
-    color: var(--term-accent);
-    font-size: 12px;
-    box-shadow: var(--shadow);
-}
-
 .term-selector {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) 34px;
@@ -996,7 +1135,12 @@ onBeforeUnmount(() => {
     cursor: pointer;
     font-size: 20px;
     line-height: 1;
-    transition: all 0.2s;
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
 }
 .term-nav:hover {
     background: var(--term-accent-soft);
@@ -1011,25 +1155,34 @@ onBeforeUnmount(() => {
     overscroll-behavior-x: contain;
     scroll-behavior: smooth;
     scroll-padding-inline: 12px;
-    padding: 4px 2px;
+    padding: 8px 2px 4px;
     padding-bottom: 8px;
     scrollbar-width: thin;
-    scrollbar-color: var(--term-accent) rgba(255, 255, 255, 0.62);
+    scrollbar-color: var(--term-accent) var(--term-scroll-track);
+    transition: scrollbar-color 0.28s ease;
 }
 .term-wheel::-webkit-scrollbar {
     height: 8px;
 }
 .term-wheel::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.62);
+    background: var(--term-scroll-track);
     border-radius: 999px;
+    transition: background-color 0.28s ease;
 }
 .term-wheel::-webkit-scrollbar-thumb {
     background: var(--term-accent);
     border-radius: 999px;
-    border: 2px solid rgba(255, 255, 255, 0.62);
+    border: 2px solid var(--term-scroll-track);
+    transition:
+        background-color 0.28s ease,
+        border-color 0.28s ease;
 }
 .term-chip {
+    position: relative;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 8px 14px;
     background: var(--paper);
     border: 1px solid var(--line);
@@ -1038,12 +1191,45 @@ onBeforeUnmount(() => {
     font-size: 13px;
     color: var(--ink-muted);
     cursor: pointer;
-    transition: all 0.2s;
+    overflow: visible;
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
+}
+.term-chip span {
+    position: absolute;
+    top: -7px;
+    right: -6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--term-accent) 88%, white);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    box-shadow: 0 4px 8px rgba(60, 50, 30, 0.12);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 2px 4px;
+    transform-origin: center;
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
 }
 .term-chip:hover {
     border-color: var(--term-accent);
     color: var(--term-accent);
     transform: translateY(-1px);
+}
+.term-chip.today:not(.now) {
+    background: var(--term-accent-soft);
+    border-color: color-mix(in srgb, var(--term-accent) 55%, white);
+    color: var(--term-accent);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.58);
 }
 .term-chip.now {
     background: var(--term-accent);
@@ -1051,10 +1237,25 @@ onBeforeUnmount(() => {
     border-color: var(--term-accent);
     box-shadow: 0 6px 14px rgba(60, 50, 30, 0.12);
 }
+.term-chip.now span {
+    background: color-mix(in srgb, var(--term-accent) 72%, white);
+    border-color: rgba(255, 255, 255, 0.9);
+    color: white;
+    box-shadow: 0 4px 10px rgba(60, 50, 30, 0.16);
+}
 .term-chip:focus-visible,
-.term-nav:focus-visible {
+.term-nav:focus-visible,
+.today-return:focus-visible {
     outline: 2px solid var(--term-accent);
     outline-offset: 2px;
+    box-shadow:
+        0 0 0 4px var(--term-accent-soft),
+        0 10px 20px rgba(60, 50, 30, 0.12);
+}
+.term-chip:focus-visible:not(.now) {
+    background: var(--term-accent-soft);
+    border-color: var(--term-accent);
+    color: var(--term-accent);
 }
 
 .tab-bar {
@@ -1079,7 +1280,7 @@ onBeforeUnmount(() => {
 }
 .tab-bar button.active {
     background: var(--paper);
-    color: var(--jade);
+    color: var(--term-accent);
     box-shadow: var(--shadow);
 }
 
@@ -1087,6 +1288,22 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-height: 104px;
+}
+.tip-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 104px;
+    border: 1px dashed color-mix(in srgb, var(--term-accent) 28%, white);
+    border-radius: 12px;
+    background: var(--term-accent-soft);
+    color: var(--term-accent);
+    font-size: 13px;
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease;
 }
 .tip-row {
     display: flex;
@@ -1095,7 +1312,11 @@ onBeforeUnmount(() => {
     padding: 12px;
     background: var(--paper-warm);
     border-radius: 10px;
-    border-left: 3px solid var(--jade);
+    border-left: 3px solid var(--term-accent);
+    transition:
+        border-color 0.25s ease,
+        background-color 0.25s ease,
+        box-shadow 0.25s ease;
 }
 .tip-row .icon {
     font-size: 20px;
@@ -1106,7 +1327,7 @@ onBeforeUnmount(() => {
     line-height: 1.6;
 }
 .tip-row .text strong {
-    color: var(--jade);
+    color: var(--term-accent);
 }
 
 .recipe-grid {
@@ -1144,6 +1365,11 @@ onBeforeUnmount(() => {
 .recipe-tag {
     font-size: 11px;
     color: var(--ink-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
 }
 
 .card {
@@ -1166,8 +1392,9 @@ onBeforeUnmount(() => {
 .card-title .dot {
     width: 4px;
     height: 16px;
-    background: var(--jade);
+    background: var(--term-accent);
     border-radius: 2px;
+    transition: background-color 0.25s ease;
 }
 .grid-2 {
     display: grid;
@@ -1197,11 +1424,11 @@ onBeforeUnmount(() => {
 }
 .btn-ghost {
     background: transparent;
-    color: var(--jade);
-    border: 1px solid var(--jade);
+    color: var(--term-accent);
+    border: 1px solid var(--term-accent);
 }
 .btn-ghost:hover {
-    background: var(--jade-soft);
+    background: var(--term-accent-soft);
 }
 .btn:focus-visible,
 .modal-close:focus-visible {
