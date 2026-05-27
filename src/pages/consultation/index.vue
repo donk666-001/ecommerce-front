@@ -403,53 +403,138 @@
         <!-- ===== Module 4: 专家认证 ===== -->
         <div v-show="activeTab === 'm4'" class="panel">
             <div class="space-y">
+
+                <!-- 进度条（始终展示） -->
                 <div class="card">
                     <div class="card-title" style="justify-content:center;"><span class="dot"></span>认证进度</div>
                     <div class="stepper">
-                        <div class="step done"><div class="num">✓</div><div class="lab">基本信息</div></div>
-                        <div class="step on"><div class="num">2</div><div class="lab">资质上传</div></div>
-                        <div class="step"><div class="num">3</div><div class="lab">视频面审</div></div>
-                        <div class="step"><div class="num">4</div><div class="lab">签约</div></div>
-                        <div class="step"><div class="num">5</div><div class="lab">开通</div></div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title"><span class="dot"></span>选择入驻角色 <span class="extra">不同角色对应不同权限</span></div>
-                    <div class="role-grid">
-                        <div v-for="(role, idx) in certRoles" :key="role.title" class="role-card" :class="{ active: selectedRole === idx }" @click="selectedRole = idx">
-                            <div class="ico">{{ role.ico }}</div>
-                            <h5>{{ role.title }}</h5>
-                            <div class="req">{{ role.req }}</div>
-                            <div class="perm">{{ role.perm }}</div>
+                        <div class="step" :class="{ done: m4StepActive > 1, on: m4StepActive === 1 }">
+                            <div class="num">{{ m4StepActive > 1 ? '✓' : '1' }}</div><div class="lab">基本信息</div>
+                        </div>
+                        <div class="step" :class="{ done: m4StepActive > 2, on: m4StepActive === 2 }">
+                            <div class="num">{{ m4StepActive > 2 ? '✓' : '2' }}</div><div class="lab">资质上传</div>
+                        </div>
+                        <div class="step" :class="{ done: m4StepActive > 3, on: m4StepActive === 3 }">
+                            <div class="num">{{ m4StepActive > 3 ? '✓' : '3' }}</div><div class="lab">视频面审</div>
+                        </div>
+                        <div class="step" :class="{ done: m4StepActive > 4, on: m4StepActive === 4 }">
+                            <div class="num">{{ m4StepActive > 4 ? '✓' : '4' }}</div><div class="lab">签约</div>
+                        </div>
+                        <div class="step" :class="{ done: m4StepActive > 5, on: m4StepActive === 5 }">
+                            <div class="num">{{ m4StepActive > 5 ? '✓' : '5' }}</div><div class="lab">开通</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-title">
-                        <span class="dot"></span>上传资质材料
-                        <span class="extra">🔒 加密存储 · 仅审核员可见 · 支持撤销</span>
+                <!-- 状态视图：有申请且非 REJECTED/WITHDRAWN -->
+                <template v-if="!m4ShowForm && myApplication">
+                    <div class="card">
+                        <div class="card-title"><span class="dot"></span>申请状态</div>
+                        <div v-if="myApplication.status === 'SUBMITTED' || myApplication.status === 'REVIEWING'"
+                             style="text-align:center; padding:20px 0;">
+                            <div style="font-size:48px; margin-bottom:12px;">⏳</div>
+                            <div style="font-size:16px; font-weight:600; margin-bottom:8px;">
+                                {{ myApplication.status === 'SUBMITTED' ? '申请已提交，等待审核' : '审核进行中...' }}
+                            </div>
+                            <div style="color:var(--ink-muted); font-size:13px; margin-bottom:20px;">
+                                预计 1-5 个工作日反馈，通过后将通知您
+                            </div>
+                            <button class="btn btn-ghost" :disabled="m4Withdrawing" @click="m4Withdraw">
+                                {{ m4Withdrawing ? '撤回中...' : '撤回申请' }}
+                            </button>
+                        </div>
+                        <div v-else-if="myApplication.status === 'APPROVED' || myApplication.status === 'SIGNED' || myApplication.status === 'ACTIVATED'"
+                             style="text-align:center; padding:20px 0;">
+                            <div style="font-size:48px; margin-bottom:12px;">🎉</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--jade);">审核已通过！</div>
+                            <div style="color:var(--ink-muted); font-size:13px; margin-top:8px;">
+                                请等待运营人员联系您完成后续签约流程
+                            </div>
+                        </div>
                     </div>
-                    <div class="upload-grid">
-                        <div v-for="slot in uploadSlots" :key="slot.label" class="upload-slot" :class="{ done: slot.done }">
-                            <span class="ico">{{ slot.done ? '✓' : '＋' }}</span>
-                            <div>{{ slot.label }}</div>
-                            <small style="display:block;margin-top:4px;font-size:11px;">{{ slot.hint }}</small>
-                            <span class="req-tag" :class="{ optional: slot.optional }">{{ slot.optional ? '可选' : '必填' }}</span>
+                </template>
+
+                <!-- 驳回视图 -->
+                <template v-if="myApplication?.status === 'REJECTED'">
+                    <div class="card" style="border-left: 3px solid var(--cinnabar);">
+                        <div class="card-title"><span class="dot" style="background:var(--cinnabar)"></span>申请被驳回</div>
+                        <div style="margin-bottom:8px;"><strong>原因：</strong>{{ myApplication.rejectReason }}</div>
+                        <div v-if="myApplication.rejectSuggestion" style="color:var(--ink-muted); font-size:13px; margin-bottom:16px;">
+                            建议：{{ myApplication.rejectSuggestion }}
+                        </div>
+                        <button class="btn btn-cinnabar" @click="m4ResetForm">重新填写申请</button>
+                    </div>
+                </template>
+
+                <!-- 表单视图 -->
+                <template v-if="m4ShowForm">
+                    <!-- 角色选择 -->
+                    <div class="card">
+                        <div class="card-title"><span class="dot"></span>选择入驻角色</div>
+                        <div class="role-grid">
+                            <div v-for="(role, idx) in certRoles" :key="role.roleType"
+                                 class="role-card" :class="{ active: m4RoleIdx === idx }"
+                                 @click="m4RoleIdx = idx; m4Attachments = {}">
+                                <div class="ico">{{ role.ico }}</div>
+                                <h5>{{ role.title }}</h5>
+                                <div class="req">{{ role.req }}</div>
+                                <div class="perm">{{ role.perm }}</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="privacy-note" style="margin-top:18px;">
-                        <strong style="color:var(--moon);">隐私保护承诺：</strong>所有上传的证件材料采用 HTTPS 传输 + 服务端列加密 + 仅授权审核员可解密查看；
-                        认证撤销后保留 90 天再彻底删除（满足审计周期）；公开展示页面仅显示「角色 + 认证机构」，不展示证件号与扫描件原图。
+                    <!-- 基本信息 -->
+                    <div class="card">
+                        <div class="card-title"><span class="dot"></span>基本信息</div>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div>
+                                <label style="font-size:13px; color:var(--ink-muted); display:block; margin-bottom:4px;">真实姓名 *</label>
+                                <input v-model="m4RealName" type="text" placeholder="请填写与证件一致的真实姓名"
+                                       style="width:100%; padding:10px 14px; border:1px solid var(--gold-soft); border-radius:8px; font-family:inherit; font-size:14px; outline:none; box-sizing:border-box;" />
+                            </div>
+                            <div>
+                                <label style="font-size:13px; color:var(--ink-muted); display:block; margin-bottom:4px;">个人简介 * （10-500 字）</label>
+                                <textarea v-model="m4Bio" rows="4" placeholder="介绍您的从业经历、专长方向..."
+                                          style="width:100%; padding:10px 14px; border:1px solid var(--gold-soft); border-radius:8px; font-family:inherit; font-size:14px; resize:vertical; outline:none; box-sizing:border-box;"></textarea>
+                            </div>
+                        </div>
                     </div>
 
-                    <div style="display:flex; gap:12px; margin-top:18px;">
-                        <button class="btn btn-ghost" style="flex:1;">暂存草稿</button>
-                        <button class="btn" style="flex:2;">提交审核 · 预计 1-5 个工作日反馈</button>
+                    <!-- 资质上传 -->
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="dot"></span>上传资质材料
+                            <span class="extra">🔒 加密存储 · 仅审核员可见</span>
+                        </div>
+                        <div class="upload-grid">
+                            <div v-for="slot in currentSlots" :key="slot.docType"
+                                 class="upload-slot"
+                                 :class="{ done: !!m4Attachments[slot.docType] }"
+                                 @click="($refs['file_' + slot.docType] as HTMLInputElement)?.click()">
+                                <input :ref="'file_' + slot.docType" type="file"
+                                       accept="image/*,.pdf" style="display:none"
+                                       @change="m4HandleFileSelect(slot.docType, $event)" />
+                                <span class="ico">
+                                    {{ m4Uploading[slot.docType] ? '⏳' : m4Attachments[slot.docType] ? '✓' : '＋' }}
+                                </span>
+                                <div>{{ slot.label }}</div>
+                                <small style="display:block; margin-top:4px; font-size:11px;">
+                                    {{ m4Attachments[slot.docType] ? m4Attachments[slot.docType].fileName : slot.hint }}
+                                </small>
+                                <span class="req-tag" :class="{ optional: slot.optional }">
+                                    {{ slot.optional ? '可选' : '必填' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:12px; margin-top:18px;">
+                            <button class="btn" style="flex:1;" :disabled="m4Submitting" @click="m4Submit">
+                                {{ m4Submitting ? '提交中...' : '提交审核 · 预计 1-5 个工作日反馈' }}
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </template>
+
             </div>
         </div>
 
@@ -606,7 +691,7 @@ import { ref, computed, watch, onMounted, nextTick, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import { useUserStore } from "@/store/user";
-import { ApiCircle, ApiExpert, ApiConsult } from "@/network";
+import { ApiCircle, ApiExpert, ApiConsult, type MyApplicationVO, type AttachmentInfo } from "@/network";
 import { useConsultSocket } from "@/composables/useConsultSocket";
 import { useExpertQueueSocket } from "@/composables/useExpertQueueSocket";
 import { useExpertOnlineSocket } from "@/composables/useExpertOnlineSocket";
@@ -715,7 +800,10 @@ onMounted(async () => {
         subscribeOnline((expertId, online) => {
             const idx = expertList.value.findIndex(e => e.id === expertId);
             if (idx !== -1) {
-                expertList.value[idx] = { ...expertList.value[idx], isOnline: online };
+                // 直接属性赋值，保持对象引用不变。
+                // selectedExpert.value 与 expertList.value[idx] 指向同一响应式代理，
+                // 属性变更自动传播到聊天框头部的 isOnline 标签。
+                expertList.value[idx].isOnline = online;
             }
         });
     }
@@ -767,10 +855,14 @@ function onStompMessage(frame: any) {
     } else if (event === "consult.system_event") {
         consultMessages.value.push({ kind: "sys", text: data.message.content });
     } else if (event === "consult.transferred") {
-        // 转人工成功：更新小结数据，推入系统提示，再推入内联小结帧（使后续对话显示在小结下方）
+        // 转人工成功：按正确顺序推三条消息
+        // 1. AI 小结生成通知（绿色成功提示）
+        // 2. 转人工发送通知（普通系统提示）
+        // 3. AI 小结内联卡片（后续消息出现在小结下方）
         aiSummary.value = data.summary;
         showAiSummary.value = true;
         consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成，等待医生接入…", success: true });
+        consultMessages.value.push({ kind: "sys", text: "⏳ 转人工请求已发送，等待医生接入…" });
         consultMessages.value.push({ kind: "ai_summary", text: "" });
     } else if (event === "consult.expert_joined") {
         // 专家首次回复，状态切换到 HUMAN_CHATTING，给用户提示
@@ -950,9 +1042,10 @@ async function triggerHandoff() {
         const res = await ApiConsult.transfer(sessionId.value);
         const data = res.data?.data;
         if (data) {
+            // 只更新数据状态，不推消息。
+            // 消息由 STOMP consult.transferred 帧统一推送，保证顺序正确。
             aiSummary.value = data.summary;
             showAiSummary.value = true;
-            consultMessages.value.push({ kind: "sys", text: "⏳ 转人工请求已发送，等待医生接入…" });
             nextTick(scrollChatToBottom);
         }
     } catch {
@@ -1159,23 +1252,165 @@ const profileMenus = [
     { ico: "⚙️", title: "账号与隐私", sub: "账号安全 · 偏好" },
 ];
 
-// ---- Module 4 ----
-const selectedRole = ref(0);
+// ---- Module 4：专家认证 ----
+const MINIO_BASE = 'http://localhost:9000/mingyi-public';
+
+// 当前用户申请状态（null=未申请，加载中=undefined）
+const myApplication = ref<MyApplicationVO | null | undefined>(undefined);
+// 表单状态
+const m4RoleIdx = ref(0);
+const m4RealName = ref('');
+const m4Bio = ref('');
+// 已上传附件 map：docType → AttachmentInfo
+const m4Attachments = ref<Record<string, AttachmentInfo>>({});
+// 上传中的 slot
+const m4Uploading = ref<Record<string, boolean>>({});
+// 文件上传 input 元素引用（用于触发文件选择）
+const fileInputRefs = ref<Record<string, HTMLInputElement | null>>({});
+// 提交中
+const m4Submitting = ref(false);
+// 撤回中
+const m4Withdrawing = ref(false);
+
 const certRoles = [
-    { ico: "⚕️", title: "执业医师", req: "医师资格证\n执业证 · 职称证", perm: "✓ 全功能 · 可诊疗" },
-    { ico: "🥗", title: "注册营养师", req: "营养师证书\n学历证明", perm: "✓ 膳食营养咨询" },
-    { ico: "🧘", title: "康复治疗师", req: "康复治疗师证\n培训证明", perm: "✓ 康复训练指导" },
-    { ico: "🌱", title: "养生达人", req: "实名 + 作品集\n平台考核", perm: "✓ 内容 / 课程\n✗ 不可诊断处方" },
+    { ico: "⚕️", title: "执业医师",   roleType: "DOCTOR",       req: "医师资格证\n执业证 · 职称证",    perm: "✓ 全功能 · 可诊疗" },
+    { ico: "🥗", title: "注册营养师", roleType: "NUTRITIONIST", req: "营养师证书\n学历证明",           perm: "✓ 膳食营养咨询" },
+    { ico: "🧘", title: "康复治疗师", roleType: "REHAB",         req: "康复治疗师证\n培训证明",         perm: "✓ 康复训练指导" },
+    { ico: "🌱", title: "养生达人",   roleType: "GURU",          req: "实名 + 作品集\n平台考核",        perm: "✓ 内容 / 课程\n✗ 不可诊断处方" },
 ];
 
-const uploadSlots = [
-    { label: "身份证人像面", done: true, hint: "已上传 · 已核验", optional: false },
-    { label: "身份证国徽面", done: true, hint: "已上传 · 已核验", optional: false },
-    { label: "医师资格证书", done: true, hint: "已上传 · 已核验", optional: false },
-    { label: "执业医师证", done: false, hint: "jpg / png / pdf · ≤ 5MB", optional: false },
-    { label: "职称证明", done: false, hint: "加分项 · 可暂不上传", optional: true },
-    { label: "个人简介 / 擅长方向", done: false, hint: "文字说明，500 字以内", optional: false },
-];
+// 各角色附件 slot 定义
+const roleSlotMap: Record<string, { docType: string; label: string; hint: string; optional: boolean }[]> = {
+    DOCTOR: [
+        { docType: 'id_card_front',  label: '身份证人像面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'id_card_back',   label: '身份证国徽面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'medical_license',label: '医师资格证',   hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'practice_cert',  label: '执业医师证',   hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'title_cert',     label: '职称证明',     hint: '加分项 · 可暂不上传', optional: true  },
+    ],
+    NUTRITIONIST: [
+        { docType: 'id_card_front',  label: '身份证人像面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'id_card_back',   label: '身份证国徽面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'nutrition_cert', label: '营养师资质证', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+    ],
+    REHAB: [
+        { docType: 'id_card_front',  label: '身份证人像面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'id_card_back',   label: '身份证国徽面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'rehab_cert',     label: '康复治疗师执业证', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+    ],
+    GURU: [
+        { docType: 'id_card_front',  label: '身份证人像面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'id_card_back',   label: '身份证国徽面', hint: 'jpg/png/pdf · ≤5MB', optional: false },
+        { docType: 'other_cert',     label: '相关资质证明', hint: '可选 · 加分项',       optional: true  },
+    ],
+};
+
+// 当前角色的 slot 列表
+const currentSlots = computed(() =>
+    roleSlotMap[certRoles[m4RoleIdx.value].roleType] ?? []);
+
+// 进度条步骤：状态 → 当前活跃步骤（1-based）
+const m4StepActive = computed(() => {
+    const s = myApplication.value?.status;
+    if (!s || s === 'SUBMITTED') return 2;
+    if (s === 'REVIEWING') return 3;
+    if (s === 'APPROVED') return 4;
+    if (s === 'SIGNED') return 5;
+    if (s === 'ACTIVATED') return 6;
+    return 1;
+});
+
+// 是否展示表单（无申请 or 已驳回/撤回 → 展示表单）
+const m4ShowForm = computed(() =>
+    myApplication.value === null
+    || myApplication.value?.status === 'REJECTED'
+    || myApplication.value?.status === 'WITHDRAWN');
+
+// 页面切到 m4 时加载申请状态
+watch(activeTab, async (tab) => {
+    if (tab === 'm4' && myApplication.value === undefined) {
+        await loadMyApplication();
+    }
+});
+
+async function loadMyApplication() {
+    try {
+        const res = await ApiExpert.getMyApplication();
+        myApplication.value = (res as any)?.data?.data ?? null;
+    } catch {
+        myApplication.value = null;
+    }
+}
+
+async function m4HandleFileSelect(docType: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    m4Uploading.value[docType] = true;
+    try {
+        const res = await ApiExpert.uploadAttachment(file);
+        const objectKey: string = (res as any)?.data?.data ?? '';
+        m4Attachments.value[docType] = {
+            docType,
+            url: objectKey,
+            fileName: file.name,
+            size: file.size,
+        };
+    } catch (e) {
+        alert('上传失败，请重试');
+    } finally {
+        m4Uploading.value[docType] = false;
+        input.value = '';
+    }
+}
+
+async function m4Submit() {
+    const roleType = certRoles[m4RoleIdx.value].roleType;
+    if (!m4RealName.value.trim()) { alert('请填写真实姓名'); return; }
+    if (m4Bio.value.trim().length < 10) { alert('个人简介至少 10 个字'); return; }
+    const attachments = Object.values(m4Attachments.value).map(a => ({
+        docType: a.docType,
+        objectKey: a.url,
+        fileName: a.fileName,
+        size: a.size,
+    }));
+    m4Submitting.value = true;
+    try {
+        const res = await ApiExpert.submitApplication({
+            roleType,
+            realName: m4RealName.value.trim(),
+            bio: m4Bio.value.trim(),
+            attachments,
+        });
+        myApplication.value = (res as any)?.data?.data ?? null;
+    } catch (e: any) {
+        alert(e?.response?.data?.message ?? '提交失败，请重试');
+    } finally {
+        m4Submitting.value = false;
+    }
+}
+
+async function m4Withdraw() {
+    if (!myApplication.value?.id) return;
+    if (!confirm('确认撤回申请？')) return;
+    m4Withdrawing.value = true;
+    try {
+        await ApiExpert.withdrawApplication(myApplication.value.id);
+        myApplication.value = null;
+    } catch {
+        alert('撤回失败，请重试');
+    } finally {
+        m4Withdrawing.value = false;
+    }
+}
+
+function m4ResetForm() {
+    m4RoleIdx.value = 0;
+    m4RealName.value = '';
+    m4Bio.value = '';
+    m4Attachments.value = {};
+    myApplication.value = null;
+}
 </script>
 
 <style scoped lang="scss">
