@@ -139,6 +139,11 @@
                             <div class="doctor-title">{{ roleLabel(doc.roleType) }}</div>
                             <!-- 渐变分割线 -->
                             <div class="doctor-divider"></div>
+                            <!-- 在线状态（位置 A：主页推荐列表） -->
+                            <div class="doctor-online-status">
+                                <span v-if="doc.isOnline" class="pill pill-jade">在线</span>
+                                <span v-else class="pill pill-gray">离线</span>
+                            </div>
                             <!-- 简介 -->
                             <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
                             <!-- 咨询按钮 -->
@@ -168,7 +173,12 @@
                                 <button class="btn btn-ghost btn-sm" @click="resetConsult">← 重新选择</button>
                                 <div class="ava font-serif">{{ avatarText(selectedExpert) }}</div>
                                 <div class="who">
-                                    <h4>{{ selectedExpert.realName }} {{ roleLabel(selectedExpert.roleType) }} <span class="pill pill-jade">在线</span></h4>
+                                    <h4>
+                                        {{ selectedExpert.realName }} {{ roleLabel(selectedExpert.roleType) }}
+                                        <span :class="selectedExpert.isOnline ? 'pill pill-jade' : 'pill pill-gray'">
+                                            {{ selectedExpert.isOnline ? '在线' : '离线' }}
+                                        </span>
+                                    </h4>
                                     <div class="sub">{{ selectedExpert.bio || '暂无简介' }}</div>
                                 </div>
                             </div>
@@ -574,6 +584,11 @@
                                 <div class="doctor-tag">名医专家</div>
                                 <div class="doctor-title">{{ roleLabel(doc.roleType) }}</div>
                                 <div class="doctor-divider"></div>
+                                <!-- 在线状态（位置 B：模态框列表） -->
+                                <div class="doctor-online-status">
+                                    <span v-if="doc.isOnline" class="pill pill-jade">在线</span>
+                                    <span v-else class="pill pill-gray">离线</span>
+                                </div>
                                 <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
                                 <button class="doctor-consult-btn" @click.stop="startConsultFromModal(doc)">向TA咨询 ›</button>
                             </div>
@@ -594,6 +609,7 @@ import { useUserStore } from "@/store/user";
 import { ApiCircle, ApiExpert, ApiConsult } from "@/network";
 import { useConsultSocket } from "@/composables/useConsultSocket";
 import { useExpertQueueSocket } from "@/composables/useExpertQueueSocket";
+import { useExpertOnlineSocket } from "@/composables/useExpertOnlineSocket";
 
 // ---- Role view ----
 const router = useRouter();
@@ -680,6 +696,8 @@ const solarTermDateLabel = computed(() => {
     return `${y} · ${parseInt(m)} · ${parseInt(d)} · 节气专题`;
 });
 
+const { subscribe: subscribeOnline, unsubscribe: unsubscribeOnline } = useExpertOnlineSocket();
+
 onMounted(async () => {
     try {
         const [stRes, expRes] = await Promise.all([
@@ -691,12 +709,23 @@ onMounted(async () => {
     } catch {
         // 接口异常时保持默认显示
     }
+
+    // 用户侧订阅专家在线状态实时推送（非专家视图才需要）
+    if (!isExpertView.value) {
+        subscribeOnline((expertId, online) => {
+            const idx = expertList.value.findIndex(e => e.id === expertId);
+            if (idx !== -1) {
+                expertList.value[idx] = { ...expertList.value[idx], isOnline: online };
+            }
+        });
+    }
 });
 
 // ---- Module 2: 推荐专家（API 数据） ----
 interface ExpertCardDTO {
     id: number; realName: string; avatar: string | null;
     roleType: string; bio: string | null;
+    isOnline: boolean;
 }
 const expertList = ref<ExpertCardDTO[]>([]);
 
@@ -1112,6 +1141,7 @@ onUnmounted(() => {
     unsubscribeExpertQueue();
     clearInterval(pollTimer.value!);
     pollTimer.value = null;
+    unsubscribeOnline(); // 用户侧断开在线状态订阅
 });
 
 const switchStates = ref({ autoPreAsk: true, autoHandoff: true, offHours: false });
@@ -1238,6 +1268,7 @@ const uploadSlots = [
 // Pills
 .pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
 .pill-jade { background: var(--jade-soft); color: var(--jade); }
+.pill-gray { background: var(--ink-soft, #e5e7eb); color: var(--ink-muted, #6b7280); }
 .pill-gold { background: var(--gold-soft); color: var(--gold-deep); }
 .pill-cinnabar { background: var(--cinnabar-soft); color: var(--cinnabar); }
 .pill-moon { background: var(--moon-soft); color: var(--moon); }
