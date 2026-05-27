@@ -73,8 +73,8 @@
                     </el-form-item>
                     <el-form-item label="性别">
                         <el-radio-group v-model="profileForm.gender">
-                            <el-radio value="男">男</el-radio>
-                            <el-radio value="女">女</el-radio>
+                            <el-radio :value="1">男</el-radio>
+                            <el-radio :value="2">女</el-radio>
                         </el-radio-group>
                     </el-form-item>
                     <el-form-item label="生日">
@@ -222,7 +222,7 @@ const pwdFormRef = ref<FormInstance>();
 
 const profileForm = reactive({
     nickName: "",
-    gender: "男",
+    gender: 0 as number,   // 0=未知，1=男，2=女
     birthday: "",
     location: "",
     introduction: "",
@@ -275,7 +275,8 @@ onMounted(async () => {
     const login = userStore.G_LoginInfo;
 
     profileForm.nickName = login.nickName || login.account;
-    profileForm.gender = info.gender || "男";
+    // ?? 而非 ||，防止整数 0（未知）被错误地 fallback 到 1（男）
+    profileForm.gender = info.gender ?? 0;
     profileForm.birthday = info.birthday
         ? new Date(info.birthday).toISOString().slice(0, 10)
         : "";
@@ -323,17 +324,16 @@ async function confirmAvatarUpload() {
 async function saveProfile() {
     savingProfile.value = true;
     try {
+        // 只提交后端 PUT /users/profile 支持的字段（nickname + gender）
+        // birthday / location / introduction 表单仅作展示，暂不对接后端
         const result = await ApiUser.updateProfile({
+            nickname: profileForm.nickName,
             gender: profileForm.gender,
-            birthday: profileForm.birthday ? new Date(profileForm.birthday) : undefined,
-            location: profileForm.location,
-            introduction: profileForm.introduction,
         });
         if (result !== null) {
+            // 同步更新本地 store，避免需要刷新页面才能看到变化
             userStore.G_LoginInfo.nickName = profileForm.nickName;
             userStore.G_UserInfo.gender = profileForm.gender;
-            userStore.G_UserInfo.location = profileForm.location;
-            userStore.G_UserInfo.introduction = profileForm.introduction;
             ElMessage.success("资料保存成功");
         } else {
             ElMessage.error("保存失败，请稍后重试");
