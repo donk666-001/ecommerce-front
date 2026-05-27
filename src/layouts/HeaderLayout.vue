@@ -58,10 +58,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
 import { ElMessage } from "element-plus";
+import { useExpertPresenceSocket } from "@/composables/useExpertPresenceSocket";
 
 const router = useRouter();
 const route = useRoute();
@@ -70,6 +71,25 @@ const userStore = useUserStore();
 const displayInitial = computed(() => {
     const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
     return name ? name.charAt(0) : "我";
+});
+
+/** 当前登录用户是否为认证专家（role_id === 2） */
+const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
+
+const { connect, disconnect } = useExpertPresenceSocket();
+
+onMounted(() => {
+    // 专家登录后全局建立 STOMP 连接，使在线状态对用户可见
+    if (isExpertView.value && userStore.G_LoginInfo.id) {
+        connect();
+    }
+});
+
+onUnmounted(() => {
+    // 页面卸载时断开连接（浏览器关闭时 beforeunload 也会触发 STOMP DISCONNECT）
+    if (isExpertView.value) {
+        disconnect();
+    }
 });
 
 function goHome() {
@@ -84,9 +104,10 @@ async function handleCommand(command: string) {
     if (command === "settings") {
         router.push("/settings");
     } else if (command === "logout") {
-        await userStore.logout();
+        if (isExpertView.value) disconnect(); // 主动登出时断开连接
+        await userStore.logout(); // 本地状态已同步清除，几乎立即返回
         ElMessage.success("已退出登录");
-        router.push("/");
+        router.push("/login"); // 直接跳登录页，不再绕道首页
     }
 }
 </script>
