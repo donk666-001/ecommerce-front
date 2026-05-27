@@ -75,7 +75,8 @@ class ApiUser {
         try {
             const response = await GAxios.put("/users/profile", data);
             const res = response.data;
-            return res.code === 200 ? res.data : null;
+            // PUT /users/profile 返回 Result<Void>，data 恒为 null，只需判断 code
+            return res.code === 200 ? true : null;
         } catch {
             return null;
         }
