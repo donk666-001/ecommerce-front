@@ -1368,6 +1368,13 @@ async function m4Submit() {
     const roleType = certRoles[m4RoleIdx.value].roleType;
     if (!m4RealName.value.trim()) { alert('请填写真实姓名'); return; }
     if (m4Bio.value.trim().length < 10) { alert('个人简介至少 10 个字'); return; }
+    // 检查必填附件是否已上传
+    const requiredSlots = currentSlots.value.filter(s => !s.optional);
+    const missingSlots = requiredSlots.filter(s => !m4Attachments.value[s.docType]);
+    if (missingSlots.length > 0) {
+        alert('请上传必填材料：' + missingSlots.map(s => s.label).join('、'));
+        return;
+    }
     const attachments = Object.values(m4Attachments.value).map(a => ({
         docType: a.docType,
         objectKey: a.url,
