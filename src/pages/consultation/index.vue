@@ -510,8 +510,8 @@
                             <div v-for="slot in currentSlots" :key="slot.docType"
                                  class="upload-slot"
                                  :class="{ done: !!m4Attachments[slot.docType] }"
-                                 @click="($refs['file_' + slot.docType] as HTMLInputElement)?.click()">
-                                <input :ref="'file_' + slot.docType" type="file"
+                                 @click="fileInputRefs[slot.docType]?.click()">
+                                <input :ref="el => fileInputRefs[slot.docType] = el as HTMLInputElement" type="file"
                                        accept="image/*,.pdf" style="display:none"
                                        @change="m4HandleFileSelect(slot.docType, $event)" />
                                 <span class="ico">
