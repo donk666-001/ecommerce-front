@@ -264,6 +264,7 @@ import {
 } from "vue";
 import {
     ApiSeasonalHealth,
+    type SeasonalHealthContentDTO,
     type SeasonalHealthDTO,
     type SeasonalRecipeDTO,
 } from "@/network";
@@ -648,6 +649,7 @@ function getHealthContentGroup(content: SeasonalHealthContentDTO) {
     if (/情志|情绪|心态|焦虑|静坐|呼吸|放松/.test(searchableText)) {
         return "情志";
     }
+    return undefined;
 }
 
 const currentTips = computed(() => {
