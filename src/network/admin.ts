@@ -23,9 +23,23 @@ export interface PageResult<T> {
 }
 
 export const ApiAdmin = {
+  /** 用户统计：平台总用户数 + 今日新增 */
+  getUserStats: () =>
+    GAxiosWithCredentials.get<{ total: number; todayNew: number }>('/users/admin/stats'),
+
   /** 分页搜索用户列表 */
-  listUsers: (keyword: string, page = 1, size = 10) =>
-    GAxiosWithCredentials.get('/users/admin/list', { params: { keyword, page, size } }),
+  listUsers: (
+    keyword?: string,
+    page = 1,
+    size = 10,
+    status?: string,
+    roleCode?: string,
+    orderBy?: string,
+    date?: string,
+  ) =>
+    GAxiosWithCredentials.get('/users/admin/list', {
+      params: { keyword, page, size, status, roleCode, orderBy, date },
+    }),
 
   /** 修改用户角色 */
   updateUserRole: (userId: number, roleCode: number) =>

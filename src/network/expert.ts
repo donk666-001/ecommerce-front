@@ -1,6 +1,5 @@
 import { GAxios, GAxiosWithCredentials } from "@/plugins";
 
-/** 推荐专家卡片 */
 export interface ExpertCardVO {
     id: number;
     realName: string;
@@ -11,15 +10,22 @@ export interface ExpertCardVO {
     isOnline: boolean;
 }
 
-/** 附件信息 */
+export interface ExpertBasicVO {
+    id: number;
+    userId: number;
+    realName: string;
+    avatar: string | null;
+    roleType: string;
+    status: string;
+}
+
 export interface AttachmentInfo {
     docType: string;
-    url: string;   // objectKey（展示时前端拼 MinIO baseUrl）
+    url: string;
     fileName: string;
     size: number;
 }
 
-/** 用户端申请状态 VO */
 export interface MyApplicationVO {
     id: number;
     status: 'SUBMITTED' | 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | 'SIGNED' | 'ACTIVATED';
@@ -31,15 +37,17 @@ export interface MyApplicationVO {
     rejectSuggestion: string | null;
     createdAt: string;
     reviewedAt: string | null;
+    agreementVersion: string | null;
+    signedAt: string | null;
+    activatedAt: string | null;
 }
 
-/** 管理员端申请详情 VO */
 export interface AdminApplicationVO extends MyApplicationVO {
     userId: number;
     phone: string | null;
+    email: string | null;
 }
 
-/** 提交申请请求体 */
 export interface SubmitApplicationRequest {
     roleType: string;
     realName: string;
@@ -47,13 +55,13 @@ export interface SubmitApplicationRequest {
     attachments: { docType: string; objectKey: string; fileName: string; size: number }[];
 }
 
-/** 专家相关接口 */
 export const ApiExpert = {
-    /** 获取推荐专家列表，默认 12 条 */
     getRecommendExperts: (limit = 12) =>
         GAxios.get<ExpertCardVO[]>('/experts/recommend', { params: { limit } }),
 
-    /** 上传认证附件，返回 objectKey */
+    getMyExpertProfile: () =>
+        GAxiosWithCredentials.get<ExpertBasicVO>('/experts/me'),
+
     uploadAttachment: (file: File) => {
         const form = new FormData();
         form.append('file', file);
@@ -62,29 +70,46 @@ export const ApiExpert = {
         });
     },
 
-    /** 提交认证申请 */
     submitApplication: (req: SubmitApplicationRequest) =>
         GAxiosWithCredentials.post<MyApplicationVO>('/experts/apply', req),
 
-    /** 查询我的申请状态（null = 未申请） */
     getMyApplication: () =>
         GAxiosWithCredentials.get<MyApplicationVO | null>('/experts/apply/my'),
 
-    /** 撤回申请 */
     withdrawApplication: (appId: number) =>
         GAxiosWithCredentials.post<void>(`/experts/apply/${appId}/withdraw`),
 
-    /** 管理员：分页列表 */
-    adminListApplications: (status?: string, page = 1, size = 20) =>
-        GAxiosWithCredentials.get('/experts/apply/admin/list', { params: { status, page, size } }),
+    signContract: (appId: number) =>
+        GAxiosWithCredentials.post<MyApplicationVO>(`/experts/apply/${appId}/sign`),
 
-    /** 管理员：申请详情 */
+    adminGetStats: () =>
+        GAxiosWithCredentials.get<{ total: number; todayNew: number }>('/experts/apply/admin/stats'),
+
+    adminListApplications: (
+        status?: string,
+        page = 1,
+        size = 20,
+        keyword?: string,
+        roleType?: string,
+        orderBy?: string,
+        date?: string,
+    ) =>
+        GAxiosWithCredentials.get('/experts/apply/admin/list', {
+            params: { status, page, size, keyword, roleType, orderBy, date },
+        }),
+
     adminGetApplication: (appId: number) =>
         GAxiosWithCredentials.get<AdminApplicationVO>(`/experts/apply/admin/${appId}`),
 
-    /** 管理员：审核（APPROVE / REJECT） */
-    adminReviewApplication: (appId: number, action: 'APPROVE' | 'REJECT',
-                             rejectReason?: string, rejectSuggestion?: string) =>
-        GAxiosWithCredentials.post<void>(`/experts/apply/admin/${appId}/review`,
-            { action, rejectReason, rejectSuggestion }),
+    adminReviewApplication: (
+        appId: number,
+        action: 'APPROVE' | 'REJECT',
+        rejectReason?: string,
+        rejectSuggestion?: string,
+    ) =>
+        GAxiosWithCredentials.post<void>(`/experts/apply/admin/${appId}/review`, {
+            action,
+            rejectReason,
+            rejectSuggestion,
+        }),
 };

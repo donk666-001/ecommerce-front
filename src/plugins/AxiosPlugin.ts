@@ -44,8 +44,11 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
             // 有响应错误
             const { status, data } = error.response;
             if (status === 401) {
-                // refresh 接口 401 是正常行为（未登录），由 router guard 处理，不触发跳转
-                if (error.config?.url?.includes('/users/refresh')) {
+                // 以下接口的 401 由各自的调用方静默处理，不触发全局跳转
+                // /users/refresh → router guard 判断未登录，正常流转
+                // /users/info   → loadUserInfo() 自行 catch 降级
+                const silentPaths = ['/users/refresh', '/users/info'];
+                if (silentPaths.some(p => error.config?.url?.includes(p))) {
                     return Promise.reject(error);
                 }
                 console.warn("认证过期", data?.message);
@@ -53,9 +56,10 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                 import("@/store/user").then(({ useUserStore }) => {
                     useUserStore().clearLoginInfo();
                 });
+                const loginPath = `${import.meta.env.BASE_URL}login`;
                 const current = window.location.pathname;
-                const redirect = current !== "/e-commerce/login" ? `?redirect=${encodeURIComponent(current)}` : "";
-                window.location.href = `/e-commerce/login${redirect}`;
+                const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
+                window.location.href = `${loginPath}${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);
             }

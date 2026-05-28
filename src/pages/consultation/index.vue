@@ -16,7 +16,7 @@
                     <span class="meta-item">💬 今日服务 <strong>1,256 次</strong></span>
                 </template>
                 <template v-else>
-                    <span class="meta-item">⏳ 待接诊 <strong style="color:var(--cinnabar);">3</strong></span>
+                    <span class="meta-item">⏳ 待接诊 <strong style="color:var(--cinnabar);">{{ expertPendingCount }}</strong></span>
                     <span class="meta-item">📖 今日阅读 <strong>2,148</strong></span>
                     <span class="meta-item">🎓 在售课程 <strong>5</strong></span>
                     <span class="meta-item">⭐ 综合评分 <strong>4.9</strong></span>
@@ -48,8 +48,8 @@
                         <div style="font-family: 'STKaiti', serif; font-size:64px; color: var(--gold-deep); font-weight:700;">{{ solarTerm?.name ?? '立夏' }}</div>
                         <div style="flex:1;">
                             <div style="font-size:13px; color: var(--gold-deep); letter-spacing:3px; margin-bottom:4px;">{{ solarTermDateLabel || '2026 · 5 · 5 · 节气专题' }}</div>
-                            <h3 style="font-family:'STKaiti',serif; font-size:22px; margin-bottom:6px;">名家说节气 · 顺应天时而养</h3>
-                            <p style="color: var(--ink-muted); font-size:14px;">{{ solarTerm?.name ?? '立夏' }}时节，中医专家带你从作息、饮食、运动三方面调养心阳，{{ solarTerm?.name ?? '立夏' }}专题已收录 12 篇医师原创内容。</p>
+                            <h3 style="font-family:'STKaiti',serif; font-size:22px; margin-bottom:6px;">{{ solarTerm?.tagline ?? '名家说节气 · 顺应天时而养' }}</h3>
+                            <p style="color: var(--ink-muted); font-size:14px;">{{ solarTerm?.description ?? `${solarTerm?.name ?? '立夏'}时节 · 顺应天时调养身体。` }}</p>
                         </div>
                         <button class="btn btn-gold">进入专题</button>
                     </div>
@@ -145,7 +145,11 @@
                                 <span v-else class="pill pill-gray">离线</span>
                             </div>
                             <!-- 简介 -->
-                            <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
+                            <div class="doctor-bio" :title="doc.bio || '暂无简介'">
+                                <span v-for="(line, idx) in formatDoctorBioLines(doc.bio)" :key="idx" class="doctor-bio-line">
+                                    {{ line }}
+                                </span>
+                            </div>
                             <!-- 咨询按钮 -->
                             <button class="doctor-consult-btn" @click.stop="startConsult(doc)">向TA咨询 ›</button>
                         </div>
@@ -374,7 +378,7 @@
                 </div>
 
                 <!-- 仅普通用户显示认证引导 -->
-                <div v-if="!isExpertView" class="grow-card">
+                <div v-if="isRegularUserView" class="grow-card">
                     <span class="new-tag">★ NEW</span>
                     <h3>成为颐养阁认证专家</h3>
                     <p>有医师 / 营养师 / 康复师 / 养生达人资质？加入名医健康圈，开启内容创作、课程发布与在线问诊三重通道，让专业被更多人看见。</p>
@@ -415,7 +419,7 @@
                             <div class="num">{{ m4StepActive > 2 ? '✓' : '2' }}</div><div class="lab">资质上传</div>
                         </div>
                         <div class="step" :class="{ done: m4StepActive > 3, on: m4StepActive === 3 }">
-                            <div class="num">{{ m4StepActive > 3 ? '✓' : '3' }}</div><div class="lab">视频面审</div>
+                            <div class="num">{{ m4StepActive > 3 ? '✓' : '3' }}</div><div class="lab">审核中</div>
                         </div>
                         <div class="step" :class="{ done: m4StepActive > 4, on: m4StepActive === 4 }">
                             <div class="num">{{ m4StepActive > 4 ? '✓' : '4' }}</div><div class="lab">签约</div>
@@ -430,27 +434,60 @@
                 <template v-if="!m4ShowForm && myApplication">
                     <div class="card">
                         <div class="card-title"><span class="dot"></span>申请状态</div>
-                        <div v-if="myApplication.status === 'SUBMITTED' || myApplication.status === 'REVIEWING'"
-                             style="text-align:center; padding:20px 0;">
-                            <div style="font-size:48px; margin-bottom:12px;">⏳</div>
-                            <div style="font-size:16px; font-weight:600; margin-bottom:8px;">
-                                {{ myApplication.status === 'SUBMITTED' ? '申请已提交，等待审核' : '审核进行中...' }}
+
+                        <!-- 签约后等待开通（优先级最高，覆盖其他状态显示） -->
+                        <div v-if="m4Activating" style="text-align:center; padding:20px 0;">
+                            <div class="activate-spinner-wrap">
+                                <div class="activate-spinner"></div>
                             </div>
-                            <div style="color:var(--ink-muted); font-size:13px; margin-bottom:20px;">
-                                预计 1-5 个工作日反馈，通过后将通知您
-                            </div>
-                            <button class="btn btn-ghost" :disabled="m4Withdrawing" @click="m4Withdraw">
-                                {{ m4Withdrawing ? '撤回中...' : '撤回申请' }}
-                            </button>
-                        </div>
-                        <div v-else-if="myApplication.status === 'APPROVED' || myApplication.status === 'SIGNED' || myApplication.status === 'ACTIVATED'"
-                             style="text-align:center; padding:20px 0;">
-                            <div style="font-size:48px; margin-bottom:12px;">🎉</div>
-                            <div style="font-size:16px; font-weight:600; color:var(--jade);">审核已通过！</div>
+                            <div style="font-size:16px; font-weight:600; color:var(--jade); margin-bottom:8px;">专家权限开通中…</div>
                             <div style="color:var(--ink-muted); font-size:13px; margin-top:8px;">
-                                请等待运营人员联系您完成后续签约流程
+                                ✍️ 您已签约成功，请稍等片刻后开通
                             </div>
                         </div>
+
+                        <template v-else>
+                            <div v-if="myApplication.status === 'SUBMITTED' || myApplication.status === 'REVIEWING'"
+                                 style="text-align:center; padding:20px 0;">
+                                <div style="font-size:48px; margin-bottom:12px;">⏳</div>
+                                <div style="font-size:16px; font-weight:600; margin-bottom:8px;">
+                                    审核中
+                                </div>
+                                <div style="color:var(--ink-muted); font-size:13px; margin-bottom:20px;">
+                                    预计 1-5 个工作日反馈，通过后将通知您
+                                </div>
+                                <button class="btn btn-ghost" :disabled="m4Withdrawing" @click="m4Withdraw">
+                                    {{ m4Withdrawing ? '撤回中...' : '撤回申请' }}
+                                </button>
+                            </div>
+                            <div v-else-if="myApplication.status === 'APPROVED'"
+                                 style="text-align:center; padding:20px 0;">
+                                <div style="font-size:48px; margin-bottom:12px;">🎉</div>
+                                <div style="font-size:16px; font-weight:600; color:var(--jade);">审核已通过！</div>
+                                <div style="color:var(--ink-muted); font-size:13px; margin-top:8px; margin-bottom:20px;">
+                                    请前往签约合同，签约后将立即开通专家权限
+                                </div>
+                                <button class="btn btn-gold" :disabled="m4Signing" @click="m4SignContract">
+                                    {{ m4Signing ? '签约开通中...' : '前往签约合同' }}
+                                </button>
+                            </div>
+                            <div v-else-if="myApplication.status === 'SIGNED'"
+                                 style="text-align:center; padding:20px 0;">
+                                <div style="font-size:48px; margin-bottom:12px;">✍️</div>
+                                <div style="font-size:16px; font-weight:600; color:var(--jade);">已签约，等待开通</div>
+                                <div style="color:var(--ink-muted); font-size:13px; margin-top:8px;">
+                                    系统正在同步专家权限，请稍后刷新查看
+                                </div>
+                            </div>
+                            <div v-else-if="myApplication.status === 'ACTIVATED'"
+                                 style="text-align:center; padding:20px 0;">
+                                <div style="font-size:48px; margin-bottom:12px;">✅</div>
+                                <div style="font-size:16px; font-weight:600; color:var(--jade);">专家权限已开通</div>
+                                <div style="color:var(--ink-muted); font-size:13px; margin-top:8px;">
+                                    您现在可以进入专家工作台处理咨询和内容服务
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </template>
 
@@ -542,10 +579,10 @@
         <div v-show="activeTab === 'm5'" class="panel">
             <div class="space-y">
                 <div class="expert-hero">
-                    <div class="greet">张医生，午安</div>
-                    <div class="greet-sub">立夏 · 阳气方盛 · 今日为您匹配了 3 位待接诊用户</div>
+                    <div class="greet">{{ expertDoctorName }}，{{ timeGreeting() }}</div>
+                    <div class="greet-sub">{{ solarTerm?.name ?? '立夏' }} · 阳气方盛 · 今日为您匹配了 {{ expertPendingCount }} 位待接诊用户</div>
                     <div class="expert-stats">
-                        <div class="expert-stat urgent"><div class="n">3</div><div class="l">⏳ 待接诊（请求转人工）</div></div>
+                        <div class="expert-stat urgent"><div class="n">{{ expertPendingCount }}</div><div class="l">⏳ 待接诊（请求转人工）</div></div>
                         <div class="expert-stat"><div class="n">2.1k</div><div class="l">📖 今日内容阅读</div></div>
                         <div class="expert-stat"><div class="n">5</div><div class="l">🎓 在售课程</div></div>
                         <div class="expert-stat"><div class="n">4.9</div><div class="l">⭐ 综合服务评分</div></div>
@@ -556,7 +593,7 @@
                     <div class="card-title"><span class="dot"></span>快捷工作台</div>
                     <div class="quick-grid">
                         <div class="quick-cell" @click="switchTab('m2'); consultView = 'expert'">
-                            <div class="ico">💬</div><div class="lab">咨询会话</div><span class="badge">3</span>
+                            <div class="ico">💬</div><div class="lab">咨询会话</div><span class="badge">{{ activeList.length }}</span>
                         </div>
                         <div class="quick-cell" @click="toast('功能演示中')"><div class="ico">📝</div><div class="lab">写内容</div></div>
                         <div class="quick-cell" @click="toast('功能演示中')"><div class="ico">🎓</div><div class="lab">发课程</div></div>
@@ -620,7 +657,13 @@
 
 </main>
 
-        <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
+        <div class="toast" :class="[`toast-${toastType}`, { show: toastVisible }]">
+            <div class="toast-icon">{{ toastIcon }}</div>
+            <div class="toast-copy">
+                <div class="toast-title">{{ toastTitle }}</div>
+                <div v-if="toastDetail" class="toast-detail">{{ toastDetail }}</div>
+            </div>
+        </div>
 
         <!-- 排队提示弹窗 -->
         <Teleport to="body">
@@ -674,11 +717,98 @@
                                     <span v-if="doc.isOnline" class="pill pill-jade">在线</span>
                                     <span v-else class="pill pill-gray">离线</span>
                                 </div>
-                                <div class="doctor-bio">{{ doc.bio || '暂无简介' }}</div>
+                                <div class="doctor-bio" :title="doc.bio || '暂无简介'">
+                                    <span v-for="(line, idx) in formatDoctorBioLines(doc.bio)" :key="idx" class="doctor-bio-line">
+                                        {{ line }}
+                                    </span>
+                                </div>
                                 <button class="doctor-consult-btn" @click.stop="startConsultFromModal(doc)">向TA咨询 ›</button>
                             </div>
                         </div>
                         <div v-else class="expert-empty">该职称下暂无专家</div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- ===== 签约合同弹窗 ===== -->
+        <Teleport to="body">
+            <div v-if="showSignContractDialog" class="contract-dialog-overlay">
+                <div class="contract-dialog">
+                    <div class="contract-dialog-header">
+                        <div>
+                            <div class="contract-kicker">EXPERT SERVICE AGREEMENT</div>
+                            <h3 class="font-serif">颐养阁专家入驻服务协议</h3>
+                        </div>
+                        <button class="contract-close" :disabled="m4Signing" aria-label="关闭协议" @click="m4DeclineContract">×</button>
+                    </div>
+
+                    <div ref="contractBodyRef" class="contract-body" @scroll="handleContractScroll">
+                        <p>甲方：颐养阁平台</p>
+                        <p>乙方：{{ myApplication?.realName || userStore.G_LoginInfo.nickName || '认证用户' }}</p>
+                        <p>签署日期：{{ new Date().toLocaleDateString() }}</p>
+                        <p>乙方已提交专家认证资料并通过平台审核。为明确双方权利义务，甲乙双方就乙方入驻颐养阁名医健康圈并提供健康咨询、内容创作、课程服务、用户互动及平台后续开放的专家服务事项，达成如下模拟协议：</p>
+
+                        <h4>一、定义与适用范围</h4>
+                        <p>本协议所称“平台”指颐养阁及其运营的名医健康圈相关产品、页面、接口与服务；“专家服务”指乙方基于自身专业背景向用户提供的健康科普、咨询答疑、课程内容、训练建议、生活方式建议及平台认可的其他服务。</p>
+                        <p>本协议为专家入驻开通阶段的模拟签约文本，用于当前业务流程联调和功能演示。正式上线前，平台可根据法律法规、业务规则和合规审查结果更新协议版本。</p>
+
+                        <h4>二、入驻身份与服务内容</h4>
+                        <p>乙方同意以认证专家身份入驻平台，并在审核通过的角色类型及专业资质范围内提供服务。乙方应确保服务内容与自身认证类型相匹配，不得借平台名义从事与认证资质无关的经营活动。</p>
+                        <p>乙方可在平台内发布健康科普文章、录制或发布课程、参与在线咨询、维护个人主页、响应用户转人工咨询请求，并使用平台为专家开放的数据看板、收益结算、内容管理等功能。</p>
+                        <p>乙方不得超出线上健康咨询和科普边界进行诊断、处方、开具医学证明、承诺疗效或替代线下医疗机构诊疗。用户存在急危重症、疑似重大疾病、持续恶化症状或明确需要线下检查时，乙方应提示用户及时就医。</p>
+
+                        <h4>三、资料真实性与持续合规</h4>
+                        <p>乙方承诺其提交的身份信息、资质证书、执业证明、学历证明、作品材料、从业经历及联系方式均真实、合法、有效，不存在伪造、冒用、篡改、过期、被吊销或被限制执业等情形。</p>
+                        <p>乙方资料发生变更、证书到期、执业状态变化、联系方式变化或出现可能影响专家服务资格的情况时，应及时在平台更新资料并配合复核。平台有权基于风控、投诉、监管要求或内部审核需要，要求乙方补充材料或重新认证。</p>
+
+                        <h4>四、服务行为规范</h4>
+                        <p>乙方应遵守法律法规、平台规则、医学伦理和职业道德，以专业、审慎、真实、友善的方式服务用户。乙方应避免使用恐吓性、绝对化、诱导性或夸大宣传语言。</p>
+                        <p>乙方不得发布虚假健康信息、违法广告、违规医疗宣传、违禁药品或器械推广内容，不得诱导用户脱离平台私下交易，不得向用户索要与服务无关的敏感个人信息。</p>
+                        <p>乙方应尊重用户隐私，不得泄露、出售、传播、截图公开或以其他方式不当使用用户咨询内容、健康信息、联系方式、身份信息及平台数据。</p>
+
+                        <h4>五、内容与知识产权</h4>
+                        <p>乙方在平台发布的原创内容，其著作权归乙方或合法权利人所有。乙方授权平台在服务展示、推荐分发、运营推广、审核存档、用户服务和纠纷处理范围内使用相关内容。</p>
+                        <p>乙方应保证发布内容不侵犯第三方知识产权、肖像权、名誉权、隐私权或其他合法权益。涉及引用、转载、合作内容或第三方素材时，乙方应确保已取得合法授权或符合合理使用要求。</p>
+
+                        <h4>六、平台审核与权限开通</h4>
+                        <p>乙方点击“同意并签约”后，视为乙方已完整阅读、理解并接受本协议。平台将立即为乙方开通专家权限，并同步刷新乙方账号角色。开通后，乙方可进入专家工作台处理咨询、发布内容或使用平台后续开放的专家功能。</p>
+                        <p>平台有权对乙方发布内容、服务记录、用户投诉、资质状态及异常行为进行审核。审核不代表平台对乙方服务结果作出保证，也不免除乙方应自行承担的专业责任与合规责任。</p>
+
+                        <h4>七、收益与结算</h4>
+                        <p>如平台开放付费咨询、课程售卖、内容分成或其他收益能力，乙方收益以平台届时展示的结算规则、订单记录和实际到账数据为准。平台可根据退款、投诉、违规处理、税费扣缴、渠道手续费等因素进行结算调整。</p>
+                        <p>乙方应确保收款账户、实名信息及税务资料真实有效。因乙方资料错误、账户异常或违反规则导致无法结算、延迟结算或被扣回款项的，乙方自行承担相应后果。</p>
+
+                        <h4>八、数据安全与用户隐私</h4>
+                        <p>平台将根据业务需要处理专家认证材料、服务记录、用户咨询记录、消息通知、登录状态和角色权限等数据。乙方应合理使用平台提供的数据，不得通过爬取、批量导出、截图传播、倒卖或其他方式不当获取和使用平台数据。</p>
+                        <p>乙方因提供服务接触到的用户健康信息、咨询内容、身份资料等均属于敏感信息，乙方应严格保密。未经用户或平台授权，乙方不得将相关信息用于本协议之外的目的。</p>
+
+                        <h4>九、违约处理</h4>
+                        <p>如乙方存在虚假认证、超范围服务、违规宣传、诱导私下交易、泄露用户隐私、恶意刷单、服务态度恶劣、侵犯第三方权益或其他违反法律法规及平台规则的行为，平台有权采取提醒整改、限制功能、下架内容、暂停接单、扣减收益、终止专家权限等处理措施。</p>
+                        <p>如乙方行为造成用户、平台或第三方损失，乙方应依法承担相应责任。平台因配合监管、处理投诉、维护平台安全或保护用户权益而采取必要措施的，不视为违约。</p>
+
+                        <h4>十、协议变更、退出与终止</h4>
+                        <p>平台可根据法律法规、监管要求、业务调整或风控需要更新本协议及相关规则，并通过站内通知、页面提示或其他合理方式告知乙方。乙方继续使用专家服务功能的，视为接受更新后的协议。</p>
+                        <p>乙方可按平台规则申请退出专家身份。退出前已发生的订单、咨询、课程交付、售后、投诉处理、结算义务和保密义务仍应继续履行。平台因乙方违规或资质失效终止专家权限的，可保留必要记录用于审计和纠纷处理。</p>
+
+                        <h4>十一、免责声明</h4>
+                        <p>平台提供信息展示、技术连接、在线互动和服务管理能力，不对乙方的专业结论、服务效果或用户采纳建议后的结果作出绝对保证。乙方应基于专业判断独立、审慎地提供服务。</p>
+                        <p>因不可抗力、网络故障、第三方服务异常、监管要求、系统维护或用户自身原因导致服务中断、延迟、数据展示异常的，平台将在合理范围内协助处理。</p>
+
+                        <h4>十二、确认与生效</h4>
+                        <p>乙方确认，已充分阅读并理解本协议全部条款，特别是服务边界、资料真实性、隐私保护、违规处理、收益结算和免责声明等内容。乙方点击“同意并签约”即表示本协议生效，并同意平台为其开通专家权限。</p>
+                    </div>
+
+                    <div class="contract-confirm">
+                        <span v-if="contractScrolledToEnd">已阅读完整协议，可以选择是否签约。</span>
+                        <span v-else>请向下滚动并阅读完整协议后，才可点击“同意并签约”。</span>
+                    </div>
+
+                    <div class="contract-actions">
+                        <button class="btn btn-ghost" :disabled="m4Signing" @click="m4DeclineContract">不同意签约</button>
+                        <button class="btn btn-gold" :disabled="m4Signing || !contractScrolledToEnd" @click="m4AgreeSignContract">
+                            {{ m4Signing ? '签约开通中...' : contractScrolledToEnd ? '同意并签约' : '请先阅读完整协议' }}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -691,7 +821,7 @@ import { ref, computed, watch, onMounted, nextTick, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import { useUserStore } from "@/store/user";
-import { ApiCircle, ApiExpert, ApiConsult, type MyApplicationVO, type AttachmentInfo } from "@/network";
+import { ApiCircle, ApiExpert, ApiConsult, type MyApplicationVO, type AttachmentInfo, type ExpertBasicVO } from "@/network";
 import { useConsultSocket } from "@/composables/useConsultSocket";
 import { useExpertQueueSocket } from "@/composables/useExpertQueueSocket";
 import { useExpertOnlineSocket } from "@/composables/useExpertOnlineSocket";
@@ -701,10 +831,23 @@ const router = useRouter();
 const userStore = useUserStore();
 const isLoggedIn = computed(() => !!userStore.G_LoginInfo.id);
 const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
+const isRegularUserView = computed(() => userStore.G_UserInfo.role_id === 3);
 const heroTitle = computed(() => isExpertView.value ? '专家工作台 · 名医健康圈' : '名医健康圈');
+const expertPendingCount = computed(() => pendingList.value.length);
+
+/** 时段问候语 */
+function timeGreeting(): string {
+    const h = new Date().getHours();
+    if (h >= 6 && h < 12) return '早安';
+    if (h >= 12 && h < 14) return '午安';
+    if (h >= 14 && h < 18) return '下午好';
+    if (h >= 18 && h < 22) return '晚上好';
+    return '夜深了';
+}
+
 const heroSub = computed(() =>
     isExpertView.value
-        ? '欢迎回来，张景行医生。今日有 3 位用户请求转人工，2 篇内容获得首页推荐，预计周收益 ¥3,820。'
+        ? `欢迎回来，${expertDoctorName.value}。今日有 ${expertPendingCount.value} 位用户请求转人工，2 篇内容获得首页推荐，预计周收益 ¥3,820。`
         : '汇聚执业医师、营养师、康复治疗师与养生达人，提供专业内容、系统课程与一对一健康咨询 —— AI 助手先接待，复杂问题随时转人工。'
 );
 
@@ -720,7 +863,7 @@ const allTabs = [
 const visibleTabs = computed(() => {
     const r = userStore.G_UserInfo.role_id;
     return allTabs.filter(t => {
-        if (t.name === 'm4') return r === 1;  // 专家认证仅普通用户可见
+        if (t.name === 'm4') return r === 3;  // 专家认证仅普通用户可见
         if (t.name === 'm5') return r === 2;  // 专家工作台仅认证专家可见
         return true;
     });
@@ -733,13 +876,24 @@ function switchTab(name: string) {
 
 // ---- Toast ----
 const toastVisible = ref(false);
-const toastMsg = ref("");
+type ToastType = 'info' | 'success' | 'warning' | 'error';
+const toastTitle = ref("");
+const toastDetail = ref("");
+const toastType = ref<ToastType>('info');
+const toastIcon = computed(() => {
+    if (toastType.value === 'success') return '✓';
+    if (toastType.value === 'warning') return '!';
+    if (toastType.value === 'error') return '×';
+    return 'i';
+});
 let toastTimer: ReturnType<typeof setTimeout>;
-function toast(msg: string) {
-    toastMsg.value = msg;
+function toast(title: string, detail = "", type: ToastType = 'info') {
+    toastTitle.value = title;
+    toastDetail.value = detail;
+    toastType.value = type;
     toastVisible.value = true;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toastVisible.value = false; }, 1800);
+    toastTimer = setTimeout(() => { toastVisible.value = false; }, detail ? 2600 : 1800);
 }
 
 // ---- 个人主页动态信息 ----
@@ -784,15 +938,19 @@ const solarTermDateLabel = computed(() => {
 const { subscribe: subscribeOnline, unsubscribe: unsubscribeOnline } = useExpertOnlineSocket();
 
 onMounted(async () => {
-    try {
-        const [stRes, expRes] = await Promise.all([
-            ApiCircle.getSolarTerm(),
-            ApiExpert.getRecommendExperts(),
-        ]);
-        if (stRes.data?.data) solarTerm.value = stRes.data.data;
-        if (expRes.data?.data) expertList.value = expRes.data.data;
-    } catch {
-        // 接口异常时保持默认显示
+    // 两个接口独立加载，互不影响：节气卡片和专家列表各自降级，不再用 Promise.all 绑死
+    const [stResult, expResult] = await Promise.allSettled([
+        ApiCircle.getSolarTerm(),
+        ApiExpert.getRecommendExperts(),
+    ]);
+    if (stResult.status === 'fulfilled' && stResult.value.data?.data) {
+        solarTerm.value = stResult.value.data.data;
+    }
+    if (expResult.status === 'fulfilled' && expResult.value.data?.data) {
+        expertList.value = expResult.value.data.data;
+    }
+    if (isExpertView.value && expertProfile.value === undefined) {
+        await loadMyExpertProfile();
     }
 
     // 用户侧订阅专家在线状态实时推送（非专家视图才需要）
@@ -972,6 +1130,15 @@ function roleLabel(roleType: string) {
         REHAB: '康复治疗师', GURU: '养生达人',
     };
     return map[roleType] ?? roleType;
+}
+
+function formatDoctorBioLines(bio: string | null | undefined) {
+    const chars = Array.from(bio?.trim().replace(/\s+/g, ' ') || '暂无简介');
+    const lines: string[] = [];
+    for (let i = 0; i < chars.length; i += 18) {
+        lines.push(chars.slice(i, i + 18).join(''));
+    }
+    return lines;
 }
 /** 头像是完整 URL 时直接用，否则取姓名首字 */
 function avatarText(expert: ExpertCardDTO) {
@@ -1207,6 +1374,11 @@ function truncateText(text: string | null, maxLen: number): string {
     return text.slice(0, maxLen) + '…';
 }
 
+// 专家视角激活时拉取待接诊数量（供 hero 和 Module 5 使用）
+watch(isExpertView, (active) => {
+    if (active) loadExpertQueues();
+}, { immediate: true });
+
 // 切换到 m2 Tab 且为专家视角时：拉取队列 + 订阅实时更新通知 + 启动轮询
 const { subscribe: subscribeExpertQueue, unsubscribe: unsubscribeExpertQueue } = useExpertQueueSocket();
 /** 待接诊队列 15 秒轮询定时器，兜底捕获 STOMP 未覆盖的数据库变更 */
@@ -1257,6 +1429,11 @@ const MINIO_BASE = 'http://localhost:9000/mingyi-public';
 
 // 当前用户申请状态（null=未申请，加载中=undefined）
 const myApplication = ref<MyApplicationVO | null | undefined>(undefined);
+const expertProfile = ref<ExpertBasicVO | null | undefined>(undefined);
+const COMPOUND_SURNAMES = [
+    '欧阳', '司马', '上官', '诸葛', '东方', '夏侯', '皇甫', '尉迟', '公孙', '慕容',
+    '司徒', '司空', '长孙', '宇文', '南宫', '独孤', '令狐', '轩辕', '钟离', '闾丘',
+] as const;
 // 表单状态
 const m4RoleIdx = ref(0);
 const m4RealName = ref('');
@@ -1271,6 +1448,14 @@ const fileInputRefs = ref<Record<string, HTMLInputElement | null>>({});
 const m4Submitting = ref(false);
 // 撤回中
 const m4Withdrawing = ref(false);
+// 签约开通中
+const m4Signing = ref(false);
+const m4Activating = ref(false);
+const m4ActivateCountdown = ref(10);
+// 签约合同弹窗
+const showSignContractDialog = ref(false);
+const contractBodyRef = ref<HTMLElement | null>(null);
+const contractScrolledToEnd = ref(false);
 
 const certRoles = [
     { ico: "⚕️", title: "执业医师",   roleType: "DOCTOR",       req: "医师资格证\n执业证 · 职称证",    perm: "✓ 全功能 · 可诊疗" },
@@ -1310,10 +1495,10 @@ const currentSlots = computed(() =>
     roleSlotMap[certRoles[m4RoleIdx.value].roleType] ?? []);
 
 // 进度条步骤：状态 → 当前活跃步骤（1-based）
-const m4StepActive = computed(() => {
+const m4StepActive = computed<number>(() => {
     const s = myApplication.value?.status;
-    if (!s || s === 'SUBMITTED') return 2;
-    if (s === 'REVIEWING') return 3;
+    if (!s) return 1;
+    if (s === 'SUBMITTED' || s === 'REVIEWING') return 3;
     if (s === 'APPROVED') return 4;
     if (s === 'SIGNED') return 5;
     if (s === 'ACTIVATED') return 6;
@@ -1325,6 +1510,16 @@ const m4ShowForm = computed(() =>
     myApplication.value === null
     || myApplication.value?.status === 'REJECTED'
     || myApplication.value?.status === 'WITHDRAWN');
+const expertRealName = computed(() => expertProfile.value?.realName?.trim() || '');
+const expertDoctorName = computed(() => {
+    const realName = expertRealName.value.replace(/\s+/g, '');
+    if (realName) {
+        const compoundSurname = COMPOUND_SURNAMES.find(surname => realName.startsWith(surname));
+        return `${compoundSurname ?? realName.charAt(0)}医生`;
+    }
+    const nickname = userStore.G_LoginInfo.nickName?.trim();
+    return nickname ? `${nickname.charAt(0)}医生` : '医生';
+});
 
 // 页面切到 m4 时加载申请状态
 watch(activeTab, async (tab) => {
@@ -1332,6 +1527,24 @@ watch(activeTab, async (tab) => {
         await loadMyApplication();
     }
 });
+watch(
+    () => userStore.G_UserInfo.role_id,
+    async (roleId) => {
+        if (roleId === 2 && expertProfile.value === undefined) {
+            await loadMyExpertProfile();
+        }
+    },
+    { immediate: true }
+);
+
+async function loadMyExpertProfile() {
+    try {
+        const res = await ApiExpert.getMyExpertProfile();
+        expertProfile.value = (res as any)?.data?.data ?? null;
+    } catch {
+        expertProfile.value = null;
+    }
+}
 
 async function loadMyApplication() {
     try {
@@ -1409,6 +1622,63 @@ async function m4Withdraw() {
     } finally {
         m4Withdrawing.value = false;
     }
+}
+
+async function m4SignContract() {
+    if (!myApplication.value?.id) return;
+    contractScrolledToEnd.value = false;
+    showSignContractDialog.value = true;
+    await nextTick();
+    updateContractScrollState();
+}
+
+function m4DeclineContract() {
+    showSignContractDialog.value = false;
+    contractScrolledToEnd.value = false;
+    toast('已取消签约', '专家权限暂未开通，稍后仍可回到这里继续签约。', 'warning');
+}
+
+async function m4AgreeSignContract() {
+    if (!myApplication.value?.id) return;
+    if (!contractScrolledToEnd.value) {
+        toast('请先阅读完整协议', '滚动到协议底部后，才能进行签约确认。', 'warning');
+        return;
+    }
+    m4Signing.value = true;
+    try {
+        const res = await ApiExpert.signContract(myApplication.value.id);
+        myApplication.value = (res as any)?.data?.data ?? myApplication.value;
+        showSignContractDialog.value = false;
+    } catch (e: any) {
+        alert(e?.response?.data?.message ?? '签约失败，请重试');
+        return;
+    } finally {
+        m4Signing.value = false;
+    }
+
+    // 10 秒倒计时等待专家权限同步
+    m4Activating.value = true;
+    m4ActivateCountdown.value = 10;
+    const countdownTimer = setInterval(() => { m4ActivateCountdown.value--; }, 1000);
+    await new Promise<void>(resolve => setTimeout(resolve, 10000));
+    clearInterval(countdownTimer);
+
+    const refreshed = await userStore.refreshToken();
+    m4Activating.value = false;
+    toast('专家权限已开通', '正在为您跳转到专家工作台。', 'success');
+    if (refreshed && userStore.G_UserInfo.role_id === 2) {
+        activeTab.value = 'm5';
+    }
+}
+
+function handleContractScroll() {
+    updateContractScrollState();
+}
+
+function updateContractScrollState() {
+    const el = contractBodyRef.value;
+    if (!el) return;
+    contractScrolledToEnd.value = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
 }
 
 function m4ResetForm() {
@@ -1533,6 +1803,7 @@ function m4ResetForm() {
 .doctor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
 .doctor-card {
+    --doctor-content-width: min(88%, 232px);
     position: relative; overflow: hidden; border-radius: 24px;
     padding: 28px 22px 24px;
     background: linear-gradient(180deg, #fbf8f3 0%, #f5efe7 100%);
@@ -1596,15 +1867,45 @@ function m4ResetForm() {
     position: relative; z-index: 1;
 }
 
+.doctor-online-status {
+    min-height: 34px;
+    margin: 4px auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+}
+
+.doctor-online-status .pill {
+    min-width: 60px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+}
+
 .doctor-bio {
     font-size: 12.5px; color: #4f5651; line-height: 1.8; letter-spacing: .5px;
-    padding: 0 4px; text-align: left;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    width: var(--doctor-content-width); max-width: 100%;
+    margin: 0 auto; padding: 0 2px; text-align: center;
+    min-height: calc(1.8em * 3); max-height: calc(1.8em * 3); overflow: hidden;
     position: relative; z-index: 1; flex: 1;
 }
 
+.doctor-bio-line {
+    display: block;
+    text-align: center;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
 .doctor-consult-btn {
-    width: 88%; height: 42px; margin-top: 18px; border: none; outline: none;
+    width: var(--doctor-content-width); max-width: 100%;
+    height: 42px; margin-top: 18px; border: none; outline: none;
     border-radius: 999px; cursor: pointer;
     background: linear-gradient(135deg, #5d7c69, #73907d);
     color: #f9f5ef; font-size: 14px; letter-spacing: 3px; font-family: inherit;
@@ -1691,6 +1992,127 @@ function m4ResetForm() {
 
 .expert-modal-body { flex: 1; overflow-y: auto; padding: 24px; }
 .expert-empty { text-align: center; padding: 48px; color: var(--ink-muted); font-size: 14px; }
+
+// 签约合同弹窗
+.contract-dialog-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(42, 38, 31, 0.48); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; animation: modalBgIn .25s ease;
+}
+.contract-dialog {
+    width: min(720px, 100%);
+    max-height: min(86vh, 760px);
+    background: var(--paper);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(42, 38, 31, 0.24);
+    border: 1px solid rgba(232, 223, 208, 0.8);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideIn .3s cubic-bezier(.22,.61,.36,1);
+}
+.contract-dialog-header {
+    padding: 22px 26px 18px;
+    background: linear-gradient(135deg, #FFFCF3 0%, #EEF6F1 100%);
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 18px;
+}
+.contract-kicker {
+    color: var(--jade); font-size: 11px; letter-spacing: 2px;
+    font-weight: 700; margin-bottom: 6px;
+}
+.contract-dialog-header h3 { color: var(--ink); font-size: 22px; margin: 0; }
+.contract-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(111, 143, 123, 0.28);
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink-muted);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+}
+.contract-close:hover:not(:disabled) {
+    background: var(--cinnabar-soft);
+    border-color: rgba(179, 60, 44, 0.24);
+    color: var(--cinnabar);
+}
+.contract-close:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.contract-body {
+    padding: 22px 26px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(111, 143, 123, 0.46) rgba(232, 223, 208, 0.36);
+    scrollbar-gutter: stable;
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.8;
+    background: var(--paper);
+}
+.contract-body::-webkit-scrollbar {
+    width: 8px;
+}
+.contract-body::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+    display: none;
+}
+.contract-body::-webkit-scrollbar-track {
+    background: rgba(232, 223, 208, 0.32);
+    border-radius: 999px;
+    margin: 0;
+}
+.contract-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(111, 143, 123, 0.58), rgba(180, 136, 74, 0.48));
+    border-radius: 999px;
+    border: 2px solid var(--paper);
+}
+.contract-body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(111, 143, 123, 0.78), rgba(180, 136, 74, 0.64));
+}
+.contract-body::-webkit-scrollbar-corner {
+    background: transparent;
+}
+.contract-body h4 {
+    margin: 18px 0 6px;
+    color: var(--jade);
+    font-size: 14px;
+    font-weight: 700;
+}
+.contract-body p + p { margin-top: 8px; }
+.contract-confirm {
+    margin: 0;
+    padding: 12px 26px;
+    border-radius: 0;
+    background: var(--gold-soft);
+    color: var(--gold-deep);
+    font-size: 13px;
+    border-top: 1px solid rgba(180, 136, 74, 0.22);
+    border-bottom: 1px solid rgba(180, 136, 74, 0.22);
+    box-sizing: border-box;
+}
+.contract-actions {
+    padding: 18px 26px 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--line-soft);
+    background: var(--paper-warm);
+}
+.contract-actions .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
 
 // Content List
 .content-list { display: flex; flex-direction: column; gap: 14px; }
@@ -2159,12 +2581,84 @@ function m4ResetForm() {
 
 // Toast
 .toast {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: white; padding: 12px 24px; border-radius: 24px;
-    font-size: 13px; box-shadow: var(--shadow-lg); opacity: 0; transition: all .3s;
-    z-index: 1000; pointer-events: none;
+    position: fixed;
+    right: 34px;
+    top: 88px;
+    width: min(360px, calc(100vw - 40px));
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--ink);
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(232, 223, 208, 0.9);
+    box-shadow: 0 18px 46px rgba(42, 38, 31, 0.16);
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+    transition: opacity .24s ease, transform .24s ease;
+    z-index: 10000;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+.toast.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.toast-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+}
+.toast-copy { min-width: 0; }
+.toast-title {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 700;
+    color: var(--ink);
+}
+.toast-detail {
+    margin-top: 3px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-muted);
+}
+.toast-success {
+    border-left: 4px solid var(--jade);
+}
+.toast-success .toast-icon {
+    background: var(--jade-soft);
+    color: var(--jade);
+}
+.toast-warning {
+    border-left: 4px solid var(--gold);
+}
+.toast-warning .toast-icon {
+    background: var(--gold-soft);
+    color: var(--gold-deep);
+}
+.toast-error {
+    border-left: 4px solid var(--cinnabar);
+}
+.toast-error .toast-icon {
+    background: var(--cinnabar-soft);
+    color: var(--cinnabar);
+}
+.toast-info {
+    border-left: 4px solid var(--moon);
+}
+.toast-info .toast-icon {
+    background: var(--moon-soft);
+    color: var(--moon);
+}
 
 /* 排队提示弹窗 */
 .queue-dialog-overlay {
@@ -2189,4 +2683,16 @@ function m4ResetForm() {
     .flow-grid { grid-template-columns: 1fr 1fr; }
     .flow-node:nth-child(odd):not(:last-child)::after { content: ''; }
 }
+
+// 签约开通等待动画
+.activate-spinner-wrap {
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+}
+.activate-spinner {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 5px solid var(--jade-soft);
+    border-top-color: var(--jade);
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

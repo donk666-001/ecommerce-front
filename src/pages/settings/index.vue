@@ -33,9 +33,6 @@
                         {{ userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account }}
                     </h2>
                     <p class="profile-account">{{ userStore.G_LoginInfo.account }}</p>
-                    <p v-if="userStore.G_UserInfo.introduction" class="profile-intro">
-                        {{ userStore.G_UserInfo.introduction }}
-                    </p>
                     <button
                         v-if="avatarPreview"
                         class="confirm-upload-btn"
@@ -77,63 +74,23 @@
                             <el-radio :value="2">女</el-radio>
                         </el-radio-group>
                     </el-form-item>
-                    <el-form-item label="生日">
-                        <el-date-picker
-                            v-model="profileForm.birthday"
-                            type="date"
-                            placeholder="选择日期"
-                            format="YYYY-MM-DD"
-                            value-format="YYYY-MM-DD"
-                            style="width: 100%"
-                        />
-                    </el-form-item>
-                    <el-form-item label="所在地">
-                        <el-input v-model="profileForm.location" placeholder="城市 / 地区" />
-                    </el-form-item>
-                    <el-form-item label="简介">
-                        <el-input
-                            v-model="profileForm.introduction"
-                            type="textarea"
-                            :rows="3"
-                            :maxlength="200"
-                            show-word-limit
-                            placeholder="介绍一下自己…"
-                        />
-                    </el-form-item>
-                    <el-form-item>
-                        <button
-                            class="action-btn primary"
-                            :disabled="savingProfile"
-                            @click="saveProfile"
-                        >{{ savingProfile ? '保存中…' : '保存资料' }}</button>
-                    </el-form-item>
-                </el-form>
-            </section>
-
-            <!-- 联系方式 -->
-            <section v-show="activeTab === 'contact'" class="settings-section" role="tabpanel">
-                <el-form
-                    ref="contactFormRef"
-                    :model="contactForm"
-                    label-width="72px"
-                    class="settings-form"
-                >
                     <el-form-item
                         label="邮箱"
                         prop="email"
                         :rules="[{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]"
                     >
-                        <el-input v-model="contactForm.email" placeholder="example@mail.com" />
+                        <el-input v-model="profileForm.email" placeholder="example@mail.com" />
                     </el-form-item>
                     <el-form-item label="手机号">
-                        <el-input v-model="contactForm.phone" placeholder="请输入手机号" />
+                        <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
                     </el-form-item>
                     <el-form-item>
                         <button
+                            type="button"
                             class="action-btn primary"
-                            :disabled="savingContact"
-                            @click="saveContact"
-                        >{{ savingContact ? '保存中…' : '保存联系方式' }}</button>
+                            :disabled="savingProfile"
+                            @click="saveProfile"
+                        >{{ savingProfile ? '保存中…' : '保存资料' }}</button>
                     </el-form-item>
                 </el-form>
             </section>
@@ -207,7 +164,6 @@ const userStore = useUserStore();
 
 const tabs = [
     { key: "profile", label: "基本资料" },
-    { key: "contact", label: "联系方式" },
     { key: "security", label: "账号安全" },
 ];
 const activeTab = ref("profile");
@@ -217,18 +173,11 @@ const avatarPreview = ref("");
 const uploadingAvatar = ref(false);
 
 const profileFormRef = ref<FormInstance>();
-const contactFormRef = ref<FormInstance>();
 const pwdFormRef = ref<FormInstance>();
 
 const profileForm = reactive({
     nickName: "",
-    gender: 0 as number,   // 0=未知，1=男，2=女
-    birthday: "",
-    location: "",
-    introduction: "",
-});
-
-const contactForm = reactive({
+    gender: undefined as number | undefined,
     email: "",
     phone: "",
 });
@@ -240,7 +189,6 @@ const pwdForm = reactive({
 });
 
 const savingProfile = ref(false);
-const savingContact = ref(false);
 const changingPwd = ref(false);
 
 const pwdRules: FormRules = {
@@ -275,16 +223,9 @@ onMounted(async () => {
     const login = userStore.G_LoginInfo;
 
     profileForm.nickName = login.nickName || login.account;
-    // ?? 而非 ||，防止整数 0（未知）被错误地 fallback 到 1（男）
-    profileForm.gender = info.gender ?? 0;
-    profileForm.birthday = info.birthday
-        ? new Date(info.birthday).toISOString().slice(0, 10)
-        : "";
-    profileForm.location = info.location || "";
-    profileForm.introduction = info.introduction || "";
-
-    contactForm.email = info.email || login.email || "";
-    contactForm.phone = info.phone || "";
+    profileForm.gender = info.gender === 1 || info.gender === 2 ? info.gender : undefined;
+    profileForm.email = info.email || login.email || "";
+    profileForm.phone = info.phone || "";
 });
 
 function triggerAvatarUpload() {
@@ -322,45 +263,30 @@ async function confirmAvatarUpload() {
 }
 
 async function saveProfile() {
+    const valid = await profileFormRef.value?.validate().catch(() => false);
+    if (!valid) return;
+
     savingProfile.value = true;
     try {
-        // 只提交后端 PUT /users/profile 支持的字段（nickname + gender）
-        // birthday / location / introduction 表单仅作展示，暂不对接后端
         const result = await ApiUser.updateProfile({
             nickname: profileForm.nickName,
             gender: profileForm.gender,
+            email: profileForm.email,
+            phone: profileForm.phone,
         });
         if (result !== null) {
             // 同步更新本地 store，避免需要刷新页面才能看到变化
             userStore.G_LoginInfo.nickName = profileForm.nickName;
+            userStore.G_LoginInfo.email = profileForm.email;
             userStore.G_UserInfo.gender = profileForm.gender;
+            userStore.G_UserInfo.email = profileForm.email;
+            userStore.G_UserInfo.phone = profileForm.phone;
             ElMessage.success("资料保存成功");
         } else {
             ElMessage.error("保存失败，请稍后重试");
         }
     } finally {
         savingProfile.value = false;
-    }
-}
-
-async function saveContact() {
-    const valid = await contactFormRef.value?.validate().catch(() => false);
-    if (!valid) return;
-
-    savingContact.value = true;
-    try {
-        const result = await ApiUser.updateProfile({
-            email: contactForm.email,
-            phone: contactForm.phone,
-        });
-        if (result !== null) {
-            Object.assign(userStore.G_UserInfo, contactForm);
-            ElMessage.success("联系方式保存成功");
-        } else {
-            ElMessage.error("保存失败，请稍后重试");
-        }
-    } finally {
-        savingContact.value = false;
     }
 }
 
@@ -495,14 +421,6 @@ async function handleLogout() {
     margin-bottom: 8px;
 }
 
-.profile-intro {
-    font-size: 13px;
-    color: var(--ink-soft);
-    margin-bottom: 14px;
-    max-width: 420px;
-    line-height: 1.6;
-}
-
 .confirm-upload-btn {
     display: inline-block;
     background: var(--jade);
@@ -570,9 +488,12 @@ async function handleLogout() {
     }
 
     :deep(.el-form-item__label) {
+        justify-content: flex-start;
+        text-align: left;
         color: var(--ink-muted);
         font-size: 13px;
         font-weight: 500;
+        padding-right: 12px;
     }
 
     :deep(.el-input__wrapper) {

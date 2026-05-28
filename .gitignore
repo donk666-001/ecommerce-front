@@ -20,6 +20,7 @@ coverage
 .idea
 .agents
 .claude
+.codewhale
 .impeccable
 *.suo
 *.ntvs*
@@ -43,3 +44,9 @@ playwright-report/
 
 # Docs superpowers directory
 docs/superpowers/
+
+# Skills lock file
+skills-lock.json
+
+# Docs hidden directory
+.docs

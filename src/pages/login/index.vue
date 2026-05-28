@@ -152,6 +152,7 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
+import { resolvePostLoginPath } from "@/utils";
 
 // ── 路由 & Store ────────────────────────────────
 const router = useRouter();
@@ -519,22 +520,12 @@ function switchMode(m: "login" | "register") {
 }
 
 function getRedirectPath() {
-    const redirect = route.query.redirect as string;
-    return redirect && redirect !== "/login" ? redirect : "/";
+    return resolvePostLoginPath(userStore.G_UserInfo.role_id, route.query.redirect);
 }
 
 async function submitLogin() {
     const valid = await loginFormRef.value?.validate().catch(() => false);
     if (!valid) return;
-
-    if (loginForm.account === "root" && loginForm.password === "123456") {
-        userStore.G_LoginInfo = { id: 1, isLogin: true, nickName: "Root", account: "root", email: "", status: 1 };
-        userStore.isInitialized = true;
-        await userStore.loadUserInfo();
-        ElMessage.success("登录成功（开发模式）");
-        router.push(getRedirectPath());
-        return;
-    }
 
     loading.value = true;
     try {
@@ -548,12 +539,10 @@ async function submitLogin() {
                 account: loginForm.account,
                 status: 1,
             };
-            // 先从 login 响应的 privileges 快速推导 role_id
             const codes: number[] = result.privileges ?? [];
-            const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+            const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
             userStore.G_UserInfo = { ...userStore.G_UserInfo, role_id };
             userStore.isInitialized = true;
-            // 记录本 tab 登录的用户 ID，供 refreshToken 做 Session 冲突检测
             sessionStorage.setItem("tab-user-id", String(result.id));
             await userStore.loadUserInfo();
             ElMessage.success("登录成功");

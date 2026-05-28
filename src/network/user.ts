@@ -1,5 +1,15 @@
 import { GAxios } from "@/plugins";
 
+function normalizeAssetUrl(url: string, baseURL?: string) {
+    if (!url || /^(https?:)?\/\//.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+        return url;
+    }
+    if (url.startsWith("/users/") && baseURL) {
+        return `${baseURL.replace(/\/$/, "")}${url}`;
+    }
+    return url;
+}
+
 class ApiUser {
     // 刷新令牌
     static async refresh() {
@@ -49,7 +59,11 @@ class ApiUser {
         try {
             const response = await GAxios.get("/users/info");
             const res = response.data;
-            return res.code === 200 ? res.data : null;
+            if (res.code !== 200) return null;
+            if (res.data?.avatar) {
+                res.data.avatar = normalizeAssetUrl(res.data.avatar, response.config.baseURL);
+            }
+            return res.data;
         } catch {
             return null;
         }
@@ -82,6 +96,28 @@ class ApiUser {
         }
     }
 
+    // 更新个人资料，并保留后端返回的失败原因
+    static async updateProfileDetailed(data: {
+        nickname?: string;
+        gender?: number;
+        email?: string;
+        phone?: string;
+    }) {
+        try {
+            const response = await GAxios.put("/users/profile", data);
+            const res = response.data;
+            return {
+                success: res.code === 200,
+                message: res.message || (res.code === 200 ? "保存成功" : "保存失败，请稍后重试"),
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error?.response?.data?.message || "保存失败，请稍后重试",
+            };
+        }
+    }
+
     // 上传头像，返回头像 URL
     static async uploadAvatar(file: File) {
         const formData = new FormData();
@@ -91,7 +127,7 @@ class ApiUser {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             const res = response.data;
-            return res.code === 200 ? (res.data as string) : null;
+            return res.code === 200 ? normalizeAssetUrl(res.data as string, response.config.baseURL) : null;
         } catch {
             return null;
         }

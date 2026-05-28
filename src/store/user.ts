@@ -13,7 +13,7 @@ const emptyLoginInfo = (): ILoginInfo => ({
 
 const emptyUserInfo = (): IUserInfo => ({
     id: NaN,
-    role_id: 1,
+    role_id: 3,
     avatar: "",
     gender: 0,
     birthday: new Date(),
@@ -69,7 +69,7 @@ export const useUserStore = defineStore("user", {
                     };
                     // privileges 先行推导 role_id，loadUserInfo 会再精确覆盖一次
                     const codes: number[] = result.privileges ?? [];
-                    const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+                    const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
                     this.G_UserInfo = { ...this.G_UserInfo, role_id };
                     // 刷新成功，更新本 tab 记录的用户 ID
                     sessionStorage.setItem("tab-user-id", String(result.id));
@@ -89,10 +89,8 @@ export const useUserStore = defineStore("user", {
         async loadUserInfo() {
             const result = await ApiUser.getUserInfo();
             if (result) {
-                // 后端返回 roleCodes（100=管理员 200=专家 300=普通用户），映射到 role_id
                 const codes: number[] = result.roleCodes ?? [];
-                const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
-                // 后端字段名与前端不一致，手动映射
+                const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
                 this.G_UserInfo = {
                     ...this.G_UserInfo,
                     ...result,
