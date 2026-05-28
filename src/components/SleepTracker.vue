@@ -1,8 +1,8 @@
 <template>
-    <div class="sleep-panel">
+    <div class="sleep-panel" :class="{ loading: isLoadingSleep }">
         <Transition name="toast-pop">
             <div v-if="savedToast" class="save-toast">
-                睡眠记录已保存，今日建议已同步更新
+                {{ toastMessage }}
             </div>
         </Transition>
 
@@ -12,14 +12,58 @@
                     <div class="eyebrow">SLEEP LOG · 睡眠作息</div>
                     <h3>记录睡眠</h3>
                 </div>
-                <button
-                    class="date-sel"
-                    type="button"
-                    @click="recordDate = nextRecordDate"
-                >
-                    📅 {{ recordDate }} ▾
-                </button>
+                <div class="sleep-head-actions">
+                    <button
+                        class="phone-sync-btn"
+                        type="button"
+                        :disabled="isPhoneImportRunning"
+                        @click="startPhoneTransfer"
+                    >
+                        <span class="phone-sync-icon">⌁</span>
+                        <span>不想手动输入？连接手机传输睡眠数据</span>
+                    </button>
+                </div>
             </div>
+
+            <Transition name="import-slide">
+                <section
+                    v-if="showPhoneImportPanel"
+                    class="phone-import-panel"
+                    :class="phoneImportStatus"
+                >
+                    <div class="phone-import-main">
+                        <div class="phone-import-icon">
+                            {{ phoneImportIcon }}
+                        </div>
+                        <div>
+                            <strong>{{ phoneImportTitle }}</strong>
+                            <p>{{ phoneImportMessage }}</p>
+                        </div>
+                    </div>
+                    <div class="phone-import-steps">
+                        <div
+                            v-for="(step, index) in phoneImportSteps"
+                            :key="step"
+                            class="phone-step"
+                            :class="{
+                                active: index === phoneImportStepIndex,
+                                done: index < phoneImportStepIndex,
+                            }"
+                        >
+                            <span>{{ index + 1 }}</span
+                            >{{ step }}
+                        </div>
+                    </div>
+                    <button
+                        v-if="phoneImportStatus === 'completed'"
+                        class="phone-import-close"
+                        type="button"
+                        @click="showPhoneImportPanel = false"
+                    >
+                        我知道了
+                    </button>
+                </section>
+            </Transition>
 
             <div class="sleep-form">
                 <button
@@ -74,7 +118,7 @@
                                 class="pick-chip"
                                 :class="{ active: wakeCount === n }"
                                 type="button"
-                                @click="wakeCount = n"
+                                disabled
                             >
                                 {{ n }}
                             </button>
@@ -114,66 +158,192 @@
                 >
                     取消
                 </button>
-                <button class="btn" type="button" @click="saveSleep">
-                    保存记录
+                <button
+                    class="btn"
+                    type="button"
+                    :disabled="isSavingSleep"
+                    @click="saveSleep"
+                >
+                    {{ isSavingSleep ? "保存中" : "保存记录" }}
                 </button>
             </div>
         </section>
 
-        <div class="grid-2 summary-grid">
-            <section class="sleep-summary module-card">
-                <div class="label">LAST NIGHT · 昨夜</div>
-                <div class="sleep-score">{{ sleepScore }}<span>/100</span></div>
-                <div class="summary-line">
-                    {{ durationText }} · {{ sleepStatusText }} · 深睡比例
-                    {{ deepSleepRate }}%
-                </div>
-                <div class="sleep-stats">
-                    <div class="stat">
-                        <strong>{{ sleepTime }}</strong
-                        >入睡
-                    </div>
-                    <div class="stat">
-                        <strong>{{ wakeTime }}</strong
-                        >清醒
-                    </div>
-                    <div class="stat">
-                        <strong>{{ wakeCountLabel }}</strong
-                        >夜醒
-                    </div>
-                    <div class="stat">
-                        <strong>⭐ {{ sleepQuality }}</strong
-                        >自评
-                    </div>
-                </div>
-            </section>
+        <Transition name="summary-soft">
+            <div v-if="showTodayRoutineCards" class="grid-2 summary-grid">
+                <section
+                    class="sleep-summary-shell module-card"
+                    :class="{ flipped: isSleepCardFlipped }"
+                    role="button"
+                    tabindex="0"
+                    aria-label="切换睡眠数据总览"
+                    @click="toggleSleepCardFlip"
+                    @keydown.enter.prevent="toggleSleepCardFlip"
+                    @keydown.space.prevent="toggleSleepCardFlip"
+                >
+                    <div class="sleep-flip-card">
+                        <div
+                            class="sleep-summary sleep-card-face sleep-face-front"
+                        >
+                            <div class="label">LAST NIGHT · 昨夜</div>
+                            <div class="sleep-score">
+                                {{ sleepScore }}<span>/100</span>
+                            </div>
+                            <div class="summary-line">
+                                {{ durationText }} · {{ sleepStatusText }} ·
+                                深睡比例 {{ deepSleepRate }}%
+                            </div>
+                            <div class="sleep-stats">
+                                <div class="stat">
+                                    <strong>{{ sleepTime }}</strong
+                                    >入睡
+                                </div>
+                                <div class="stat">
+                                    <strong>{{ wakeTime }}</strong
+                                    >清醒
+                                </div>
+                                <div class="stat">
+                                    <strong>{{ wakeCountLabel }}</strong
+                                    >夜醒
+                                </div>
+                                <div class="stat">
+                                    <strong>⭐ {{ sleepQuality }}</strong
+                                    >自评
+                                </div>
+                            </div>
+                        </div>
 
-            <section class="card module-card">
-                <div class="card-title">
-                    <span class="dot"></span>今日作息建议
-                </div>
-                <div class="timeline">
-                    <div
-                        v-for="item in scheduleItems"
-                        :key="item.time"
-                        class="timeline-item"
-                        :class="{ active: item.active }"
-                    >
-                        <span class="time-tag">{{ item.time }}</span>
-                        <span class="time-desc">{{ item.desc }}</span>
+                        <div
+                            class="sleep-summary sleep-card-face sleep-face-back"
+                        >
+                            <div class="sleep-stage-head">
+                                <div>
+                                    <div class="label">
+                                        SLEEP STAGES · {{ recordDateTitle }}
+                                    </div>
+                                    <strong>睡眠数据总览</strong>
+                                </div>
+                                <label
+                                    class="summary-date-picker"
+                                    @click.stop
+                                    @keydown.stop
+                                >
+                                    <span>📅</span>
+                                    <input
+                                        v-model="recordDateISO"
+                                        type="date"
+                                        :min="minRecordDateISO"
+                                        :max="todayISO"
+                                        aria-label="选择近七天睡眠记录日期"
+                                        @change="handleRecordDateChange"
+                                    />
+                                </label>
+                            </div>
+
+                            <div class="stage-chart">
+                                <div class="stage-y-labels">
+                                    <span
+                                        v-for="row in stageRows"
+                                        :key="row.key"
+                                        >{{ row.label }}</span
+                                    >
+                                </div>
+                                <svg
+                                    class="stage-svg"
+                                    viewBox="0 0 720 166"
+                                    preserveAspectRatio="none"
+                                    role="img"
+                                    :aria-label="stageChartLabel"
+                                >
+                                    <line
+                                        v-for="row in stageRows"
+                                        :key="`${row.key}-line`"
+                                        class="stage-grid"
+                                        x1="32"
+                                        x2="700"
+                                        :y1="row.y + 6"
+                                        :y2="row.y + 6"
+                                    />
+                                    <template
+                                        v-for="(
+                                            segment, index
+                                        ) in stageChartSegments"
+                                        :key="`${segment.stage}-${segment.start}-${segment.end}`"
+                                    >
+                                        <line
+                                            v-if="index > 0"
+                                            class="stage-connector"
+                                            :x1="segment.x"
+                                            :x2="segment.x"
+                                            :y1="segment.previousY + 6"
+                                            :y2="segment.y + 6"
+                                        />
+                                        <rect
+                                            class="stage-block"
+                                            :class="segment.stage"
+                                            :x="segment.x"
+                                            :y="segment.y"
+                                            :width="segment.width"
+                                            height="12"
+                                            rx="6"
+                                        >
+                                            <title>
+                                                {{ stageName(segment.stage) }} ·
+                                                {{ segment.start }}-{{
+                                                    segment.end
+                                                }}
+                                            </title>
+                                        </rect>
+                                    </template>
+                                </svg>
+                                <div class="stage-time-axis">
+                                    <span
+                                        v-for="label in stageTimeLabels"
+                                        :key="label"
+                                        >{{ label }}</span
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="stage-legend">
+                                <span
+                                    v-for="item in stageSummary"
+                                    :key="item.stage"
+                                    :class="item.stage"
+                                >
+                                    <i></i>{{ item.label }}
+                                    <strong>{{ item.duration }}</strong>
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </section>
-        </div>
+                </section>
+
+                <section class="card module-card">
+                    <div class="card-title">
+                        <span class="dot"></span>今日作息建议
+                    </div>
+                    <div class="timeline">
+                        <div
+                            v-for="item in scheduleItems"
+                            :key="item.time"
+                            class="timeline-item"
+                            :class="{ active: item.active }"
+                        >
+                            <span class="time-tag">{{ item.time }}</span>
+                            <span class="time-desc">{{ item.desc }}</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </Transition>
 
         <section class="card module-card">
             <div class="row">
                 <div class="card-title" style="margin: 0">
                     <span class="dot"></span>近 7 日睡眠趋势
                 </div>
-                <div class="metric-text">
-                    平均 <strong>7h 28min</strong> · 较上周 ↑ 12 分钟
-                </div>
+                <div class="metric-text">{{ weeklyMetricText }}</div>
             </div>
             <div class="sleep-chart">
                 <svg
@@ -211,12 +381,16 @@
                         y2="105"
                     />
                     <path
+                        v-for="path in chartAreaPaths"
+                        :key="`area-${path}`"
                         class="chart-area"
-                        d="M 50 90 L 150 60 L 250 75 L 350 45 L 450 55 L 550 30 L 650 40 L 650 140 L 50 140 Z"
+                        :d="path"
                     />
                     <path
+                        v-for="path in chartLinePaths"
+                        :key="`line-${path}`"
                         class="chart-line"
-                        d="M 50 90 L 150 60 L 250 75 L 350 45 L 450 55 L 550 30 L 650 40"
+                        :d="path"
                     />
                     <circle
                         v-for="point in chartPoints"
@@ -226,8 +400,25 @@
                         :cx="point.cx"
                         :cy="point.cy"
                         r="4"
+                        tabindex="0"
+                        role="img"
+                        :aria-label="chartPointLabel(point)"
+                        @mouseenter="hoveredChartPoint = point"
+                        @mouseleave="hoveredChartPoint = null"
+                        @focus="hoveredChartPoint = point"
+                        @blur="hoveredChartPoint = null"
                     />
                 </svg>
+                <div
+                    v-if="hoveredChartPoint"
+                    class="chart-tooltip"
+                    :style="chartTooltipStyle"
+                >
+                    <span>{{ formatChartDate(hoveredChartPoint.date) }}</span>
+                    <strong>{{
+                        formatChartPointDuration(hoveredChartPoint)
+                    }}</strong>
+                </div>
             </div>
             <div class="chart-labels">
                 <span v-for="label in chartLabels" :key="label">{{
@@ -386,19 +577,85 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+    ApiSleep,
+    type SleepRecordPayload,
+    type SleepRecordDTO,
+    type SleepWeeklyStatDTO,
+} from "@/network/sleep";
+import { useUserStore } from "@/store";
 
 type TimeField = "sleep" | "wake";
 type AudioItem = { title: string; meta: string; playing: boolean };
+type PhoneImportStatus =
+    | "idle"
+    | "checking"
+    | "connected"
+    | "opening"
+    | "transferring"
+    | "completed";
+type SleepStage = "awake" | "light" | "deep";
+type SleepStageSegment = {
+    stage: SleepStage;
+    start: string;
+    end: string;
+};
+
+type ImportedSleepData = {
+    sleepTime: string;
+    wakeTime: string;
+    quality: number;
+    awakeCount: number;
+    tags: string[];
+    stages?: SleepStageSegment[];
+};
+
+type SleepRecord = Required<ImportedSleepData> & {
+    dateISO: string;
+    serverId?: number | string;
+    apiSleepStage?: string;
+};
+
+type ChartPoint = {
+    cx: number;
+    cy: number;
+    date: string;
+    durationMinutes: number;
+    index: number;
+    today?: boolean;
+};
 
 const initialSleepTime = "23:18";
 const initialWakeTime = "07:00";
+const userStore = useUserStore();
+const stageRows: { key: SleepStage; label: string; y: number }[] = [
+    { key: "awake", label: "清醒", y: 24 },
+    { key: "light", label: "浅睡", y: 74 },
+    { key: "deep", label: "深睡", y: 124 },
+];
 const sleepTime = ref(initialSleepTime);
 const wakeTime = ref(initialWakeTime);
 const sleepQuality = ref(4);
 const wakeCount = ref("1 次");
-const recordDate = ref("昨夜 · 2026 年 5 月 18 日");
-const nextRecordDate = "昨夜 · 2026 年 5 月 19 日";
+const awakeCount = ref(1);
+const todayDate = startOfLocalDay(new Date());
+const todayISO = toISODate(todayDate);
+const minRecordDateISO = toISODate(addDays(todayDate, -6));
+const recordDateISO = ref(todayISO);
+const todayRecordUpdated = ref(false);
+const isSleepCardFlipped = ref(false);
+const showPhoneImportPanel = ref(false);
+const phoneImportStatus = ref<PhoneImportStatus>("idle");
+const phoneImportStepIndex = ref(0);
+const isLoadingSleep = ref(false);
+const isSavingSleep = ref(false);
+const toastMessage = ref("睡眠记录已保存，今日建议已同步更新");
+let phoneImportTimers: ReturnType<typeof setTimeout>[] = [];
+let loadedUserId: number | null = null;
+const savedRecordDates = ref<Record<string, boolean>>({});
+const sleepRecords = ref<Record<string, SleepRecord>>({});
+const weeklyStats = ref<SleepWeeklyStatDTO[]>([]);
 const sleepTags = [
     "入睡快",
     "入睡慢",
@@ -411,12 +668,19 @@ const sleepTags = [
 ];
 const sleepTagSelected = ref(["入睡慢", "沉睡"]);
 const wakeOptions = ["0 次", "1 次", "2 次", "3+ 次"];
+const phoneImportSteps = [
+    "检测 USB 连接",
+    "识别睡眠 App",
+    "读取睡眠阶段",
+    "写入今日记录",
+];
 
 const showTimePicker = ref(false);
 const pickerField = ref<TimeField>("sleep");
 const draftHour = ref(23);
 const draftMinute = ref(18);
 const savedToast = ref(false);
+const hoveredChartPoint = ref<ChartPoint | null>(null);
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
 const conflictMap: Record<string, string[]> = {
@@ -435,16 +699,138 @@ const quickTimes = computed(() =>
         ? ["21:30", "22:00", "22:30", "23:00", "23:30"]
         : ["06:00", "06:30", "07:00", "07:30", "08:00"],
 );
-const chartLabels = ["5/12", "5/13", "5/14", "5/15", "5/16", "5/17", "5/18"];
-const chartPoints = [
-    { cx: 50, cy: 90 },
-    { cx: 150, cy: 60 },
-    { cx: 250, cy: 75 },
-    { cx: 350, cy: 45 },
-    { cx: 450, cy: 55 },
-    { cx: 550, cy: 30 },
-    { cx: 650, cy: 40, today: true },
-];
+const selectableDates = computed(() =>
+    Array.from({ length: 7 }, (_, index) => addDays(todayDate, -index)),
+);
+const recordDateTitle = computed(() => formatRecordDate(recordDateISO.value));
+const chartLabels = computed(() =>
+    [...selectableDates.value]
+        .reverse()
+        .map((date) => `${date.getMonth() + 1}/${date.getDate()}`),
+);
+const chartPoints = computed<ChartPoint[]>(() => {
+    const statsByDate = weeklyStats.value.reduce<
+        Record<string, SleepWeeklyStatDTO>
+    >((next, item) => {
+        const dateISO = getWeeklyStatDate(item);
+        if (dateISO) next[dateISO] = item;
+        return next;
+    }, {});
+    const timelineDates = [...selectableDates.value].reverse();
+    const durations = timelineDates.map((date) => {
+        const dateISO = toISODate(date);
+        return getWeeklyDuration(statsByDate[dateISO]);
+    });
+    const filledDurations = durations.map((duration, index) => {
+        const date = timelineDates[index];
+        if (!date) return duration;
+        const dateISO = toISODate(date);
+        return duration > 0
+            ? duration
+            : getRecordDurationMinutes(sleepRecords.value[dateISO]);
+    });
+    const validDurations = filledDurations.filter((duration) => duration > 0);
+    const minDuration = validDurations.length ? Math.min(...validDurations) : 0;
+    const maxDuration = validDurations.length ? Math.max(...validDurations) : 0;
+    const range = Math.max(60, maxDuration - minDuration);
+
+    return timelineDates
+        .map((date, index) => {
+            const duration = filledDurations[index] ?? 0;
+            if (duration <= 0) return null;
+            const cx = 50 + index * 100;
+            const cy = 110 - ((duration - minDuration) / range) * 80;
+            const dateISO = toISODate(date);
+            return {
+                cx,
+                cy,
+                date: dateISO,
+                durationMinutes: duration,
+                index,
+                today: dateISO === todayISO,
+            };
+        })
+        .filter((point): point is ChartPoint => point !== null);
+});
+const chartPointGroups = computed(() => {
+    const groups: ChartPoint[][] = [];
+    chartPoints.value.forEach((point) => {
+        const currentGroup = groups[groups.length - 1];
+        const previousPoint = currentGroup?.[currentGroup.length - 1];
+        if (
+            currentGroup &&
+            previousPoint &&
+            point.index === previousPoint.index + 1
+        ) {
+            currentGroup.push(point);
+            return;
+        }
+        groups.push([point]);
+    });
+    return groups;
+});
+const chartLinePaths = computed(() =>
+    chartPointGroups.value
+        .filter((group) => group.length > 1)
+        .map((group) =>
+            group
+                .map(
+                    (point, index) =>
+                        `${index === 0 ? "M" : "L"} ${point.cx} ${point.cy}`,
+                )
+                .join(" "),
+        ),
+);
+const chartAreaPaths = computed(() =>
+    chartPointGroups.value
+        .filter((group) => group.length > 1)
+        .map((group) => {
+            const first = group[0];
+            const last = group[group.length - 1];
+            if (!first || !last) return "";
+            const line = group
+                .map(
+                    (point, index) =>
+                        `${index === 0 ? "M" : "L"} ${point.cx} ${point.cy}`,
+                )
+                .join(" ");
+            return `${line} L ${last.cx} 140 L ${first.cx} 140 Z`;
+        })
+        .filter(Boolean),
+);
+const hasChartData = computed(() => chartPoints.value.length > 0);
+const chartMetricSuffix = computed(() => {
+    if (!hasChartData.value) return "";
+    return chartPoints.value.length === 1
+        ? "仅 1 天有记录"
+        : `已同步 ${chartPoints.value.length} 天`;
+});
+const weeklyMetricText = computed(() => {
+    const validDurations = chartPoints.value
+        .map((point) => point.durationMinutes)
+        .filter((duration) => duration > 0);
+    if (!validDurations.length) return "";
+    const average = Math.round(
+        validDurations.reduce((sum, duration) => sum + duration, 0) /
+            validDurations.length,
+    );
+    return `平均 ${formatMinutesShort(average)} · ${chartMetricSuffix.value}`;
+});
+const chartTooltipStyle = computed(() => {
+    const point = hoveredChartPoint.value;
+    if (!point) return {};
+    const transform =
+        point.cx < 110
+            ? "translate(0, calc(-100% - 10px))"
+            : point.cx > 590
+              ? "translate(-100%, calc(-100% - 10px))"
+              : "translate(-50%, calc(-100% - 10px))";
+    return {
+        left: `${(point.cx / 700) * 100}%`,
+        top: `${(point.cy / 140) * 100}%`,
+        transform,
+    };
+});
 
 const audioList1 = ref<AudioItem[]>([
     { title: "竹林夜雨", meta: "自然白噪音 · 30 分钟", playing: false },
@@ -463,9 +849,150 @@ const playingAudioTitle = computed(() => {
     const active = allAudios.value.find((audio) => audio.playing);
     return active ? `正在播放：${active.title}` : "点击曲目即可播放";
 });
+const isPhoneImportRunning = computed(() =>
+    ["checking", "connected", "opening", "transferring"].includes(
+        phoneImportStatus.value,
+    ),
+);
+const phoneImportTitle = computed(() => {
+    switch (phoneImportStatus.value) {
+        case "checking":
+            return "正在检测 iPhone";
+        case "connected":
+            return "已识别苹果手机";
+        case "opening":
+            return "正在唤起睡眠数据 App";
+        case "transferring":
+            return "正在接收睡眠数据";
+        case "completed":
+            return "今日睡眠记录已写入";
+        default:
+            return "准备连接手机";
+    }
+});
+const phoneImportMessage = computed(() => {
+    switch (phoneImportStatus.value) {
+        case "checking":
+            return "请保持手机解锁并信任这台电脑。";
+        case "connected":
+            return "检测到设备后，将尝试唤起手机端睡眠读取工具。";
+        case "opening":
+            return "手机端确认后，网页会接收后端同步完成的数据。";
+        case "transferring":
+            return "前端测试流正在写入一条来自手机的睡眠记录。";
+        case "completed":
+            return "已自动选择日期、入睡时间、起床时间和夜醒次数。";
+        default:
+            return "后端接口完成后，这里会替换为真实 USB 与 App 检测。";
+    }
+});
+const phoneImportIcon = computed(() =>
+    phoneImportStatus.value === "completed" ? "✓" : "📱",
+);
+const activeUserId = computed(() => {
+    const loginId = Number(userStore.G_LoginInfo.id);
+    const infoId = Number(userStore.G_UserInfo.id);
+    return Number.isFinite(loginId) && loginId > 0 ? loginId : infoId;
+});
+const hasSelectedRecord = computed(
+    () => savedRecordDates.value[recordDateISO.value] === true,
+);
+const showTodayRoutineCards = computed(
+    () => hasSelectedRecord.value || todayRecordUpdated.value,
+);
+const selectedSleepRecord = computed(
+    () =>
+        sleepRecords.value[recordDateISO.value] ??
+        buildCurrentSleepRecord(recordDateISO.value),
+);
+const stageChartSegments = computed(() =>
+    buildStageChartSegments(selectedSleepRecord.value),
+);
+const stageTimeLabels = computed(() => {
+    const record = selectedSleepRecord.value;
+    const midpoint = addMinutesToTime(
+        record.sleepTime,
+        Math.round(calcDurationBetween(record.sleepTime, record.wakeTime) / 2),
+    );
+    return [record.sleepTime, midpoint, record.wakeTime];
+});
+const stageSummary = computed(() =>
+    buildStageSummary(selectedSleepRecord.value),
+);
+const stageChartLabel = computed(
+    () => `${recordDateTitle.value} 睡眠阶段分布，包含清醒、浅睡、深睡`,
+);
 
 function padTime(value: number) {
     return String(value).padStart(2, "0");
+}
+
+function startOfLocalDay(date: Date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, amount: number) {
+    const next = new Date(date);
+    next.setDate(next.getDate() + amount);
+    return next;
+}
+
+function toISODate(date: Date) {
+    return `${date.getFullYear()}-${padTime(date.getMonth() + 1)}-${padTime(date.getDate())}`;
+}
+
+function parseISODate(value: string) {
+    const [year = "0", month = "1", day = "1"] = value.split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+function formatTimezoneOffset(date: Date) {
+    const offsetMinutes = -date.getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const absoluteMinutes = Math.abs(offsetMinutes);
+    return `${sign}${padTime(Math.floor(absoluteMinutes / 60))}:${padTime(
+        absoluteMinutes % 60,
+    )}`;
+}
+
+function toApiDateTime(dateISO: string, time: string, addOneDay = false) {
+    const date = parseISODate(dateISO);
+    if (addOneDay) date.setDate(date.getDate() + 1);
+    const parsed = parseTime(time);
+    return `${toISODate(date)}T${padTime(parsed.hour)}:${padTime(
+        parsed.minute,
+    )}:00${formatTimezoneOffset(date)}`;
+}
+
+function formatRecordDate(value: string) {
+    const date = parseISODate(value);
+    const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const prefix =
+        value === todayISO
+            ? "今日"
+            : value === toISODate(addDays(todayDate, -1))
+              ? "昨夜"
+              : weekNames[date.getDay()];
+    return `${prefix} · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+}
+
+function normalizeRecordDate() {
+    if (recordDateISO.value > todayISO) {
+        recordDateISO.value = todayISO;
+        return;
+    }
+    if (recordDateISO.value < minRecordDateISO) {
+        recordDateISO.value = minRecordDateISO;
+    }
+}
+
+async function handleRecordDateChange() {
+    normalizeRecordDate();
+    const record = await loadSleepRecord(recordDateISO.value, true);
+    const cachedRecord = sleepRecords.value[recordDateISO.value];
+    if (!record && cachedRecord) {
+        applySleepRecordToForm(cachedRecord);
+    }
 }
 
 function parseTime(value: string) {
@@ -478,6 +1005,678 @@ function parseTime(value: string) {
 
 function formatTime(hour: number, minute: number) {
     return `${padTime(hour)}:${padTime(minute)}`;
+}
+
+function calcDurationBetween(start: string, end: string) {
+    const startTime = parseTime(start);
+    const endTime = parseTime(end);
+    let minutes =
+        endTime.hour * 60 +
+        endTime.minute -
+        (startTime.hour * 60 + startTime.minute);
+    if (minutes <= 0) minutes += 24 * 60;
+    return minutes;
+}
+
+function addMinutesToTime(start: string, amount: number) {
+    const parsed = parseTime(start);
+    const total = parsed.hour * 60 + parsed.minute + amount;
+    const normalized = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+    return formatTime(Math.floor(normalized / 60), normalized % 60);
+}
+
+function minutesFromStart(start: string, time: string) {
+    const startTime = parseTime(start);
+    const targetTime = parseTime(time);
+    let minutes =
+        targetTime.hour * 60 +
+        targetTime.minute -
+        (startTime.hour * 60 + startTime.minute);
+    if (minutes < 0) minutes += 24 * 60;
+    return minutes;
+}
+
+function stageName(stage: SleepStage) {
+    const names: Record<SleepStage, string> = {
+        awake: "清醒",
+        light: "浅睡",
+        deep: "深睡",
+    };
+    return names[stage];
+}
+
+function stageY(stage: SleepStage) {
+    return stageRows.find((row) => row.key === stage)?.y ?? 74;
+}
+
+function buildStageSegments(
+    start: string,
+    end: string,
+    awakeCountValue: number,
+) {
+    const total = calcDurationBetween(start, end);
+    const patternSource: { stage: SleepStage; ratio: number }[] = [
+        { stage: "light", ratio: 0.13 },
+        { stage: "deep", ratio: 0.18 },
+        { stage: "light", ratio: 0.15 },
+        { stage: "awake", ratio: awakeCountValue > 0 ? 0.025 : 0 },
+        { stage: "light", ratio: 0.18 },
+        { stage: "deep", ratio: 0.17 },
+        { stage: "awake", ratio: awakeCountValue > 1 ? 0.025 : 0 },
+        { stage: "light", ratio: 0.16 },
+        { stage: "awake", ratio: awakeCountValue > 2 ? 0.02 : 0 },
+        { stage: "light", ratio: 0.12 },
+    ];
+    const pattern = patternSource.filter((item) => item.ratio > 0);
+    const ratioTotal = pattern.reduce((sum, item) => sum + item.ratio, 0);
+    let cursor = 0;
+
+    return pattern.map((item, index) => {
+        const isLast = index === pattern.length - 1;
+        const remaining = Math.max(0, total - cursor);
+        const minutes = isLast
+            ? remaining
+            : Math.min(
+                  remaining,
+                  Math.max(
+                      item.stage === "awake" ? 6 : 18,
+                      Math.round((total * item.ratio) / ratioTotal),
+                  ),
+              );
+        const segmentStart = addMinutesToTime(start, cursor);
+        cursor += minutes;
+        const segmentEnd = addMinutesToTime(start, Math.min(cursor, total));
+
+        return {
+            stage: item.stage,
+            start: segmentStart,
+            end: segmentEnd,
+        };
+    });
+}
+
+function buildStageSegmentsByDominantStage(
+    start: string,
+    end: string,
+    awakeCountValue: number,
+    dominantStage: SleepStage,
+) {
+    if (dominantStage === "light") {
+        return buildStageSegments(start, end, awakeCountValue);
+    }
+
+    const total = calcDurationBetween(start, end);
+    const firstChunk = Math.min(total, Math.max(18, Math.round(total * 0.24)));
+    const secondChunk = Math.min(
+        Math.max(0, total - firstChunk),
+        Math.max(18, Math.round(total * 0.3)),
+    );
+    const awakeMinutes = Math.min(
+        Math.max(0, total - firstChunk - secondChunk),
+        awakeCountValue > 0 ? 8 : 0,
+    );
+    const lastChunk = Math.max(
+        0,
+        total - firstChunk - secondChunk - awakeMinutes,
+    );
+    let cursor = 0;
+    const segments: SleepStageSegment[] = [
+        {
+            stage: "light",
+            start,
+            end: addMinutesToTime(start, firstChunk),
+        },
+        {
+            stage: dominantStage,
+            start: addMinutesToTime(start, firstChunk),
+            end: addMinutesToTime(start, firstChunk + secondChunk),
+        },
+    ];
+    cursor += firstChunk + secondChunk;
+
+    if (awakeMinutes > 0) {
+        segments.push({
+            stage: "awake",
+            start: addMinutesToTime(start, cursor),
+            end: addMinutesToTime(start, cursor + awakeMinutes),
+        });
+        cursor += awakeMinutes;
+    }
+
+    if (lastChunk > 0) {
+        segments.push({
+            stage: dominantStage === "awake" ? "light" : dominantStage,
+            start: addMinutesToTime(start, cursor),
+            end,
+        });
+    }
+
+    return segments;
+}
+
+function buildCurrentSleepRecord(dateISO: string): SleepRecord {
+    const existingRecord = sleepRecords.value[dateISO];
+    const record: SleepRecord = {
+        dateISO,
+        sleepTime: sleepTime.value,
+        wakeTime: wakeTime.value,
+        quality: sleepQuality.value,
+        awakeCount: awakeCount.value,
+        tags: [...sleepTagSelected.value],
+        stages: buildStageSegments(
+            sleepTime.value,
+            wakeTime.value,
+            awakeCount.value,
+        ),
+    };
+    if (existingRecord?.serverId != null) {
+        record.serverId = existingRecord.serverId;
+    }
+    if (existingRecord?.apiSleepStage) {
+        record.apiSleepStage = existingRecord.apiSleepStage;
+    }
+    return record;
+}
+
+function applySleepRecordToForm(record: SleepRecord) {
+    sleepTime.value = record.sleepTime;
+    wakeTime.value = record.wakeTime;
+    sleepQuality.value = record.quality;
+    applyAwakeCount(record.awakeCount);
+    sleepTagSelected.value = [...record.tags];
+}
+
+function buildStageChartSegments(record: SleepRecord) {
+    const chartStartX = 44;
+    const chartWidth = 650;
+    const total = calcDurationBetween(record.sleepTime, record.wakeTime);
+
+    const segments = record.stages.map((segment) => {
+        const startOffset = minutesFromStart(record.sleepTime, segment.start);
+        const endOffset = minutesFromStart(record.sleepTime, segment.end);
+        const duration = Math.max(1, endOffset - startOffset);
+
+        return {
+            ...segment,
+            x: chartStartX + (startOffset / total) * chartWidth,
+            y: stageY(segment.stage),
+            width: Math.max(8, (duration / total) * chartWidth),
+        };
+    });
+
+    return segments.map((segment, index) => ({
+        ...segment,
+        previousY: segments[index - 1]?.y ?? segment.y,
+    }));
+}
+
+function formatMinutesCompact(minutes: number) {
+    if (minutes < 60) return `${minutes} 分钟`;
+    return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`;
+}
+
+function buildStageSummary(record: SleepRecord) {
+    const totals = record.stages.reduce<Record<SleepStage, number>>(
+        (next, segment) => {
+            next[segment.stage] += calcDurationBetween(
+                segment.start,
+                segment.end,
+            );
+            return next;
+        },
+        { awake: 0, light: 0, deep: 0 },
+    );
+
+    return stageRows.map((row) => ({
+        stage: row.key,
+        label: row.label,
+        duration: formatMinutesCompact(totals[row.key]),
+    }));
+}
+
+function isValidUserId(value: number) {
+    return Number.isFinite(value) && value > 0;
+}
+
+function normalizeDateValue(value?: string, fallback = todayISO) {
+    if (!value) return fallback;
+    return value.includes("T") ? value.slice(0, 10) : value;
+}
+
+function formatMinutesShort(minutes: number) {
+    const normalizedMinutes = Math.max(0, Math.round(minutes));
+    const hours = Math.floor(normalizedMinutes / 60);
+    const restMinutes = normalizedMinutes % 60;
+    if (hours <= 0) return `${restMinutes}分钟`;
+    if (restMinutes === 0) return `${hours}小时`;
+    return `${hours}小时${restMinutes}分钟`;
+}
+
+function formatChartDate(dateISO: string) {
+    const date = parseISODate(dateISO);
+    const weekNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${weekNames[date.getDay()]}`;
+}
+
+function formatChartPointDuration(point: ChartPoint) {
+    if (point.durationMinutes <= 0) return "暂无数据";
+    return `睡眠 ${formatMinutesShort(point.durationMinutes)}`;
+}
+
+function chartPointLabel(point: ChartPoint) {
+    return `${formatChartDate(point.date)}，${formatChartPointDuration(point)}`;
+}
+
+function readNumberValue(value: unknown) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Number(value.replace(/[^\d.-]/g, ""));
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+}
+
+function getRecordDurationMinutes(record?: SleepRecord) {
+    if (!record) return 0;
+    return calcDurationBetween(record.sleepTime, record.wakeTime);
+}
+
+function getWeeklyStatDate(stat: SleepWeeklyStatDTO) {
+    return normalizeDateValue(
+        stat.date ??
+            stat.recordDate ??
+            stat.sleepDate ??
+            stat.sleepTime ??
+            stat.wakeTime,
+        "",
+    );
+}
+
+function getWeeklyDuration(stat?: SleepWeeklyStatDTO) {
+    if (!stat) return 0;
+    const minuteValue = readNumberValue(
+        stat.durationMinutes ??
+            stat.sleepDuration ??
+            stat.totalMinutes ??
+            stat.duration ??
+            stat.sleepMinutes ??
+            stat.totalSleepMinutes,
+    );
+    if (minuteValue > 0) return Math.round(minuteValue);
+
+    const hourValue = readNumberValue(
+        stat.durationHours ?? stat.sleepHours ?? stat.totalHours,
+    );
+    if (hourValue > 0) return Math.round(hourValue * 60);
+
+    if (stat.sleepTime && stat.wakeTime) {
+        return calcDurationBetween(
+            ensureTimeValue(stat.sleepTime, initialSleepTime),
+            ensureTimeValue(stat.wakeTime, initialWakeTime),
+        );
+    }
+
+    return 0;
+}
+
+function readStringField(
+    source: Record<string, unknown>,
+    keys: string[],
+    fallback: string,
+) {
+    const value = keys.map((key) => source[key]).find((item) => item != null);
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function readNumberField(
+    source: Record<string, unknown>,
+    keys: string[],
+    fallback: number,
+) {
+    const value = keys.map((key) => source[key]).find((item) => item != null);
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Number(value.replace(/[^\d.-]/g, ""));
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return fallback;
+}
+
+function ensureTimeValue(value: string, fallback: string) {
+    const match = value.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return fallback;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return fallback;
+    return formatTime(hour, minute);
+}
+
+function inferRecordDateFromSource(
+    source: Record<string, unknown>,
+    fallbackDateISO: string,
+) {
+    const rawDate = readStringField(
+        source,
+        ["date", "recordDate", "sleepDate", "sleepTime"],
+        fallbackDateISO,
+    );
+    return normalizeDateValue(rawDate);
+}
+
+function normalizeStageName(value: string): SleepStage {
+    const normalized = value.toLowerCase();
+    if (
+        normalized.includes("awake") ||
+        normalized.includes("rem") ||
+        value.includes("清醒")
+    ) {
+        return "awake";
+    }
+    if (normalized.includes("deep") || value.includes("深睡")) return "deep";
+    return "light";
+}
+
+function parseTagsValue(value: unknown, fallback: string[]) {
+    if (Array.isArray(value)) {
+        const tags = value.map(String).filter(Boolean);
+        return tags.length ? tags : fallback;
+    }
+    if (typeof value !== "string" || !value.trim()) return fallback;
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+            const tags = parsed.map(String).filter(Boolean);
+            return tags.length ? tags : fallback;
+        }
+    } catch {
+        // 兼容逗号分隔的后端字段。
+    }
+    const tags = value
+        .split(/[,\uFF0C;；\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return tags.length ? tags : fallback;
+}
+
+function parseStageValue(
+    value: unknown,
+    fallbackSleepTime: string,
+    fallbackWakeTime: string,
+) {
+    const stageSource: unknown =
+        typeof value === "string" ? parseJson(value) : value;
+    if (!Array.isArray(stageSource)) return null;
+    const stages = stageSource
+        .map((item) => {
+            if (typeof item !== "object" || item === null) return null;
+            const source = item as Record<string, unknown>;
+            const start = ensureTimeValue(
+                readStringField(
+                    source,
+                    ["start", "startTime"],
+                    fallbackSleepTime,
+                ),
+                fallbackSleepTime,
+            );
+            const end = ensureTimeValue(
+                readStringField(source, ["end", "endTime"], fallbackWakeTime),
+                fallbackWakeTime,
+            );
+            const stage = normalizeStageName(
+                readStringField(source, ["stage", "type", "name"], "light"),
+            );
+            return { stage, start, end };
+        })
+        .filter((item): item is SleepStageSegment => item !== null);
+    return stages.length ? stages : null;
+}
+
+function parseJson(value: string): unknown {
+    try {
+        return JSON.parse(value);
+    } catch {
+        return null;
+    }
+}
+
+function hasSleepRecordPayload(
+    data: SleepRecordDTO | null,
+): data is SleepRecordDTO {
+    if (!data || typeof data !== "object") return false;
+    const source = data as Record<string, unknown>;
+    return [
+        "id",
+        "date",
+        "recordDate",
+        "sleepDate",
+        "sleepTime",
+        "wakeTime",
+        "quality",
+        "sleepQuality",
+        "sleepStage",
+        "sleepTagsJson",
+    ].some((key) => source[key] != null);
+}
+
+function normalizeSleepRecord(
+    data: SleepRecordDTO,
+    fallbackDateISO: string,
+): SleepRecord {
+    const source = data as Record<string, unknown>;
+    const dateISO = inferRecordDateFromSource(source, fallbackDateISO);
+    const normalizedSleepTime = ensureTimeValue(
+        readStringField(
+            source,
+            ["sleepTime", "bedTime", "bedtime", "startTime"],
+            sleepTime.value,
+        ),
+        initialSleepTime,
+    );
+    const normalizedWakeTime = ensureTimeValue(
+        readStringField(
+            source,
+            ["wakeTime", "getUpTime", "endTime"],
+            wakeTime.value,
+        ),
+        initialWakeTime,
+    );
+    const normalizedAwakeCount = Math.max(
+        0,
+        Math.round(
+            readNumberField(
+                source,
+                ["awakeCount", "wakeCount", "nightWakeCount"],
+                awakeCount.value,
+            ),
+        ),
+    );
+    const stages =
+        parseStageValue(
+            source.stages ?? source.sleepStages,
+            normalizedSleepTime,
+            normalizedWakeTime,
+        ) ??
+        buildStageSegmentsByDominantStage(
+            normalizedSleepTime,
+            normalizedWakeTime,
+            normalizedAwakeCount,
+            normalizeStageName(readStringField(source, ["sleepStage"], "core")),
+        );
+
+    const record: SleepRecord = {
+        dateISO,
+        sleepTime: normalizedSleepTime,
+        wakeTime: normalizedWakeTime,
+        quality: Math.min(
+            5,
+            Math.max(
+                1,
+                Math.round(
+                    readNumberField(
+                        source,
+                        ["quality", "sleepQuality"],
+                        sleepQuality.value,
+                    ),
+                ),
+            ),
+        ),
+        awakeCount: normalizedAwakeCount,
+        tags: parseTagsValue(
+            source.sleepTagsJson ?? source.tags ?? source.sleepTags,
+            ["状态平稳"],
+        ),
+        stages,
+    };
+    const serverId = source.id;
+    if (typeof serverId === "number" || typeof serverId === "string") {
+        record.serverId = serverId;
+    }
+    const apiSleepStage = source.sleepStage;
+    if (typeof apiSleepStage === "string" && apiSleepStage.trim()) {
+        record.apiSleepStage = apiSleepStage.trim();
+    }
+    return record;
+}
+
+function markRecordSaved(dateISO: string, saved: boolean) {
+    const next = { ...savedRecordDates.value };
+    if (saved) next[dateISO] = true;
+    else delete next[dateISO];
+    savedRecordDates.value = next;
+}
+
+function upsertSleepRecord(record: SleepRecord, saved: boolean) {
+    sleepRecords.value = {
+        ...sleepRecords.value,
+        [record.dateISO]: record,
+    };
+    markRecordSaved(record.dateISO, saved);
+}
+
+function removeSleepRecord(dateISO: string) {
+    const next = { ...sleepRecords.value };
+    delete next[dateISO];
+    sleepRecords.value = next;
+    markRecordSaved(dateISO, false);
+}
+
+function inferApiSleepStage(record: SleepRecord) {
+    if (record.apiSleepStage) return record.apiSleepStage;
+    if (record.tags.some((tag) => /沉睡|深睡/.test(tag))) return "deep";
+    if (record.tags.some((tag) => /多梦|易醒|早醒/.test(tag))) return "core";
+    if (record.quality >= 5 && deepSleepRate.value >= 30) return "deep";
+    return "core";
+}
+
+function buildSleepRecordPayload(record: SleepRecord): SleepRecordPayload {
+    const wakeCrossesMidnight =
+        calcDurationBetween(record.sleepTime, record.wakeTime) >
+        minutesFromStart("00:00", record.wakeTime);
+    const payload: SleepRecordPayload = {
+        userId: activeUserId.value,
+        sleepTime: toApiDateTime(record.dateISO, record.sleepTime),
+        wakeTime: toApiDateTime(
+            record.dateISO,
+            record.wakeTime,
+            wakeCrossesMidnight,
+        ),
+        sleepQuality: record.quality,
+        sleepStage: inferApiSleepStage(record),
+        sleepTagsJson: JSON.stringify(record.tags),
+    };
+    if (record.serverId != null) payload.id = record.serverId;
+    return payload;
+}
+
+async function loadSleepRecord(dateISO: string, shouldApplyToForm: boolean) {
+    if (!isValidUserId(activeUserId.value)) return null;
+    isLoadingSleep.value = true;
+    try {
+        const data = await ApiSleep.getRecordByDate(
+            activeUserId.value,
+            dateISO,
+        );
+        if (!hasSleepRecordPayload(data)) {
+            removeSleepRecord(dateISO);
+            return null;
+        }
+        const record = normalizeSleepRecord(data, dateISO);
+        upsertSleepRecord(record, true);
+        if (shouldApplyToForm) applySleepRecordToForm(record);
+        if (record.dateISO === todayISO) todayRecordUpdated.value = true;
+        return record;
+    } catch (error) {
+        console.error("读取睡眠记录失败", error);
+        showToast("睡眠记录读取失败，请稍后重试");
+        return null;
+    } finally {
+        isLoadingSleep.value = false;
+    }
+}
+
+async function loadWeeklyStats() {
+    if (!isValidUserId(activeUserId.value)) return;
+    try {
+        const stats = await ApiSleep.getWeeklyStats(activeUserId.value);
+        weeklyStats.value = Array.isArray(stats) ? stats : [];
+    } catch (error) {
+        console.error("读取近七日睡眠趋势失败", error);
+        weeklyStats.value = [];
+    }
+}
+
+async function reloadSleepDataForActiveUser() {
+    if (!isValidUserId(activeUserId.value)) return;
+    if (loadedUserId !== activeUserId.value) {
+        sleepRecords.value = {};
+        savedRecordDates.value = {};
+        weeklyStats.value = [];
+        todayRecordUpdated.value = false;
+    }
+    loadedUserId = activeUserId.value;
+    await Promise.all([loadSleepRecord(todayISO, true), loadWeeklyStats()]);
+}
+
+async function persistSleepRecord(record: SleepRecord, successMessage: string) {
+    if (!isValidUserId(activeUserId.value)) {
+        throw new Error("缺少登录用户 ID");
+    }
+    const shouldUpdate =
+        savedRecordDates.value[record.dateISO] === true &&
+        record.serverId != null;
+    const payload = buildSleepRecordPayload(record);
+    let response: SleepRecordDTO;
+    try {
+        response = shouldUpdate
+            ? await ApiSleep.updateRecord(payload)
+            : await ApiSleep.createRecord(payload);
+    } catch (error) {
+        if (shouldUpdate || record.serverId == null) throw error;
+        response = await ApiSleep.updateRecord(payload);
+    }
+    const savedRecord = hasSleepRecordPayload(response)
+        ? normalizeSleepRecord(response, record.dateISO)
+        : record;
+    upsertSleepRecord(savedRecord, true);
+    if (savedRecord.dateISO === todayISO) todayRecordUpdated.value = true;
+    if (savedRecord.serverId == null) {
+        await loadSleepRecord(savedRecord.dateISO, false);
+    }
+    await loadWeeklyStats();
+    showToast(successMessage);
+}
+
+function showToast(message: string) {
+    toastMessage.value = message;
+    if (toastTimer) clearTimeout(toastTimer);
+    savedToast.value = true;
+    toastTimer = setTimeout(() => {
+        savedToast.value = false;
+    }, 2200);
+}
+
+function toggleSleepCardFlip() {
+    isSleepCardFlipped.value = !isSleepCardFlipped.value;
 }
 
 function openTimePicker(field: TimeField) {
@@ -507,12 +1706,7 @@ function confirmTime() {
 }
 
 function calcDurationMinutes() {
-    const sleep = parseTime(sleepTime.value);
-    const wake = parseTime(wakeTime.value);
-    let minutes =
-        wake.hour * 60 + wake.minute - (sleep.hour * 60 + sleep.minute);
-    if (minutes <= 0) minutes += 24 * 60;
-    return minutes;
+    return calcDurationBetween(sleepTime.value, wakeTime.value);
 }
 
 const durationMinutes = computed(() => calcDurationMinutes());
@@ -623,20 +1817,118 @@ function toggleSleepTag(tag: string) {
     sleepTagSelected.value.push(tag);
 }
 
+function wakeCountToOption(count: number) {
+    if (count <= 0) return "0 次";
+    if (count === 1) return "1 次";
+    if (count === 2) return "2 次";
+    return "3+ 次";
+}
+
+function applyAwakeCount(count: number) {
+    awakeCount.value = Math.max(0, count);
+    wakeCount.value = wakeCountToOption(awakeCount.value);
+}
+
+function buildMockPhoneSleepData(): ImportedSleepData {
+    return {
+        sleepTime: "23:06",
+        wakeTime: "06:52",
+        quality: 5,
+        awakeCount: 2,
+        tags: ["入睡快", "沉睡"],
+        stages: buildStageSegments("23:06", "06:52", 2),
+    };
+}
+
+function applyImportedSleepData(data: ImportedSleepData) {
+    recordDateISO.value = todayISO;
+    sleepTime.value = data.sleepTime;
+    wakeTime.value = data.wakeTime;
+    sleepQuality.value = data.quality;
+    applyAwakeCount(data.awakeCount);
+    sleepTagSelected.value = data.tags;
+    sleepRecords.value = {
+        ...sleepRecords.value,
+        [todayISO]: {
+            ...data,
+            dateISO: todayISO,
+            stages:
+                data.stages ??
+                buildStageSegments(
+                    data.sleepTime,
+                    data.wakeTime,
+                    data.awakeCount,
+                ),
+        },
+    };
+    todayRecordUpdated.value = true;
+}
+
+function clearPhoneImportTimers() {
+    phoneImportTimers.forEach((timer) => clearTimeout(timer));
+    phoneImportTimers = [];
+}
+
+function setPhoneImportState(
+    status: PhoneImportStatus,
+    stepIndex: number,
+    delay: number,
+) {
+    const timer = setTimeout(() => {
+        phoneImportStatus.value = status;
+        phoneImportStepIndex.value = stepIndex;
+
+        if (status === "completed") {
+            applyImportedSleepData(buildMockPhoneSleepData());
+            void persistSleepRecord(
+                buildCurrentSleepRecord(todayISO),
+                "手机睡眠数据已同步",
+            ).catch((error: unknown) => {
+                console.error("手机睡眠数据保存失败", error);
+                showToast("手机数据已导入，保存到后端失败");
+            });
+        }
+    }, delay);
+    phoneImportTimers.push(timer);
+}
+
+function startPhoneTransfer() {
+    clearPhoneImportTimers();
+    showPhoneImportPanel.value = true;
+    phoneImportStatus.value = "checking";
+    phoneImportStepIndex.value = 0;
+    setPhoneImportState("connected", 1, 700);
+    setPhoneImportState("opening", 2, 1350);
+    setPhoneImportState("transferring", 3, 2050);
+    setPhoneImportState("completed", 4, 2950);
+}
+
 function resetSleepForm() {
     sleepTime.value = initialSleepTime;
     wakeTime.value = initialWakeTime;
     sleepQuality.value = 4;
-    wakeCount.value = "1 次";
+    applyAwakeCount(1);
     sleepTagSelected.value = ["入睡慢", "沉睡"];
 }
 
-function saveSleep() {
-    if (toastTimer) clearTimeout(toastTimer);
-    savedToast.value = true;
-    toastTimer = setTimeout(() => {
-        savedToast.value = false;
-    }, 2200);
+async function saveSleep() {
+    normalizeRecordDate();
+    isSavingSleep.value = true;
+    try {
+        const shouldUpdate =
+            savedRecordDates.value[recordDateISO.value] === true;
+        await persistSleepRecord(
+            buildCurrentSleepRecord(recordDateISO.value),
+            shouldUpdate
+                ? "睡眠记录已更新，今日建议已同步"
+                : "睡眠记录已新增，今日建议已同步",
+        );
+    } catch (error) {
+        console.error("保存睡眠记录失败", error);
+        showToast("睡眠记录保存失败，请稍后重试");
+    } finally {
+        isSavingSleep.value = false;
+    }
 }
 
 function toggleAudio(title: string) {
@@ -648,6 +1940,16 @@ function toggleAudio(title: string) {
     });
 }
 
+onMounted(() => {
+    void reloadSleepDataForActiveUser();
+});
+
+watch(activeUserId, (userId) => {
+    if (isValidUserId(userId) && userId !== loadedUserId) {
+        void reloadSleepDataForActiveUser();
+    }
+});
+
 watch(showTimePicker, (visible) => {
     if (typeof document !== "undefined") {
         document.body.style.overflow = visible ? "hidden" : "";
@@ -656,6 +1958,7 @@ watch(showTimePicker, (visible) => {
 
 onBeforeUnmount(() => {
     if (toastTimer) clearTimeout(toastTimer);
+    clearPhoneImportTimers();
     if (typeof document !== "undefined") {
         document.body.style.overflow = "";
     }
@@ -743,6 +2046,13 @@ onBeforeUnmount(() => {
     gap: 16px;
     margin-bottom: 20px;
 }
+.sleep-head-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
 .eyebrow {
     font-size: 12px;
     color: var(--gold-deep);
@@ -756,18 +2066,147 @@ onBeforeUnmount(() => {
     color: var(--ink);
     font-weight: 600;
 }
-.date-sel {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-family: inherit;
-    font-size: 13px;
-    color: var(--ink);
-    display: flex;
+.phone-sync-btn {
+    display: inline-flex;
     align-items: center;
     gap: 8px;
+    min-height: 36px;
+    border: 1px solid rgba(92, 131, 116, 0.22);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--jade-soft) 78%, white);
+    color: var(--jade);
     cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px 7px 10px;
+    box-shadow: 0 8px 20px rgba(92, 131, 116, 0.08);
+    transition:
+        background-color 0.22s ease,
+        border-color 0.22s ease,
+        color 0.22s ease,
+        box-shadow 0.22s ease,
+        transform 0.22s ease;
+}
+.phone-sync-btn:hover:not(:disabled) {
+    background: var(--jade-soft);
+    border-color: var(--jade);
+    transform: translateY(-1px);
+}
+.phone-sync-btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+.phone-sync-icon {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--jade);
+    color: white;
+    font-size: 13px;
+}
+.phone-import-panel {
+    margin: -4px 0 18px;
+    padding: 14px 16px;
+    border: 1px solid rgba(92, 131, 116, 0.2);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--jade-soft) 58%, white);
+    box-shadow: 0 14px 30px rgba(92, 131, 116, 0.1);
+}
+.phone-import-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.phone-import-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    background: var(--jade);
+    color: white;
+    font-size: 18px;
+}
+.phone-import-main strong {
+    color: var(--ink);
+    font-size: 14px;
+}
+.phone-import-main p {
+    margin-top: 4px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+.phone-import-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+.phone-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 7px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    color: var(--ink-muted);
+    font-size: 11px;
+    transition: all 0.2s;
+}
+.phone-step span {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: var(--line);
+    color: var(--ink-muted);
+    font-size: 10px;
+}
+.phone-step.active {
+    background: var(--paper);
+    color: var(--jade);
+    box-shadow: 0 8px 16px rgba(92, 131, 116, 0.1);
+}
+.phone-step.active span,
+.phone-step.done span {
+    background: var(--jade);
+    color: white;
+}
+.phone-step.done {
+    color: var(--jade);
+}
+.phone-import-close {
+    margin-top: 12px;
+    border: none;
+    background: transparent;
+    color: var(--jade);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+.import-slide-enter-active,
+.import-slide-leave-active,
+.summary-soft-enter-active,
+.summary-soft-leave-active {
+    transition:
+        opacity 0.22s ease,
+        transform 0.22s ease;
+}
+.import-slide-enter-from,
+.import-slide-leave-to,
+.summary-soft-enter-from,
+.summary-soft-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
 }
 .sleep-form {
     display: grid;
@@ -865,6 +2304,14 @@ onBeforeUnmount(() => {
     opacity: 0.38;
     cursor: not-allowed;
 }
+.wake-row .pick-chip:disabled {
+    opacity: 1;
+    cursor: default;
+}
+.wake-row .pick-chip:not(.active):disabled {
+    background: rgba(255, 255, 255, 0.52);
+    color: color-mix(in srgb, var(--ink-muted) 76%, white);
+}
 .form-row {
     display: flex;
     align-items: center;
@@ -872,6 +2319,8 @@ onBeforeUnmount(() => {
 }
 .wake-row {
     margin-top: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
 .tag-row {
     align-items: flex-start;
@@ -912,16 +2361,57 @@ onBeforeUnmount(() => {
 
 .summary-grid {
     margin-bottom: 20px;
+    align-items: start;
+}
+.summary-grid > .card {
+    margin-top: 0;
+}
+.sleep-summary-shell {
+    height: 356px;
+    border-radius: 16px;
+    background: transparent;
+    cursor: pointer;
+    perspective: 1200px;
+    outline: none;
+    align-self: start;
+}
+.sleep-summary-shell:focus-visible {
+    box-shadow:
+        var(--shadow-lg),
+        0 0 0 3px rgba(92, 131, 116, 0.18);
+}
+.sleep-flip-card {
+    position: relative;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+}
+.sleep-summary-shell.flipped .sleep-flip-card {
+    transform: rotateY(180deg);
+}
+.sleep-card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+.sleep-face-front {
+    transform: rotateY(0deg);
+}
+.sleep-face-back {
+    transform: rotateY(180deg);
 }
 .sleep-summary {
     background: linear-gradient(135deg, #2c3e50 0%, #4a5f7a 100%);
     color: white;
     border-radius: 16px;
     padding: 28px;
-    position: relative;
+    box-sizing: border-box;
     overflow: hidden;
+    height: 100%;
 }
-.sleep-summary::after {
+.sleep-face-front::after {
     content: "🌙";
     position: absolute;
     right: 20px;
@@ -964,6 +2454,137 @@ onBeforeUnmount(() => {
     font-size: 18px;
     opacity: 1;
 }
+.sleep-stage-head {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.sleep-stage-head strong {
+    display: block;
+    margin-top: 10px;
+    font-family: "STKaiti", serif;
+    font-size: 22px;
+    color: rgba(250, 252, 248, 0.96);
+}
+.summary-date-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(244, 237, 223, 0.26);
+    border-radius: 999px;
+    background: rgba(244, 237, 223, 0.1);
+    color: rgba(250, 252, 248, 0.88);
+    cursor: default;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+.summary-date-picker:hover {
+    background: rgba(244, 237, 223, 0.16);
+    border-color: rgba(244, 237, 223, 0.42);
+    box-shadow: 0 8px 18px rgba(23, 32, 42, 0.18);
+}
+.summary-date-picker input {
+    width: 118px;
+    border: none;
+    background: transparent;
+    color: rgba(250, 252, 248, 0.95);
+    color-scheme: dark;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+}
+.stage-chart {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    column-gap: 10px;
+    margin-top: 22px;
+}
+.stage-y-labels {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 18px 0 30px;
+    color: rgba(250, 252, 248, 0.64);
+    font-size: 12px;
+}
+.stage-svg {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    height: 166px;
+    overflow: visible;
+}
+.stage-grid {
+    stroke: rgba(244, 237, 223, 0.16);
+    stroke-width: 1;
+}
+.stage-connector {
+    stroke: rgba(244, 237, 223, 0.22);
+    stroke-width: 2;
+}
+.stage-block {
+    filter: drop-shadow(0 4px 10px rgba(9, 14, 21, 0.22));
+}
+.stage-block.awake {
+    fill: #f07c8b;
+}
+.stage-block.light {
+    fill: #2fd0e6;
+}
+.stage-block.deep {
+    fill: #2769d8;
+}
+.stage-time-axis {
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    color: rgba(250, 252, 248, 0.56);
+    font-size: 11px;
+}
+.stage-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+.stage-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(244, 237, 223, 0.1);
+    color: rgba(250, 252, 248, 0.72);
+    font-size: 12px;
+}
+.stage-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.stage-legend strong {
+    color: rgba(250, 252, 248, 0.94);
+    font-weight: 600;
+}
+.stage-legend .awake i {
+    background: #f07c8b;
+}
+.stage-legend .light i {
+    background: #2fd0e6;
+}
+.stage-legend .deep i {
+    background: #2769d8;
+}
 
 .sleep-chart {
     height: 140px;
@@ -989,9 +2610,60 @@ onBeforeUnmount(() => {
 }
 .chart-dot {
     fill: var(--jade);
+    cursor: pointer;
+    outline: none;
+    transition:
+        r 0.18s ease,
+        filter 0.18s ease,
+        stroke-width 0.18s ease;
 }
 .chart-dot.today {
     fill: var(--cinnabar);
+}
+.chart-dot:hover,
+.chart-dot:focus-visible {
+    filter: drop-shadow(0 4px 8px rgba(92, 131, 116, 0.28));
+    stroke: var(--paper);
+    stroke-width: 3;
+}
+.chart-tooltip {
+    position: absolute;
+    z-index: 2;
+    min-width: 126px;
+    padding: 8px 10px;
+    border: 1px solid rgba(92, 131, 116, 0.22);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--paper) 94%, var(--jade-soft));
+    box-shadow: 0 12px 26px rgba(44, 54, 57, 0.14);
+    color: var(--ink);
+    pointer-events: none;
+}
+.chart-tooltip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 10px;
+    height: 10px;
+    border-right: 1px solid rgba(92, 131, 116, 0.22);
+    border-bottom: 1px solid rgba(92, 131, 116, 0.22);
+    background: color-mix(in srgb, var(--paper) 94%, var(--jade-soft));
+    transform: translateX(-50%) rotate(45deg);
+}
+.chart-tooltip span,
+.chart-tooltip strong {
+    display: block;
+    white-space: nowrap;
+}
+.chart-tooltip span {
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+.chart-tooltip strong {
+    margin-top: 3px;
+    color: var(--jade);
+    font-size: 13px;
+    font-weight: 700;
 }
 .chart-labels {
     display: flex;
@@ -1310,6 +2982,11 @@ onBeforeUnmount(() => {
     background: var(--ink);
     transform: translateY(-1px);
 }
+.btn:disabled {
+    cursor: wait;
+    opacity: 0.68;
+    transform: none;
+}
 .btn-ghost {
     background: transparent;
     color: var(--jade);
@@ -1350,6 +3027,22 @@ onBeforeUnmount(() => {
     }
     .logic-note {
         padding-left: 0;
+    }
+    .sleep-summary-shell {
+        height: 420px;
+    }
+    .sleep-stage-head {
+        flex-direction: column;
+    }
+    .summary-date-picker {
+        align-self: flex-start;
+    }
+    .stage-chart {
+        grid-template-columns: 36px 1fr;
+        column-gap: 8px;
+    }
+    .stage-legend {
+        gap: 8px;
     }
     .time-picker-backdrop {
         align-items: flex-end;
