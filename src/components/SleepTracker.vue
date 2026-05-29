@@ -1,12 +1,15 @@
 <template>
-    <div class="sleep-panel" :class="{ loading: isLoadingSleep }">
+    <div
+        class="sleep-panel"
+        :class="{ loading: isLoadingSleep, 'monitor-only': isMonitorOnly }"
+    >
         <Transition name="toast-pop">
             <div v-if="savedToast" class="save-toast">
                 {{ toastMessage }}
             </div>
         </Transition>
 
-        <section class="sleep-input module-card">
+        <section v-if="showSleepInput" class="sleep-input module-card">
             <div class="sleep-input-head">
                 <div>
                     <div class="eyebrow">SLEEP LOG · 睡眠作息</div>
@@ -170,7 +173,11 @@
         </section>
 
         <Transition name="summary-soft">
-            <div v-if="showTodayRoutineCards" class="grid-2 summary-grid">
+            <div
+                v-if="showTodayRoutineCards"
+                class="grid-2 summary-grid"
+                :class="{ 'summary-grid-monitor': isMonitorOnly }"
+            >
                 <section
                     class="sleep-summary-shell module-card"
                     :class="{ flipped: isSleepCardFlipped }"
@@ -344,7 +351,7 @@
                     </div>
                 </section>
 
-                <section class="card module-card">
+                <section v-if="showSleepAdvice" class="card module-card">
                     <div class="card-title">
                         <span class="dot"></span>今日作息建议
                     </div>
@@ -360,10 +367,116 @@
                         </div>
                     </div>
                 </section>
+
+                <section
+                    v-if="isMonitorOnly"
+                    class="card module-card sleep-trend-card sleep-trend-monitor"
+                >
+                    <div class="row">
+                        <div class="card-title" style="margin: 0">
+                            <span class="dot"></span>近 7 日睡眠趋势
+                        </div>
+                        <div class="metric-text">{{ weeklyMetricText }}</div>
+                    </div>
+                    <div class="sleep-chart">
+                        <svg
+                            class="chart-svg"
+                            viewBox="0 0 700 140"
+                            preserveAspectRatio="none"
+                        >
+                            <defs>
+                                <linearGradient
+                                    id="sleepGrad"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="0%"
+                                        stop-color="#5C8374"
+                                        stop-opacity="0.4"
+                                    />
+                                    <stop
+                                        offset="100%"
+                                        stop-color="#5C8374"
+                                        stop-opacity="0"
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <line
+                                class="chart-grid"
+                                x1="0"
+                                y1="35"
+                                x2="700"
+                                y2="35"
+                            />
+                            <line
+                                class="chart-grid"
+                                x1="0"
+                                y1="70"
+                                x2="700"
+                                y2="70"
+                            />
+                            <line
+                                class="chart-grid"
+                                x1="0"
+                                y1="105"
+                                x2="700"
+                                y2="105"
+                            />
+                            <path
+                                v-for="path in chartAreaPaths"
+                                :key="`monitor-area-${path}`"
+                                class="chart-area"
+                                :d="path"
+                            />
+                            <path
+                                v-for="path in chartLinePaths"
+                                :key="`monitor-line-${path}`"
+                                class="chart-line"
+                                :d="path"
+                            />
+                            <circle
+                                v-for="point in chartPoints"
+                                :key="`monitor-${point.cx}`"
+                                class="chart-dot"
+                                :class="{ today: point.today }"
+                                :cx="point.cx"
+                                :cy="point.cy"
+                                r="4"
+                                tabindex="0"
+                                role="img"
+                                :aria-label="chartPointLabel(point)"
+                                @mouseenter="hoveredChartPoint = point"
+                                @mouseleave="hoveredChartPoint = null"
+                                @focus="hoveredChartPoint = point"
+                                @blur="hoveredChartPoint = null"
+                            />
+                        </svg>
+                        <div
+                            v-if="hoveredChartPoint"
+                            class="chart-tooltip"
+                            :style="chartTooltipStyle"
+                        >
+                            <span>{{
+                                formatChartDate(hoveredChartPoint.date)
+                            }}</span>
+                            <strong>{{
+                                formatChartPointDuration(hoveredChartPoint)
+                            }}</strong>
+                        </div>
+                    </div>
+                    <div class="chart-labels">
+                        <span v-for="label in chartLabels" :key="label">{{
+                            label
+                        }}</span>
+                    </div>
+                </section>
             </div>
         </Transition>
 
-        <section class="card module-card">
+        <section v-if="!isMonitorOnly" class="card module-card">
             <div class="row">
                 <div class="card-title" style="margin: 0">
                     <span class="dot"></span>近 7 日睡眠趋势
@@ -452,7 +565,7 @@
             </div>
         </section>
 
-        <section class="card module-card">
+        <section v-if="showSleepAudio" class="card module-card">
             <div class="row">
                 <div class="card-title" style="margin: 0">
                     <span class="dot"></span>助眠音律
@@ -499,7 +612,7 @@
             </div>
         </section>
 
-        <Transition name="modal-soft">
+        <Transition v-if="showSleepInput" name="modal-soft">
             <div
                 v-if="showTimePicker"
                 class="time-picker-backdrop"
@@ -610,6 +723,15 @@ import {
     type SleepWeeklyStatDTO,
 } from "@/network/sleep";
 import { useUserStore } from "@/store";
+
+const props = withDefaults(
+    defineProps<{
+        variant?: "full" | "monitor";
+    }>(),
+    {
+        variant: "full",
+    },
+);
 
 type TimeField = "sleep" | "wake";
 type AudioItem = { title: string; meta: string; playing: boolean };
@@ -917,6 +1039,10 @@ const phoneImportMessage = computed(() => {
 const phoneImportIcon = computed(() =>
     phoneImportStatus.value === "completed" ? "✓" : "📱",
 );
+const isMonitorOnly = computed(() => props.variant === "monitor");
+const showSleepInput = computed(() => !isMonitorOnly.value);
+const showSleepAdvice = computed(() => !isMonitorOnly.value);
+const showSleepAudio = computed(() => !isMonitorOnly.value);
 const activeUserId = computed(() => {
     const loginId = Number(userStore.G_LoginInfo.id);
     const infoId = Number(userStore.G_UserInfo.id);
@@ -2664,10 +2790,28 @@ onBeforeUnmount(() => {
     margin-bottom: 20px;
     align-items: stretch;
 }
+.summary-grid.summary-grid-monitor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .summary-grid > .card {
     margin-top: 0;
     display: flex;
     flex-direction: column;
+}
+.monitor-only > .card.module-card {
+    margin-top: 0;
+}
+.sleep-trend-monitor {
+    height: 430px;
+}
+.sleep-trend-monitor .sleep-chart {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    margin-top: 20px;
+}
+.sleep-trend-monitor .chart-labels {
+    margin-top: 10px;
 }
 .sleep-summary-shell {
     height: 430px;
@@ -3336,6 +3480,9 @@ onBeforeUnmount(() => {
     .time-extra,
     .wheel-board {
         grid-template-columns: 1fr;
+    }
+    .summary-grid.summary-grid-monitor {
+        grid-template-columns: minmax(0, 1fr);
     }
     .clock-preview {
         width: 210px;

@@ -124,38 +124,7 @@
 
             <!-- ===== Module 2: 饮食与作息记录 ===== -->
             <section v-show="activeTab === 'lifestyle'" class="panel">
-                <div class="routine-card">
-                    <div class="row" style="margin-bottom: 6px;">
-                        <div class="font-serif" style="font-size: 22px; font-weight: 600;">作息记录</div>
-                        <div class="pick-chip active">📅 今日 · 5 月 20 日</div>
-                    </div>
-                    <div class="time-form">
-                        <div class="time-group">
-                            <div class="t-label">☀️ 起床时间</div>
-                            <input type="time" value="06:24" class="time-input" />
-                        </div>
-                        <div class="time-group">
-                            <div class="t-label">😴 午休时长</div>
-                            <input type="time" value="00:25" class="time-input" />
-                        </div>
-                        <div class="time-group">
-                            <div class="t-label">🌙 计划入睡</div>
-                            <input type="time" value="22:50" class="time-input" />
-                        </div>
-                    </div>
-                    <div class="duration-display">
-                        <span>昨夜睡眠时长 · 入睡较快 · 深睡比例 24%</span>
-                        <strong>7 小时 38 分钟</strong>
-                    </div>
-                    <div style="margin-top: 16px; font-size: 13px; color: var(--ink-muted);">作息状态（可多选）：</div>
-                    <div class="chip-row" style="margin-top: 8px;">
-                        <span v-for="tag in routineTags" :key="tag" class="pick-chip" :class="{ active: routineSelected.includes(tag) }" @click="toggleRoutineTag(tag)">{{ tag }}</span>
-                    </div>
-                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
-                        <button class="btn btn-ghost">取消</button>
-                        <button class="btn" @click="toast('✓ 已保存')">保存作息记录</button>
-                    </div>
-                </div>
+                <SleepTracker variant="monitor" />
 
                 <div class="card" style="margin-top: 20px;">
                     <div class="row">
@@ -505,6 +474,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
+import SleepTracker from "@/components/SleepTracker.vue";
 
 const activeTab = ref("checkin");
 
@@ -580,14 +550,6 @@ const milestones = [
 ];
 
 // ---- Module 2: Lifestyle ----
-const routineTags = ["按时作息", "略有熬夜", "久坐过多", "午间小憩", "用眼疲劳"];
-const routineSelected = ref(["按时作息", "午间小憩"]);
-function toggleRoutineTag(tag: string) {
-    const idx = routineSelected.value.indexOf(tag);
-    if (idx >= 0) routineSelected.value.splice(idx, 1);
-    else routineSelected.value.push(tag);
-}
-
 const meals = [
     { name: "早餐", emoji: "🥣", tag: "清淡", foods: "小米南瓜粥、水煮蛋、凉拌时蔬", cal: 420, bg: "breakfast" },
     { name: "午餐", emoji: "🍲", tag: "均衡", foods: "糙米饭、清蒸鲈鱼、西兰花、紫菜汤", cal: 610, bg: "lunch" },
@@ -905,27 +867,6 @@ const badges = [
 .progress-track { height: 6px; background: var(--cream); border-radius: 3px; margin-top: 6px; overflow: hidden; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-soft)); border-radius: 3px; }
 
-// Routine
-.routine-card {
-    background: linear-gradient(135deg, #FDFAF3 0%, #F0E8D5 100%);
-    border: 1px solid var(--gold-soft); border-radius: 16px; padding: 28px;
-    position: relative; overflow: hidden;
-}
-.routine-card::after { content: '⏰'; position: absolute; right: 24px; top: 22px; font-size: 38px; opacity: 0.3; }
-.time-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 6px; }
-.time-group { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; transition: all .2s; }
-.time-group:focus-within { border-color: var(--jade); box-shadow: 0 0 0 3px rgba(92,131,116,0.1); }
-.time-group .t-label { font-size: 12px; color: var(--ink-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-.time-input {
-    border: none; background: transparent; font-family: "STKaiti", serif;
-    font-size: 24px; font-weight: 600; color: var(--ink); width: 100%; outline: none; cursor: pointer;
-}
-.duration-display {
-    margin-top: 16px; padding: 12px 16px; background: var(--jade-soft); border-radius: 10px;
-    display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--jade);
-}
-.duration-display strong { font-family: "STKaiti", serif; font-size: 20px; font-weight: 600; }
-
 // Meal Cards
 .meal-card { background: var(--paper-warm); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; transition: all .2s; }
 .meal-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
@@ -1188,7 +1129,6 @@ const badges = [
     .tabs { grid-template-columns: repeat(3, 1fr); }
     .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
     .check-grid { grid-template-columns: 1fr 1fr; }
-    .time-form { grid-template-columns: 1fr; }
     .badge-grid { grid-template-columns: repeat(3, 1fr); }
     .hero::before { display: none; }
 }
