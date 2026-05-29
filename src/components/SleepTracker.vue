@@ -1013,6 +1013,18 @@ function parseISODate(value: string) {
     return new Date(Number(year), Number(month) - 1, Number(day));
 }
 
+function parseApiDateTime(value: string) {
+    const normalized = value.trim();
+    const hasDateTime = /^\d{4}-\d{1,2}-\d{1,2}[T\s]\d{1,2}:\d{2}/.test(
+        normalized,
+    );
+    const hasOffset = /(?:Z|[+-]\d{2}:?\d{2}(?::?\d{2})?)$/i.test(normalized);
+    if (!hasDateTime) return null;
+
+    const date = new Date(hasOffset ? normalized : `${normalized}Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function formatTimezoneOffset(date: Date) {
     const offsetMinutes = -date.getTimezoneOffset();
     const sign = offsetMinutes >= 0 ? "+" : "-";
@@ -1324,6 +1336,9 @@ function normalizeDateValue(value?: unknown, fallback = todayISO) {
     const rawValue = String(value).trim();
     if (!rawValue) return fallback;
 
+    const offsetDate = parseApiDateTime(rawValue);
+    if (offsetDate) return toISODate(offsetDate);
+
     const dateMatch = rawValue.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
     if (dateMatch) {
         return `${dateMatch[1]}-${padTime(Number(dateMatch[2]))}-${padTime(
@@ -1603,6 +1618,11 @@ function readNumberField(
 }
 
 function ensureTimeValue(value: string, fallback: string) {
+    const offsetDate = parseApiDateTime(value);
+    if (offsetDate) {
+        return formatTime(offsetDate.getHours(), offsetDate.getMinutes());
+    }
+
     const match = value.match(/(\d{1,2}):(\d{2})/);
     if (!match) return fallback;
     const hour = Number(match[1]);

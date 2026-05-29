@@ -205,6 +205,23 @@ function readNumericValue(value: unknown) {
     return 0;
 }
 
+function parseOffsetDateTime(value: string) {
+    const normalized = value.trim();
+    const hasTime = /[T\s]\d{1,2}:\d{2}/.test(normalized);
+    const hasOffset = /(?:Z|[+-]\d{2}:?\d{2}(?::?\d{2})?)$/i.test(normalized);
+    if (!hasTime || !hasOffset) return null;
+
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toLocalDateKey(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        "0",
+    )}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function readDateKey(record: SleepRecordDTO | SleepWeeklyStatDTO) {
     const source = record as Record<string, unknown>;
     const value = readObjectField(source, [
@@ -221,6 +238,9 @@ function readDateKey(record: SleepRecordDTO | SleepWeeklyStatDTO) {
         "endTime",
     ]);
     if (value == null) return "";
+    const offsetDate = parseOffsetDateTime(String(value));
+    if (offsetDate) return toLocalDateKey(offsetDate);
+
     const match = String(value).match(
         /(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/,
     );
