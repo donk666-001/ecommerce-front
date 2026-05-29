@@ -92,9 +92,9 @@ img {
   height: auto;
 }
 
-// 修复 Element Plus 弹窗导致的滚动问题
+// 保持 Element Plus 弹窗打开时锁定页面滚动，避免出现页面和弹窗双滚动条
 body.el-popup-parent--hidden {
-  overflow-y: auto !important;
+  overflow-y: hidden !important;
   width: 100% !important;
   padding-right: 0 !important;
 }

@@ -3,6 +3,10 @@
         <HeaderLayout />
 
         <div class="settings-page">
+            <button type="button" class="back-link" @click="goBack">
+                <span class="back-link-icon">‹</span>
+                <span>返回</span>
+            </button>
             <!-- 顶部用户展示区 -->
             <div class="profile-header">
                 <div class="avatar-wrap" @click="triggerAvatarUpload" title="更换头像">
@@ -132,15 +136,16 @@
                         </el-form-item>
                         <el-form-item>
                             <button
+                                type="button"
                                 class="action-btn primary"
                                 :disabled="changingPwd"
-                                @click="changePassword"
+                                @click="submitPasswordChange"
                             >{{ changingPwd ? '修改中…' : '修改密码' }}</button>
                         </el-form-item>
                     </el-form>
                 </div>
 
-                <div class="security-group danger-zone">
+                <div v-if="false" class="security-group danger-zone">
                     <h3 class="security-heading font-serif">退出登录</h3>
                     <p class="security-note">退出后需重新登录才能访问个人数据。</p>
                     <button class="action-btn danger" @click="handleLogout">退出登录</button>
@@ -154,7 +159,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
@@ -228,6 +233,14 @@ onMounted(async () => {
     profileForm.phone = info.phone || "";
 });
 
+function goBack() {
+    if (window.history.length > 1) {
+        router.back();
+        return;
+    }
+    router.push("/");
+}
+
 function triggerAvatarUpload() {
     fileInputRef.value?.click();
 }
@@ -268,13 +281,26 @@ async function saveProfile() {
 
     savingProfile.value = true;
     try {
-        const result = await ApiUser.updateProfile({
+        const result = await ApiUser.updateProfileDetailed({
             nickname: profileForm.nickName,
             gender: profileForm.gender,
             email: profileForm.email,
             phone: profileForm.phone,
         });
-        if (result !== null) {
+        if (!result.success) {
+            ElMessage.error(result.message || "保存失败，请稍后重试");
+            return;
+        }
+        ElMessage.success("密码修改成功");
+        pwdFormRef.value?.resetFields();
+        return;
+        ElMessage.success("密码修改成功");
+        pwdFormRef.value?.resetFields();
+        return;
+        ElMessage.success("密码修改成功");
+        pwdFormRef.value?.resetFields();
+        return;
+        if (result.success) {
             // 同步更新本地 store，避免需要刷新页面才能看到变化
             userStore.G_LoginInfo.nickName = profileForm.nickName;
             userStore.G_LoginInfo.email = profileForm.email;
@@ -292,22 +318,56 @@ async function saveProfile() {
 
 async function changePassword() {
     const valid = await pwdFormRef.value?.validate().catch(() => false);
-    if (!valid) return;
+    if (!valid) {
+        ElMessage.warning("请先完善密码信息后再修改");
+        return;
+    }
 
     changingPwd.value = true;
     try {
-        const ok = await ApiUser.changePassword({
+        const result = await ApiUser.changePasswordDetailed({
             oldPassword: pwdForm.oldPassword,
             newPassword: pwdForm.newPassword,
         });
-        if (ok) {
+        if (!result.success) {
+            ElMessage.error(result.message || "密码修改失败，请稍后重试");
+            return;
+        }
+        if (result.success) {
             ElMessage.success("密码修改成功，请重新登录");
             pwdFormRef.value?.resetFields();
-            await userStore.logout();
-            router.push("/login");
         } else {
             ElMessage.error("修改失败，当前密码可能不正确");
         }
+    } finally {
+        changingPwd.value = false;
+    }
+}
+
+async function submitPasswordChange() {
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+        ElMessage.warning("当前两次密码不一致，无法修改");
+        return;
+    }
+    const valid = await pwdFormRef.value?.validate().catch(() => false);
+    if (!valid) return;
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+        ElMessage.warning("两次输入的新密码不一致");
+        return;
+    }
+
+    changingPwd.value = true;
+    try {
+        const result = await ApiUser.changePasswordDetailed({
+            oldPassword: pwdForm.oldPassword,
+            newPassword: pwdForm.newPassword,
+        });
+        if (!result.success) {
+            ElMessage.error(result.message || "密码修改失败，请稍后重试");
+            return;
+        }
+        ElMessage.success("密码修改成功");
+        pwdFormRef.value?.resetFields();
     } finally {
         changingPwd.value = false;
     }
@@ -331,6 +391,41 @@ async function handleLogout() {
     max-width: 720px;
     margin: 0 auto;
     padding: 48px 24px 96px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.18s ease-out, transform 0.18s ease-out;
+
+    &:hover {
+        color: var(--jade);
+        transform: translateX(-2px);
+    }
+}
+
+.back-link-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(92, 131, 116, 0.08);
+    border: 1px solid rgba(92, 131, 116, 0.14);
+    color: var(--jade);
+    font-size: 20px;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 /* ── 顶部用户信息 ─────────────────────────────── */

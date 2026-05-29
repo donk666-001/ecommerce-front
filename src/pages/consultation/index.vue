@@ -348,9 +348,55 @@
                                 </div>
 
                                 <div class="chat-input">
-                                    <button class="handoff-chip" style="background:var(--gold-soft);color:var(--gold-deep);border-color:rgba(201,165,92,.4);">💬 快捷回复</button>
+                                    <button
+                                        class="handoff-chip quick-reply-trigger"
+                                        :class="{ active: quickReplyPanelVisible }"
+                                        type="button"
+                                        @click="quickReplyPanelVisible = !quickReplyPanelVisible"
+                                    >
+                                        快捷回复
+                                    </button>
                                     <input type="text" v-model="expertChatInput" placeholder="输入回复内容…" @keydown.enter="sendExpertMessage" />
-                                    <button class="btn btn-sm" @click="sendExpertMessage">发送</button>
+                                    <button class="btn btn-sm" type="button" @click="sendExpertMessage">发送</button>
+                                </div>
+                                <div v-if="quickReplyPanelVisible" class="quick-reply-panel">
+                                    <div class="quick-reply-header">
+                                        <div class="quick-reply-title">常用快捷回复</div>
+                                        <button
+                                            class="quick-reply-collapse"
+                                            type="button"
+                                            @click="quickReplyPanelVisible = false"
+                                        >
+                                            收起
+                                        </button>
+                                    </div>
+                                    <div class="quick-reply-list">
+                                        <button
+                                            v-for="item in quickReplies"
+                                            :key="item.id"
+                                            class="quick-reply-chip"
+                                            type="button"
+                                            @click="applyQuickReply(item.content)"
+                                        >
+                                            <span class="quick-reply-chip-text">{{ item.content }}</span>
+                                            <span
+                                                v-if="item.custom"
+                                                class="quick-reply-chip-remove"
+                                                @click.stop="removeQuickReply(item.id)"
+                                            >
+                                                ×
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div class="quick-reply-editor">
+                                        <input
+                                            v-model="quickReplyDraft"
+                                            type="text"
+                                            placeholder="添加自定义快捷回复"
+                                            @keydown.enter.prevent="addQuickReply"
+                                        />
+                                        <button class="btn btn-sm" type="button" @click="addQuickReply">保存短语</button>
+                                    </div>
                                 </div>
                             </template>
                         </div>
@@ -965,6 +1011,8 @@ onMounted(async () => {
             }
         });
     }
+
+    loadQuickReplies();
 });
 
 // ---- Module 2: 推荐专家（API 数据） ----
@@ -1248,6 +1296,73 @@ const expertMessages = ref<MessageVO[]>([]);
 const expertChatInput = ref('');
 const expertLoadingMessages = ref(false);
 const expertChatBodyEl = ref<HTMLElement | null>(null);
+
+type QuickReplyItem = { id: string; content: string; custom?: boolean };
+const QUICK_REPLY_STORAGE_KEY = 'expert-consult-quick-replies';
+const defaultQuickReplies: QuickReplyItem[] = [
+    { id: 'greet', content: '您好，我已经接入本次咨询，请先告诉我您目前最明显的不适。' },
+    { id: 'temp', content: '请先测量一下体温，并告诉我最高体温和持续时间。' },
+    { id: 'history', content: '请问症状出现多久了？之前有没有类似情况或基础疾病？' },
+    { id: 'advice', content: '收到，我先为您整理情况，请稍等，我马上给您建议。' },
+];
+const quickReplies = ref<QuickReplyItem[]>([...defaultQuickReplies]);
+const quickReplyPanelVisible = ref(false);
+const quickReplyDraft = ref('');
+
+function loadQuickReplies() {
+    try {
+        const raw = window.localStorage.getItem(QUICK_REPLY_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+        quickReplies.value = [
+            ...defaultQuickReplies,
+            ...parsed
+                .filter((item: any) => typeof item?.content === 'string' && item.content.trim())
+                .map((item: any, index: number) => ({
+                    id: item.id || `custom-${index}`,
+                    content: item.content.trim(),
+                    custom: true,
+                })),
+        ];
+    } catch {
+        quickReplies.value = [...defaultQuickReplies];
+    }
+}
+
+function persistQuickReplies() {
+    const customs = quickReplies.value
+        .filter(item => item.custom)
+        .map(item => ({ id: item.id, content: item.content }));
+    window.localStorage.setItem(QUICK_REPLY_STORAGE_KEY, JSON.stringify(customs));
+}
+
+function addQuickReply() {
+    const content = quickReplyDraft.value.trim();
+    if (!content) return;
+    if (quickReplies.value.some(item => item.content === content)) {
+        toast('该快捷回复已存在');
+        return;
+    }
+    quickReplies.value.push({
+        id: `custom-${Date.now()}`,
+        content,
+        custom: true,
+    });
+    quickReplyDraft.value = '';
+    persistQuickReplies();
+    toast('已添加快捷回复', '', 'success');
+}
+
+function removeQuickReply(id: string) {
+    quickReplies.value = quickReplies.value.filter(item => item.id !== id);
+    persistQuickReplies();
+}
+
+function applyQuickReply(content: string) {
+    expertChatInput.value = content;
+    void sendExpertMessage();
+}
 
 /** 当前展开的队列项（用于右侧面板展示昵称） */
 const currentExpertSession = computed(() =>
@@ -2302,6 +2417,50 @@ function m4ResetForm() {
     font-size: 13px; font-family: inherit; outline: none; background: var(--paper-warm);
 }
 .chat-input input:focus { border-color: var(--jade); background: var(--paper); }
+
+.quick-reply-trigger {
+    background: var(--gold-soft); color: var(--gold-deep); border: 1px solid rgba(201, 165, 92, 0.4);
+    border-radius: 16px; padding: 7px 14px; font-size: 12px; cursor: pointer; font-weight: 600;
+    font-family: inherit; flex-shrink: 0;
+}
+.quick-reply-trigger:hover, .quick-reply-trigger.active { background: var(--gold-deep); color: white; }
+.quick-reply-panel {
+    background: var(--paper); border-top: 1px solid var(--line-soft); padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+}
+.quick-reply-header {
+    display: flex; justify-content: space-between; align-items: center;
+}
+.quick-reply-title {
+    font-size: 13px; font-weight: 600; color: var(--ink-muted);
+}
+.quick-reply-collapse {
+    background: none; border: none; color: var(--ink-muted); cursor: pointer;
+    font-size: 12px; font-family: inherit;
+}
+.quick-reply-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+}
+.quick-reply-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--paper-warm); border: 1px solid var(--line); border-radius: 14px;
+    padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+    color: var(--ink); transition: all 0.15s;
+}
+.quick-reply-chip:hover { border-color: var(--jade); color: var(--jade); }
+.quick-reply-chip-text { white-space: nowrap; }
+.quick-reply-chip-remove {
+    color: var(--ink-muted); font-size: 14px; font-weight: bold; line-height: 1;
+}
+.quick-reply-chip-remove:hover { color: var(--cinnabar); }
+.quick-reply-editor {
+    display: flex; gap: 8px; align-items: center;
+}
+.quick-reply-editor input {
+    flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px;
+    font-size: 12px; font-family: inherit; outline: none; background: var(--paper-warm);
+}
+.quick-reply-editor input:focus { border-color: var(--jade); }
 
 .chat-side { padding: 20px; overflow-y: auto; background: var(--paper-warm); }
 .chat-side h5 {

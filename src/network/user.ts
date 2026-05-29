@@ -143,6 +143,25 @@ class ApiUser {
             return false;
         }
     }
+
+    static async changePasswordDetailed(data: {
+        oldPassword: string;
+        newPassword: string;
+    }) {
+        try {
+            const response = await GAxios.put("/users/password", data);
+            const res = response.data;
+            return {
+                success: res.code === 200,
+                message: res.message || (res.code === 200 ? "密码修改成功" : "密码修改失败，请稍后重试"),
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error?.response?.data?.message || "密码修改失败，请稍后重试",
+            };
+        }
+    }
 }
 
 export { ApiUser };
