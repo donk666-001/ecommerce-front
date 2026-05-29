@@ -16,7 +16,16 @@
                         <div class="char-eyes" :style="purpleEyesStyle">
                             <template v-for="n in 2" :key="n">
                                 <div :style="eyeballSty(18, isPurpleBlinking)">
-                                    <div v-if="!isPurpleBlinking" :style="pupilSty(purpleEyeForce, purplePupilPos, 7)"></div>
+                                    <div
+                                        v-if="!isPurpleBlinking"
+                                        :style="
+                                            pupilSty(
+                                                purpleEyeForce,
+                                                purplePupilPos,
+                                                7,
+                                            )
+                                        "
+                                    ></div>
                                 </div>
                             </template>
                         </div>
@@ -27,7 +36,16 @@
                         <div class="char-eyes" :style="blackEyesStyle">
                             <template v-for="n in 2" :key="n">
                                 <div :style="eyeballSty(16, isBlackBlinking)">
-                                    <div v-if="!isBlackBlinking" :style="pupilSty(blackEyeForce, blackPupilPos, 6)"></div>
+                                    <div
+                                        v-if="!isBlackBlinking"
+                                        :style="
+                                            pupilSty(
+                                                blackEyeForce,
+                                                blackPupilPos,
+                                                6,
+                                            )
+                                        "
+                                    ></div>
                                 </div>
                             </template>
                         </div>
@@ -36,14 +54,26 @@
                     <!-- 橙色半圆（前层左） -->
                     <div ref="orangeRef" class="char" :style="orangeBodyStyle">
                         <div class="char-eyes" :style="orangeEyesStyle">
-                            <div v-for="n in 2" :key="n" :style="dotSty(orangeEyeForce, orangePupilPos, 12)"></div>
+                            <div
+                                v-for="n in 2"
+                                :key="n"
+                                :style="
+                                    dotSty(orangeEyeForce, orangePupilPos, 12)
+                                "
+                            ></div>
                         </div>
                     </div>
 
                     <!-- 黄色圆柱（前层右） -->
                     <div ref="yellowRef" class="char" :style="yellowBodyStyle">
                         <div class="char-eyes" :style="yellowEyesStyle">
-                            <div v-for="n in 2" :key="n" :style="dotSty(yellowEyeForce, yellowPupilPos, 12)"></div>
+                            <div
+                                v-for="n in 2"
+                                :key="n"
+                                :style="
+                                    dotSty(yellowEyeForce, yellowPupilPos, 12)
+                                "
+                            ></div>
                         </div>
                         <div class="char-mouth" :style="yellowMouthStyle"></div>
                     </div>
@@ -51,7 +81,9 @@
             </div>
 
             <figure class="brand-quote">
-                <blockquote class="font-serif">天人合一<br />身心俱养</blockquote>
+                <blockquote class="font-serif">
+                    天人合一<br />身心俱养
+                </blockquote>
                 <figcaption>二十四节气 · 中医智慧 · AI 陪伴</figcaption>
             </figure>
 
@@ -63,8 +95,18 @@
             <div class="deco-circle font-serif" aria-hidden="true">养</div>
             <div class="form-area">
                 <div class="mode-tabs">
-                    <button :class="{ active: mode === 'login' }" @click="switchMode('login')">登录</button>
-                    <button :class="{ active: mode === 'register' }" @click="switchMode('register')">注册</button>
+                    <button
+                        :class="{ active: mode === 'login' }"
+                        @click="switchMode('login')"
+                    >
+                        登录
+                    </button>
+                    <button
+                        :class="{ active: mode === 'register' }"
+                        @click="switchMode('register')"
+                    >
+                        注册
+                    </button>
                 </div>
 
                 <!-- 登录表单 -->
@@ -95,7 +137,10 @@
                             prefix-icon="Lock"
                         >
                             <template #suffix>
-                                <el-icon class="pw-eye" @click="showPassword = !showPassword">
+                                <el-icon
+                                    class="pw-eye"
+                                    @click="showPassword = !showPassword"
+                                >
                                     <Hide v-if="showPassword" />
                                     <View v-else />
                                 </el-icon>
@@ -108,7 +153,8 @@
                         size="large"
                         :loading="loading"
                         @click="submitLogin"
-                    >登录</el-button>
+                        >登录</el-button
+                    >
                 </el-form>
 
                 <!-- 注册表单 -->
@@ -121,16 +167,40 @@
                     @keyup.enter="submitRegister"
                 >
                     <el-form-item prop="account">
-                        <el-input v-model="registerForm.account" placeholder="账号（3-20 位）" size="large" prefix-icon="User" />
+                        <el-input
+                            v-model="registerForm.account"
+                            placeholder="账号（3-20 位）"
+                            size="large"
+                            prefix-icon="User"
+                        />
                     </el-form-item>
                     <el-form-item prop="email">
-                        <el-input v-model="registerForm.email" placeholder="邮箱" size="large" prefix-icon="Message" />
+                        <el-input
+                            v-model="registerForm.email"
+                            placeholder="邮箱"
+                            size="large"
+                            prefix-icon="Message"
+                        />
                     </el-form-item>
                     <el-form-item prop="password">
-                        <el-input v-model="registerForm.password" type="password" placeholder="密码（6-20 位）" size="large" prefix-icon="Lock" show-password />
+                        <el-input
+                            v-model="registerForm.password"
+                            type="password"
+                            placeholder="密码（6-20 位）"
+                            size="large"
+                            prefix-icon="Lock"
+                            show-password
+                        />
                     </el-form-item>
                     <el-form-item prop="confirmPassword">
-                        <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" size="large" prefix-icon="Lock" show-password />
+                        <el-input
+                            v-model="registerForm.confirmPassword"
+                            type="password"
+                            placeholder="确认密码"
+                            size="large"
+                            prefix-icon="Lock"
+                            show-password
+                        />
                     </el-form-item>
                     <el-form-item label="性别">
                         <el-radio-group v-model="registerForm.gender">
@@ -138,7 +208,14 @@
                             <el-radio :value="2">女</el-radio>
                         </el-radio-group>
                     </el-form-item>
-                    <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="submitRegister">注册</el-button>
+                    <el-button
+                        class="submit-btn"
+                        type="primary"
+                        size="large"
+                        :loading="loading"
+                        @click="submitRegister"
+                        >注册</el-button
+                    >
                 </el-form>
             </div>
         </div>
@@ -146,7 +223,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch, type Ref } from "vue";
+import {
+    ref,
+    reactive,
+    computed,
+    onMounted,
+    onUnmounted,
+    watch,
+    type Ref,
+} from "vue";
 import { useRouter, useRoute } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
@@ -166,7 +251,13 @@ const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
 
 const loginForm = reactive({ account: "", password: "" });
-const registerForm = reactive({ account: "", email: "", password: "", confirmPassword: "", gender: 0 });
+const registerForm = reactive({
+    account: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    gender: 0,
+});
 
 // ── 动画状态 ────────────────────────────────────
 const mouseX = ref(0);
@@ -226,26 +317,34 @@ const yellowPupilPos = computed(() => calcPupil(yellowRef.value, 5));
 type Vec = { x: number; y: number };
 
 const purpleEyeForce = computed((): Vec | null => {
-    const show = showPassword.value, hasPwd = loginForm.password.length > 0;
-    if (hasPwd && show) return { x: isPurplePeeking.value ? 4 : -4, y: isPurplePeeking.value ? 5 : -4 };
+    const show = showPassword.value,
+        hasPwd = loginForm.password.length > 0;
+    if (hasPwd && show)
+        return {
+            x: isPurplePeeking.value ? 4 : -4,
+            y: isPurplePeeking.value ? 5 : -4,
+        };
     if (isLookingAtEachOther.value) return { x: 3, y: 4 };
     return null;
 });
 
 const blackEyeForce = computed((): Vec | null => {
-    const show = showPassword.value, hasPwd = loginForm.password.length > 0;
+    const show = showPassword.value,
+        hasPwd = loginForm.password.length > 0;
     if (hasPwd && show) return { x: -4, y: -4 };
     if (isLookingAtEachOther.value) return { x: 0, y: -4 };
     return null;
 });
 
 const orangeEyeForce = computed((): Vec | null => {
-    if (loginForm.password.length > 0 && showPassword.value) return { x: -5, y: -4 };
+    if (loginForm.password.length > 0 && showPassword.value)
+        return { x: -5, y: -4 };
     return null;
 });
 
 const yellowEyeForce = computed((): Vec | null => {
-    if (loginForm.password.length > 0 && showPassword.value) return { x: -5, y: -4 };
+    if (loginForm.password.length > 0 && showPassword.value)
+        return { x: -5, y: -4 };
     return null;
 });
 
@@ -304,7 +403,8 @@ const purpleBodyStyle = computed(() => {
           ? `skewX(${sk - 12}deg) translateX(40px)`
           : `skewX(${sk}deg)`;
     return {
-        left: "70px", width: "180px",
+        left: "70px",
+        width: "180px",
         height: hiding ? "440px" : "400px",
         backgroundColor: "#6C3FF5",
         borderRadius: "10px 10px 0 0",
@@ -322,14 +422,23 @@ const purpleEyesStyle = computed(() => {
         position: "absolute",
         display: "flex",
         gap: "32px",
-        left: showing ? "20px" : isLookingAtEachOther.value ? "55px" : `${45 + faceX}px`,
-        top: showing ? "35px" : isLookingAtEachOther.value ? "65px" : `${40 + faceY}px`,
+        left: showing
+            ? "20px"
+            : isLookingAtEachOther.value
+              ? "55px"
+              : `${45 + faceX}px`,
+        top: showing
+            ? "35px"
+            : isLookingAtEachOther.value
+              ? "65px"
+              : `${40 + faceY}px`,
         transition: "left 0.7s ease-in-out, top 0.7s ease-in-out",
     };
 });
 
 const blackBodyStyle = computed(() => {
-    const hasPwd = loginForm.password.length > 0, show = showPassword.value;
+    const hasPwd = loginForm.password.length > 0,
+        show = showPassword.value;
     const showing = hasPwd && show;
     const looking = isLookingAtEachOther.value;
     const typing = isTyping.value;
@@ -342,7 +451,9 @@ const blackBodyStyle = computed(() => {
             ? `skewX(${sk * 1.5}deg)`
             : `skewX(${sk}deg)`;
     return {
-        left: "240px", width: "120px", height: "310px",
+        left: "240px",
+        width: "120px",
+        height: "310px",
         backgroundColor: "#2D2D2D",
         borderRadius: "8px 8px 0 0",
         zIndex: 2,
@@ -359,8 +470,16 @@ const blackEyesStyle = computed(() => {
         position: "absolute",
         display: "flex",
         gap: "24px",
-        left: showing ? "10px" : isLookingAtEachOther.value ? "32px" : `${26 + faceX}px`,
-        top: showing ? "28px" : isLookingAtEachOther.value ? "12px" : `${32 + faceY}px`,
+        left: showing
+            ? "10px"
+            : isLookingAtEachOther.value
+              ? "32px"
+              : `${26 + faceX}px`,
+        top: showing
+            ? "28px"
+            : isLookingAtEachOther.value
+              ? "12px"
+              : `${32 + faceY}px`,
         transition: "left 0.7s ease-in-out, top 0.7s ease-in-out",
     };
 });
@@ -368,11 +487,15 @@ const blackEyesStyle = computed(() => {
 const orangeBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
-        left: "0", width: "240px", height: "200px",
+        left: "0",
+        width: "240px",
+        height: "200px",
         backgroundColor: "#FF9B6B",
         borderRadius: "120px 120px 0 0",
         zIndex: 3,
-        transform: showing ? "skewX(0deg)" : `skewX(${orangePos.value.bodySkew}deg)`,
+        transform: showing
+            ? "skewX(0deg)"
+            : `skewX(${orangePos.value.bodySkew}deg)`,
         transformOrigin: "bottom center",
         transition: "all 0.7s ease-in-out",
     };
@@ -394,11 +517,15 @@ const orangeEyesStyle = computed(() => {
 const yellowBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
-        left: "310px", width: "140px", height: "230px",
+        left: "310px",
+        width: "140px",
+        height: "230px",
         backgroundColor: "#E8D754",
         borderRadius: "70px 70px 0 0",
         zIndex: 4,
-        transform: showing ? "skewX(0deg)" : `skewX(${yellowPos.value.bodySkew}deg)`,
+        transform: showing
+            ? "skewX(0deg)"
+            : `skewX(${yellowPos.value.bodySkew}deg)`,
         transformOrigin: "bottom center",
         transition: "all 0.7s ease-in-out",
     };
@@ -434,15 +561,18 @@ let lookTimer: ReturnType<typeof setTimeout> | null = null;
 
 function blinkCycle(blink: Ref<boolean>) {
     if (stopBlink) return;
-    setTimeout(() => {
-        if (stopBlink) return;
-        blink.value = true;
-        setTimeout(() => {
+    setTimeout(
+        () => {
             if (stopBlink) return;
-            blink.value = false;
-            blinkCycle(blink);
-        }, 150);
-    }, Math.random() * 4000 + 3000);
+            blink.value = true;
+            setTimeout(() => {
+                if (stopBlink) return;
+                blink.value = false;
+                blinkCycle(blink);
+            }, 150);
+        },
+        Math.random() * 4000 + 3000,
+    );
 }
 
 onMounted(() => {
@@ -463,7 +593,9 @@ watch(isTyping, (typing) => {
     if (lookTimer) clearTimeout(lookTimer);
     if (typing) {
         isLookingAtEachOther.value = true;
-        lookTimer = setTimeout(() => { isLookingAtEachOther.value = false; }, 800);
+        lookTimer = setTimeout(() => {
+            isLookingAtEachOther.value = false;
+        }, 800);
     } else {
         isLookingAtEachOther.value = false;
     }
@@ -472,10 +604,15 @@ watch(isTyping, (typing) => {
 watch([() => loginForm.password, showPassword, isPurplePeeking], () => {
     if (peekTimer) clearTimeout(peekTimer);
     if (loginForm.password.length > 0 && showPassword.value) {
-        peekTimer = setTimeout(() => {
-            isPurplePeeking.value = true;
-            setTimeout(() => { isPurplePeeking.value = false; }, 800);
-        }, Math.random() * 3000 + 2000);
+        peekTimer = setTimeout(
+            () => {
+                isPurplePeeking.value = true;
+                setTimeout(() => {
+                    isPurplePeeking.value = false;
+                }, 800);
+            },
+            Math.random() * 3000 + 2000,
+        );
     } else {
         isPurplePeeking.value = false;
     }
@@ -504,7 +641,8 @@ const registerRules: FormRules = {
         { required: true, message: "请再次输入密码", trigger: "blur" },
         {
             validator: (_rule, value, callback) => {
-                if (value !== registerForm.password) callback(new Error("两次密码不一致"));
+                if (value !== registerForm.password)
+                    callback(new Error("两次密码不一致"));
                 else callback();
             },
             trigger: "blur",
@@ -519,45 +657,44 @@ function switchMode(m: "login" | "register") {
     registerFormRef.value?.clearValidate();
 }
 
-function getRedirectPath() {
-    const redirect = route.query.redirect as string;
-    if (!redirect || redirect === "/login") {
-        return "/";
-    }
-    // 移除 base URL 前缀，因为 router.push 会自动添加
-    const basePath = import.meta.env.BASE_URL || "/";
-    if (basePath !== "/" && redirect.startsWith(basePath)) {
-        // 例如: basePath="/e-commerce", redirect="/e-commerce/"
-        // 应该返回 "/" 而不是 "e/"
-        return redirect.substring(basePath.length);
-    }
-    return redirect;
-}
-
 async function submitLogin() {
     const valid = await loginFormRef.value?.validate().catch(() => false);
     if (!valid) return;
 
     loading.value = true;
     try {
-        const result = await ApiUser.login({ username: loginForm.account, password: loginForm.password });
+        const result = await ApiUser.login({
+            username: loginForm.account,
+            password: loginForm.password,
+        });
         if (result) {
             userStore.G_LoginInfo = {
                 ...userStore.G_LoginInfo,
                 id: result.id,
                 isLogin: true,
-                nickName: result.nickname || result.username || loginForm.account,
+                nickName:
+                    result.nickname || result.username || loginForm.account,
                 account: loginForm.account,
                 status: 1,
             };
             const codes: number[] = result.privileges ?? [];
-            const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
+            const role_id = codes.includes(100)
+                ? 1
+                : codes.includes(200)
+                  ? 2
+                  : 3;
             userStore.G_UserInfo = { ...userStore.G_UserInfo, role_id };
             userStore.isInitialized = true;
             sessionStorage.setItem("tab-user-id", String(result.id));
             await userStore.loadUserInfo();
             ElMessage.success("登录成功");
-            router.push(getRedirectPath());
+
+            // 根据角色自动跳转
+            const redirectPath = resolvePostLoginPath(
+                role_id,
+                route.query.redirect,
+            );
+            router.push(redirectPath);
         } else {
             ElMessage.error("账号或密码错误");
         }
@@ -614,7 +751,6 @@ async function submitRegister() {
     flex-direction: column;
     padding: 52px 40px 44px;
     flex-shrink: 0;
-
 }
 
 .brand-watermark {
@@ -696,7 +832,7 @@ async function submitRegister() {
     position: absolute;
     width: 80px;
     height: 4px;
-    background-color: #2D2D2D;
+    background-color: #2d2d2d;
     border-radius: 9999px;
 }
 
@@ -733,9 +869,11 @@ async function submitRegister() {
     overflow: hidden;
 
     &::before {
-        content: '';
+        content: "";
         position: absolute;
-        top: 0; left: 0; right: 0;
+        top: 0;
+        left: 0;
+        right: 0;
         height: 3px;
         background: var(--jade-soft);
     }
@@ -801,7 +939,7 @@ async function submitRegister() {
             font-weight: 700;
 
             &::after {
-                content: '';
+                content: "";
                 position: absolute;
                 bottom: -1px;
                 left: 0;
@@ -812,7 +950,9 @@ async function submitRegister() {
             }
         }
 
-        &:hover:not(.active) { color: var(--ink-soft); }
+        &:hover:not(.active) {
+            color: var(--ink-soft);
+        }
     }
 }
 
@@ -821,7 +961,9 @@ async function submitRegister() {
     display: flex;
     flex-direction: column;
 
-    :deep(.el-form-item) { margin-bottom: 18px; }
+    :deep(.el-form-item) {
+        margin-bottom: 18px;
+    }
 
     :deep(.el-input__wrapper) {
         background: var(--cream);
@@ -830,7 +972,9 @@ async function submitRegister() {
         box-shadow:
             inset 0 1px 3px rgba(60, 50, 30, 0.08),
             inset 0 1px 1px rgba(60, 50, 30, 0.04);
-        transition: box-shadow 0.18s ease-out, border-color 0.18s ease-out;
+        transition:
+            box-shadow 0.18s ease-out,
+            border-color 0.18s ease-out;
         padding: 0 14px;
 
         &:hover {
@@ -853,10 +997,16 @@ async function submitRegister() {
         font-size: 14px;
         color: var(--ink);
 
-        &::placeholder { color: var(--ink-muted); opacity: 0.65; }
+        &::placeholder {
+            color: var(--ink-muted);
+            opacity: 0.65;
+        }
     }
 
-    :deep(.el-input__prefix-icon) { color: var(--ink-muted); opacity: 0.75; }
+    :deep(.el-input__prefix-icon) {
+        color: var(--ink-muted);
+        opacity: 0.75;
+    }
 }
 
 .pw-eye {
@@ -864,7 +1014,9 @@ async function submitRegister() {
     color: var(--ink-muted);
     transition: color 0.15s;
 
-    &:hover { color: var(--ink); }
+    &:hover {
+        color: var(--ink);
+    }
 }
 
 .submit-btn {
@@ -881,7 +1033,11 @@ async function submitRegister() {
         0 2px 5px rgba(92, 131, 116, 0.28),
         0 5px 16px rgba(92, 131, 116, 0.18),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: background 0.15s ease-out, transform 0.12s ease-out, box-shadow 0.15s ease-out, border-color 0.15s;
+    transition:
+        background 0.15s ease-out,
+        transform 0.12s ease-out,
+        box-shadow 0.15s ease-out,
+        border-color 0.15s;
 
     &:hover {
         background: var(--bamboo) !important;
@@ -903,26 +1059,42 @@ async function submitRegister() {
 
 // ── 响应式 ────────────────────────────────────────
 @media (max-width: 900px) {
-    .login-page { flex-direction: column; }
+    .login-page {
+        flex-direction: column;
+    }
 
     .brand-panel {
         width: 100%;
         padding: 40px 28px 28px;
 
-        &::before { display: none; }
+        &::before {
+            display: none;
+        }
     }
 
-    .stage-wrap { display: none; }
+    .stage-wrap {
+        display: none;
+    }
 
-    .brand-quote blockquote { font-size: 24px; }
-    .brand-watermark { font-size: 220px; bottom: -40px; right: -20px; }
+    .brand-quote blockquote {
+        font-size: 24px;
+    }
+    .brand-watermark {
+        font-size: 220px;
+        bottom: -40px;
+        right: -20px;
+    }
 
     .form-panel {
         padding: 28px 28px 48px;
 
-        &::before { display: none; }
+        &::before {
+            display: none;
+        }
     }
 
-    .form-area { padding: 24px 0 40px; }
+    .form-area {
+        padding: 24px 0 40px;
+    }
 }
 </style>

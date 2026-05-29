@@ -6,6 +6,7 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
         baseURL: "/e-commerce/api", // 开发时使用
         // baseURL: "http://localhost:9090", // 本地虚拟机使用
         // baseURL: "https://dev.ppsnav.cn/e-commerce/local/api", // 云服务器专用版
+        // baseURL: "http://154.219.104.242:9090", // 云服务器专用版
         timeout: 10000,
         withCredentials,
         headers: {
@@ -20,7 +21,7 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
         (config) => {
             console.log("完整请求路径：", (config.baseURL || "") + config.url);
             if (withCredentials) {
-                console.log(`[携带cookie]请求参数:${JSON.stringify(config)}`);
+                console.log(`[携带cookie]请求参数:`, config);
             }
             return config;
         },
@@ -54,9 +55,16 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                         const current = window.location.pathname;
                         const basePath = import.meta.env.BASE_URL || "/";
                         // 确保登录路径包含 base URL
-                        const loginPath = basePath === "/" ? "/login" : `${basePath}login`;
-                        const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
-                        console.log("[Auth] 跳转到登录页:", `${loginPath}${redirect}`);
+                        const loginPath =
+                            basePath === "/" ? "/login" : `${basePath}login`;
+                        const redirect =
+                            current !== loginPath
+                                ? `?redirect=${encodeURIComponent(current)}`
+                                : "";
+                        console.log(
+                            "[Auth] 跳转到登录页:",
+                            `${loginPath}${redirect}`,
+                        );
                         window.location.href = `${loginPath}${redirect}`;
                     }
                 });

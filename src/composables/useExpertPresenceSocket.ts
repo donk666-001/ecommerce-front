@@ -1,4 +1,7 @@
-import { activateExpertClient, deactivateExpertClient } from "./expertStompClient";
+import {
+    activateExpertClient,
+    deactivateExpertClient,
+} from "./expertStompClient";
 
 /**
  * 专家端全局 STOMP 连接管理。

@@ -13,8 +13,11 @@ export const ApiConsult = {
         GAxios.post("/consult/sessions", { expertId }),
 
     /** 查询会话列表 */
-    listSessions: (params?: { status?: string; page?: number; pageSize?: number }) =>
-        GAxios.get("/consult/sessions", { params }),
+    listSessions: (params?: {
+        status?: string;
+        page?: number;
+        pageSize?: number;
+    }) => GAxios.get("/consult/sessions", { params }),
 
     /** 历史消息分页（before 为游标消息 ID） */
     getMessages: (sessionId: number, before?: number, pageSize = 50) =>
@@ -39,8 +42,14 @@ export const ApiConsult = {
         GAxios.post(`/consult/sessions/${sessionId}/review`, body),
 
     /** 专家接诊队列（status: HUMAN_PENDING | HUMAN_CHATTING） */
-    listExpertSessions: (status: 'HUMAN_PENDING' | 'HUMAN_CHATTING', page = 1, pageSize = 20) =>
-        GAxios.get('/consult/expert/sessions', { params: { status, page, pageSize } }),
+    listExpertSessions: (
+        status: "HUMAN_PENDING" | "HUMAN_CHATTING",
+        page = 1,
+        pageSize = 20,
+    ) =>
+        GAxios.get("/consult/expert/sessions", {
+            params: { status, page, pageSize },
+        }),
 
     /** 专家发消息（首次发消息自动将状态 HUMAN_PENDING → HUMAN_CHATTING） */
     expertReply: (sessionId: number, content: string) =>
