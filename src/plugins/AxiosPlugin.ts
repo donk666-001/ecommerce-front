@@ -44,17 +44,22 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
             // 有响应错误
             const { status, data } = error.response;
             if (status === 401) {
-                console.warn("认证过期", data?.message);
+                console.warn("[Auth] 认证过期", data?.message);
                 // 清除 store 状态后跳转登录页（懒加载避免循环依赖）
                 import("@/store/user").then(({ useUserStore }) => {
-                    useUserStore().clearLoginInfo();
+                    const userStore = useUserStore();
+                    // 避免重复清除和跳转
+                    if (userStore.G_LoginInfo.isLogin) {
+                        userStore.clearLoginInfo();
+                        const current = window.location.pathname;
+                        const basePath = import.meta.env.BASE_URL || "/";
+                        // 确保登录路径包含 base URL
+                        const loginPath = basePath === "/" ? "/login" : `${basePath}login`;
+                        const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
+                        console.log("[Auth] 跳转到登录页:", `${loginPath}${redirect}`);
+                        window.location.href = `${loginPath}${redirect}`;
+                    }
                 });
-                const current = window.location.pathname;
-                const basePath = import.meta.env.BASE_URL || "/";
-                // 确保登录路径包含 base URL
-                const loginPath = basePath === "/" ? "/login" : `${basePath}login`;
-                const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
-                window.location.href = `${loginPath}${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);
             }

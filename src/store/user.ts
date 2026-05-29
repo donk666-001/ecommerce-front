@@ -39,8 +39,10 @@ export const useUserStore = defineStore("user", {
     actions: {
         // 刷新令牌（首次调用后标记 isInitialized，避免重复请求）
         async refreshToken() {
+            console.log("[Auth] 开始刷新令牌...");
             try {
                 const result = await ApiUser.refresh();
+                console.log("[Auth] 刷新令牌响应:", result);
                 if (result) {
                     // ── Tab 身份守卫 ──────────────────────────────────────────────
                     // sessionStorage 是 per-tab 的，不在标签页间共享。
@@ -75,11 +77,14 @@ export const useUserStore = defineStore("user", {
                     sessionStorage.setItem("tab-user-id", String(result.id));
                     await this.loadUserInfo();
                 } else {
+                    console.warn("[Auth] 刷新令牌返回 null，清除登录态");
                     this.clearLoginInfo();
                 }
-            } catch {
+            } catch (error) {
+                console.error("[Auth] 刷新令牌失败:", error);
                 this.clearLoginInfo();
             } finally {
+                console.log("[Auth] isInitialized 设置为 true, isLogin:", this.G_LoginInfo.isLogin);
                 this.isInitialized = true;
             }
             return this.G_LoginInfo.isLogin;

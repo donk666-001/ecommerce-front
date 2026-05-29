@@ -1,5 +1,4 @@
 import vue from "@vitejs/plugin-vue";
-import fs from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { resolve } from "path";
 import VueRouter from "unplugin-vue-router/vite";

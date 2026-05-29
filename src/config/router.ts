@@ -12,8 +12,7 @@ router.beforeEach(async (to) => {
     const userStore = useUserStore();
 
     // 首次进入且非登录页时，通过 refreshToken 初始化登录态
-    // if (!userStore.isInitialized && to.path !== "/login") {
-    if (!userStore.isInitialized) {
+    if (!userStore.isInitialized && to.path !== "/login") {
         await userStore.refreshToken();
     }
 
