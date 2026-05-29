@@ -50,8 +50,11 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                     useUserStore().clearLoginInfo();
                 });
                 const current = window.location.pathname;
-                const redirect = current !== "/login" ? `?redirect=${current}` : "";
-                window.location.href = `/login${redirect}`;
+                const basePath = import.meta.env.BASE_URL || "/";
+                // 确保登录路径包含 base URL
+                const loginPath = basePath === "/" ? "/login" : `${basePath}login`;
+                const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
+                window.location.href = `${loginPath}${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);
             }

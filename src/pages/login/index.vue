@@ -514,7 +514,17 @@ function switchMode(m: "login" | "register") {
 
 function getRedirectPath() {
     const redirect = route.query.redirect as string;
-    return redirect && redirect !== "/login" ? redirect : "/";
+    if (!redirect || redirect === "/login") {
+        return "/";
+    }
+    // 移除 base URL 前缀，因为 router.push 会自动添加
+    const basePath = import.meta.env.BASE_URL || "/";
+    if (basePath !== "/" && redirect.startsWith(basePath)) {
+        // 例如: basePath="/e-commerce", redirect="/e-commerce/"
+        // 应该返回 "/" 而不是 "e/"
+        return redirect.substring(basePath.length);
+    }
+    return redirect;
 }
 
 async function submitLogin() {
