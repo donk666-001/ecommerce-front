@@ -1,8 +1,73 @@
 import {
+    ApiMenstrual,
     normalizeMenstrualPredict,
     type MenstrualPredictVO,
 } from "../menstrual";
-import { describe, expect, it } from "vitest";
+import { GAxios } from "@/plugins";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/plugins", () => ({
+    GAxios: {
+        get: vi.fn(),
+        post: vi.fn(),
+        put: vi.fn(),
+    },
+}));
+
+const mockedGet = vi.mocked(GAxios.get);
+
+beforeEach(() => {
+    mockedGet.mockReset();
+});
+
+describe("ApiMenstrual.predict", () => {
+    it("uses userId only and keeps backend prediction dates unchanged", async () => {
+        const predict: MenstrualPredictVO = {
+            userId: 1,
+            averageCycleDays: 10,
+            averagePeriodDays: 5,
+            confidenceLevel: "LOW",
+            confidenceScore: 0.5887012440248978,
+            historyCycles: [
+                { cycleDays: null, startDate: "2026-01-25" },
+                { cycleDays: 15, startDate: "2026-02-09" },
+                { cycleDays: 12, startDate: "2026-02-21" },
+                { cycleDays: 12, startDate: "2026-03-05" },
+                { cycleDays: 12, startDate: "2026-03-17" },
+                { cycleDays: 12, startDate: "2026-03-29" },
+                { cycleDays: 3, startDate: "2026-04-01" },
+                { cycleDays: 12, startDate: "2026-04-13" },
+                { cycleDays: 12, startDate: "2026-04-25" },
+                { cycleDays: 6, startDate: "2026-05-01" },
+                { cycleDays: 12, startDate: "2026-05-13" },
+                { cycleDays: 12, startDate: "2026-05-25" },
+                { cycleDays: 1, startDate: "2026-05-26" },
+            ],
+            lastPeriodStartDate: "2026-05-26",
+            predictedNextPeriodEndDate: "2026-06-09",
+            predictedNextPeriodStartDate: "2026-06-05",
+        };
+        mockedGet.mockResolvedValue({
+            status: 200,
+            data: {
+                code: 200,
+                message: "success",
+                data: predict,
+            },
+        });
+
+        const result = await ApiMenstrual.predict(1);
+
+        expect(mockedGet).toHaveBeenCalledWith(
+            "/menstrual/predict",
+            expect.objectContaining({
+                params: { userId: 1 },
+            }),
+        );
+        expect(result.predictedNextPeriodStartDate).toBe("2026-06-05");
+        expect(result.predictedNextPeriodEndDate).toBe("2026-06-09");
+    });
+});
 
 describe("normalizeMenstrualPredict", () => {
     it("repairs daily period records into the next future cycle", () => {

@@ -6,6 +6,7 @@ export type MenstrualBodyStatusItem = {
 };
 
 export type MenstrualRecordCreatePayload = {
+    id?: number | string;
     userId: number;
     recordDate: string;
     cyclePhase: number;
@@ -15,6 +16,9 @@ export type MenstrualRecordCreatePayload = {
 export type MenstrualRecordCreateVO = MenstrualRecordCreatePayload;
 
 export type MenstrualCalendarDayVO = {
+    id?: number | string;
+    recordId?: number | string;
+    menstrualRecordId?: number | string;
     date: string;
     currentMonth: boolean;
     hasRecord: boolean;
@@ -43,6 +47,9 @@ export type MenstrualHealthPlanVO = {
 };
 
 export type MenstrualDayDetailVO = {
+    id?: number | string;
+    recordId?: number | string;
+    menstrualRecordId?: number | string;
     date: string;
     hasRecord: boolean;
     cyclePhase: number;
@@ -379,6 +386,13 @@ class ApiMenstrual {
         return unwrapMenstrualResponse(response.data, data);
     }
 
+    static async updateRecord(data: MenstrualRecordCreatePayload) {
+        const response = await GAxios.put<
+            MenstrualRecordCreateVO | ApiEnvelope<MenstrualRecordCreateVO>
+        >("/menstrual/record", data);
+        return unwrapMenstrualResponse(response.data, data);
+    }
+
     static async getCalendar(userId: number, year: number, month: number) {
         const response = await GAxios.get<
             MenstrualCalendarVO | ApiEnvelope<MenstrualCalendarVO>
@@ -443,9 +457,7 @@ class ApiMenstrual {
             throw new Error(message || "经期预测接口返回异常");
         }
 
-        return normalizeMenstrualPredict(
-            unwrapMenstrualResponse(response.data, fallback),
-        );
+        return unwrapMenstrualResponse(response.data, fallback);
     }
 }
 

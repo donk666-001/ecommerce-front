@@ -187,27 +187,28 @@
                         >
                             <div class="label">LAST NIGHT · 昨夜</div>
                             <div class="sleep-score">
-                                {{ sleepScore }}<span>/100</span>
+                                {{ overviewSleepScore }}<span>/100</span>
                             </div>
                             <div class="summary-line">
-                                {{ durationText }} · {{ sleepStatusText }} ·
-                                深睡比例 {{ deepSleepRate }}%
+                                {{ overviewDurationText }} ·
+                                {{ overviewStatusText }} · 深睡比例
+                                {{ overviewDeepSleepRateText }}
                             </div>
                             <div class="sleep-stats">
                                 <div class="stat">
-                                    <strong>{{ sleepTime }}</strong
+                                    <strong>{{ overviewSleepTime }}</strong
                                     >入睡
                                 </div>
                                 <div class="stat">
-                                    <strong>{{ wakeTime }}</strong
+                                    <strong>{{ overviewWakeTime }}</strong
                                     >清醒
                                 </div>
                                 <div class="stat">
-                                    <strong>{{ wakeCountLabel }}</strong
+                                    <strong>{{ overviewWakeCountLabel }}</strong
                                     >夜醒
                                 </div>
                                 <div class="stat">
-                                    <strong>⭐ {{ sleepQuality }}</strong
+                                    <strong>{{ overviewQualityText }}</strong
                                     >自评
                                 </div>
                             </div>
@@ -240,7 +241,28 @@
                                 </label>
                             </div>
 
-                            <div class="stage-chart">
+                            <div class="stage-overview-strip">
+                                <span>
+                                    总时长
+                                    <strong>{{ overviewDurationText }}</strong>
+                                </span>
+                                <span>
+                                    入睡
+                                    <strong>{{ overviewSleepTime }}</strong>
+                                </span>
+                                <span>
+                                    清醒
+                                    <strong>{{ overviewWakeTime }}</strong>
+                                </span>
+                                <span>
+                                    深睡
+                                    <strong>{{
+                                        overviewDeepSleepRateText
+                                    }}</strong>
+                                </span>
+                            </div>
+
+                            <div v-if="hasOverviewTimeline" class="stage-chart">
                                 <div class="stage-y-labels">
                                     <span
                                         v-for="row in stageRows"
@@ -303,6 +325,9 @@
                                         >{{ label }}</span
                                     >
                                 </div>
+                            </div>
+                            <div v-else class="stage-empty">
+                                该日期暂无睡眠阶段明细
                             </div>
 
                             <div class="stage-legend">
@@ -615,6 +640,7 @@ type SleepRecord = Required<ImportedSleepData> & {
     dateISO: string;
     serverId?: number | string;
     apiSleepStage?: string;
+    durationMinutes?: number;
 };
 
 type ChartPoint = {
@@ -623,7 +649,7 @@ type ChartPoint = {
     date: string;
     durationMinutes: number;
     index: number;
-    today?: boolean;
+    today: boolean;
 };
 
 const initialSleepTime = "23:18";
@@ -708,35 +734,37 @@ const chartLabels = computed(() =>
         .reverse()
         .map((date) => `${date.getMonth() + 1}/${date.getDate()}`),
 );
+const weeklyStatsByDate = computed(() =>
+    weeklyStats.value.reduce<Record<string, SleepWeeklyStatDTO>>(
+        (next, item) => {
+            const dateISO = getWeeklyStatDate(item);
+            if (dateISO) next[dateISO] = item;
+            return next;
+        },
+        {},
+    ),
+);
+const selectedWeeklyStat = computed(
+    () => weeklyStatsByDate.value[recordDateISO.value],
+);
+const selectedWeeklyDurationMinutes = computed(() =>
+    getWeeklyDuration(selectedWeeklyStat.value),
+);
 const chartPoints = computed<ChartPoint[]>(() => {
-    const statsByDate = weeklyStats.value.reduce<
-        Record<string, SleepWeeklyStatDTO>
-    >((next, item) => {
-        const dateISO = getWeeklyStatDate(item);
-        if (dateISO) next[dateISO] = item;
-        return next;
-    }, {});
+    const statsByDate = weeklyStatsByDate.value;
     const timelineDates = [...selectableDates.value].reverse();
     const durations = timelineDates.map((date) => {
         const dateISO = toISODate(date);
-        return getWeeklyDuration(statsByDate[dateISO]);
+        return getDisplayDurationForDate(dateISO, statsByDate[dateISO]);
     });
-    const filledDurations = durations.map((duration, index) => {
-        const date = timelineDates[index];
-        if (!date) return duration;
-        const dateISO = toISODate(date);
-        return duration > 0
-            ? duration
-            : getRecordDurationMinutes(sleepRecords.value[dateISO]);
-    });
-    const validDurations = filledDurations.filter((duration) => duration > 0);
+    const validDurations = durations.filter((duration) => duration > 0);
     const minDuration = validDurations.length ? Math.min(...validDurations) : 0;
     const maxDuration = validDurations.length ? Math.max(...validDurations) : 0;
     const range = Math.max(60, maxDuration - minDuration);
 
     return timelineDates
         .map((date, index) => {
-            const duration = filledDurations[index] ?? 0;
+            const duration = durations[index] ?? 0;
             if (duration <= 0) return null;
             const cx = 50 + index * 100;
             const cy = 110 - ((duration - minDuration) / range) * 80;
@@ -894,22 +922,61 @@ const activeUserId = computed(() => {
     const infoId = Number(userStore.G_UserInfo.id);
     return Number.isFinite(loginId) && loginId > 0 ? loginId : infoId;
 });
-const hasSelectedRecord = computed(
-    () => savedRecordDates.value[recordDateISO.value] === true,
-);
-const showTodayRoutineCards = computed(
-    () => hasSelectedRecord.value || todayRecordUpdated.value,
-);
+const showTodayRoutineCards = computed(() => true);
 const selectedSleepRecord = computed(
-    () =>
-        sleepRecords.value[recordDateISO.value] ??
-        buildCurrentSleepRecord(recordDateISO.value),
+    () => sleepRecords.value[recordDateISO.value] ?? null,
+);
+const overviewDurationMinutes = computed(() =>
+    getRecordDurationMinutes(selectedSleepRecord.value) > 0
+        ? getRecordDurationMinutes(selectedSleepRecord.value)
+        : selectedWeeklyDurationMinutes.value,
+);
+const overviewDurationText = computed(() =>
+    selectedSleepRecord.value
+        ? formatMinutesShort(overviewDurationMinutes.value)
+        : "暂无数据",
+);
+const overviewSleepTime = computed(
+    () => selectedSleepRecord.value?.sleepTime || "--:--",
+);
+const overviewWakeTime = computed(
+    () => selectedSleepRecord.value?.wakeTime || "--:--",
+);
+const overviewWakeCountLabel = computed(() => {
+    const count = selectedSleepRecord.value?.awakeCount;
+    if (count == null) return "--";
+    return count >= 3 ? "3+ 次" : `${count} 次`;
+});
+const overviewQualityText = computed(() =>
+    selectedSleepRecord.value ? `★ ${selectedSleepRecord.value.quality}` : "--",
+);
+const overviewStatusText = computed(
+    () => selectedSleepRecord.value?.tags[0] ?? "待同步",
+);
+const overviewDeepSleepRate = computed(() =>
+    calcDeepSleepRate(selectedSleepRecord.value),
+);
+const overviewDeepSleepRateText = computed(() =>
+    selectedSleepRecord.value ? `${overviewDeepSleepRate.value}%` : "--",
+);
+const overviewSleepScore = computed(() =>
+    selectedSleepRecord.value
+        ? calcSleepScore(
+              selectedSleepRecord.value,
+              overviewDeepSleepRate.value,
+              overviewDurationMinutes.value,
+          )
+        : "--",
+);
+const hasOverviewTimeline = computed(
+    () => buildStageChartSegments(selectedSleepRecord.value).length > 0,
 );
 const stageChartSegments = computed(() =>
     buildStageChartSegments(selectedSleepRecord.value),
 );
 const stageTimeLabels = computed(() => {
     const record = selectedSleepRecord.value;
+    if (!record || !hasRecordTimeRange(record)) return [];
     const midpoint = addMinutesToTime(
         record.sleepTime,
         Math.round(calcDurationBetween(record.sleepTime, record.wakeTime) / 2),
@@ -1179,14 +1246,19 @@ function buildCurrentSleepRecord(dateISO: string): SleepRecord {
 }
 
 function applySleepRecordToForm(record: SleepRecord) {
-    sleepTime.value = record.sleepTime;
-    wakeTime.value = record.wakeTime;
+    if (hasRecordTimeRange(record)) {
+        sleepTime.value = record.sleepTime;
+        wakeTime.value = record.wakeTime;
+    }
     sleepQuality.value = record.quality;
     applyAwakeCount(record.awakeCount);
     sleepTagSelected.value = [...record.tags];
 }
 
-function buildStageChartSegments(record: SleepRecord) {
+function buildStageChartSegments(record?: SleepRecord | null) {
+    if (!record || !hasRecordTimeRange(record) || !record.stages.length) {
+        return [];
+    }
     const chartStartX = 44;
     const chartWidth = 650;
     const total = calcDurationBetween(record.sleepTime, record.wakeTime);
@@ -1215,8 +1287,8 @@ function formatMinutesCompact(minutes: number) {
     return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`;
 }
 
-function buildStageSummary(record: SleepRecord) {
-    const totals = record.stages.reduce<Record<SleepStage, number>>(
+function buildStageSummary(record?: SleepRecord | null) {
+    const totals = record?.stages.reduce<Record<SleepStage, number>>(
         (next, segment) => {
             next[segment.stage] += calcDurationBetween(
                 segment.start,
@@ -1225,7 +1297,7 @@ function buildStageSummary(record: SleepRecord) {
             return next;
         },
         { awake: 0, light: 0, deep: 0 },
-    );
+    ) ?? { awake: 0, light: 0, deep: 0 };
 
     return stageRows.map((row) => ({
         stage: row.key,
@@ -1238,9 +1310,36 @@ function isValidUserId(value: number) {
     return Number.isFinite(value) && value > 0;
 }
 
-function normalizeDateValue(value?: string, fallback = todayISO) {
-    if (!value) return fallback;
-    return value.includes("T") ? value.slice(0, 10) : value;
+function normalizeDateValue(value?: unknown, fallback = todayISO) {
+    if (value == null) return fallback;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return toISODate(value);
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+        const timestamp = value < 1_000_000_000_000 ? value * 1000 : value;
+        const date = new Date(timestamp);
+        return Number.isNaN(date.getTime()) ? fallback : toISODate(date);
+    }
+
+    const rawValue = String(value).trim();
+    if (!rawValue) return fallback;
+
+    const dateMatch = rawValue.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+    if (dateMatch) {
+        return `${dateMatch[1]}-${padTime(Number(dateMatch[2]))}-${padTime(
+            Number(dateMatch[3]),
+        )}`;
+    }
+
+    const numericValue = Number(rawValue);
+    if (/^\d{10,13}$/.test(rawValue) && Number.isFinite(numericValue)) {
+        const timestamp =
+            rawValue.length === 10 ? numericValue * 1000 : numericValue;
+        const date = new Date(timestamp);
+        return Number.isNaN(date.getTime()) ? fallback : toISODate(date);
+    }
+
+    return fallback;
 }
 
 function formatMinutesShort(minutes: number) {
@@ -1270,49 +1369,210 @@ function chartPointLabel(point: ChartPoint) {
 function readNumberValue(value: unknown) {
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
-        const parsed = Number(value.replace(/[^\d.-]/g, ""));
+        const parsed = Number(value.trim().match(/-?\d+(?:\.\d+)?/)?.[0]);
         if (Number.isFinite(parsed)) return parsed;
     }
     return 0;
 }
 
-function getRecordDurationMinutes(record?: SleepRecord) {
+function readFieldValue(source: Record<string, unknown>, keys: string[]) {
+    return keys.map((key) => source[key]).find((item) => item != null);
+}
+
+function normalizeDurationNumber(
+    value: number,
+    mode: "minutes" | "hours" | "auto",
+) {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (mode === "hours") return value * 60;
+    if (mode === "minutes") return value;
+    return value <= 24 ? value * 60 : value;
+}
+
+function readDurationValue(value: unknown, mode: "minutes" | "hours" | "auto") {
+    if (value == null) return 0;
+    if (typeof value === "number") return normalizeDurationNumber(value, mode);
+
+    const text = String(value).trim();
+    if (!text) return 0;
+
+    const colonMatch = text.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
+    if (colonMatch) {
+        return Number(colonMatch[1]) * 60 + Number(colonMatch[2]);
+    }
+
+    const hourMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:小时|hour|hours|h)/i);
+    const minuteMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:分钟|分|min|mins|m)/i);
+    if (hourMatch || minuteMatch) {
+        const hours = hourMatch ? Number(hourMatch[1]) : 0;
+        const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+        return hours * 60 + minutes;
+    }
+
+    return normalizeDurationNumber(readNumberValue(text), mode);
+}
+
+function readDurationFromFields(
+    source: Record<string, unknown>,
+    keys: string[],
+    mode: "minutes" | "hours" | "auto",
+) {
+    for (const key of keys) {
+        const duration = readDurationValue(source[key], mode);
+        if (duration > 0) return Math.round(duration);
+    }
+    return 0;
+}
+
+function hasRecordTimeRange(record?: SleepRecord | null) {
+    return Boolean(record?.sleepTime && record.wakeTime);
+}
+
+function getRecordDurationMinutes(record?: SleepRecord | null) {
     if (!record) return 0;
+    if (record.durationMinutes && record.durationMinutes > 0) {
+        return Math.round(record.durationMinutes);
+    }
+    if (!hasRecordTimeRange(record)) return 0;
     return calcDurationBetween(record.sleepTime, record.wakeTime);
 }
 
+function getDisplayDurationForDate(
+    dateISO: string,
+    weeklyStat?: SleepWeeklyStatDTO,
+) {
+    const recordDuration = getRecordDurationMinutes(
+        sleepRecords.value[dateISO],
+    );
+    return recordDuration > 0 ? recordDuration : getWeeklyDuration(weeklyStat);
+}
+
+function getStageDuration(
+    record: SleepRecord | null | undefined,
+    stage: SleepStage,
+) {
+    if (!record) return 0;
+    return record.stages
+        .filter((segment) => segment.stage === stage)
+        .reduce(
+            (sum, segment) =>
+                sum + calcDurationBetween(segment.start, segment.end),
+            0,
+        );
+}
+
+function calcDeepSleepRate(record?: SleepRecord | null) {
+    const total = getRecordDurationMinutes(record);
+    if (!record || total <= 0) return 0;
+    const deepMinutes = getStageDuration(record, "deep");
+    if (deepMinutes <= 0) return 0;
+    return Math.round((deepMinutes / total) * 100);
+}
+
+function calcSleepScore(
+    record: SleepRecord,
+    deepRate: number,
+    durationOverride?: number,
+) {
+    const duration =
+        durationOverride && durationOverride > 0
+            ? durationOverride
+            : getRecordDurationMinutes(record);
+    const durationScore =
+        duration >= 420 && duration <= 540
+            ? 26
+            : Math.max(10, 26 - Math.abs(duration - 480) / 20);
+    const wakePenalty =
+        record.awakeCount <= 0
+            ? 0
+            : record.awakeCount === 1
+              ? 4
+              : record.awakeCount === 2
+                ? 8
+                : 14;
+    const tagBonus = record.tags.includes("入睡快")
+        ? 6
+        : record.tags.includes("入睡慢")
+          ? -6
+          : 0;
+    const deepBonus =
+        deepRate >= 25 ? 4 : deepRate > 0 && deepRate < 15 ? -4 : 0;
+    const raw =
+        record.quality * 12 +
+        durationScore -
+        wakePenalty +
+        tagBonus +
+        deepBonus;
+    return Math.round(Math.min(100, Math.max(45, raw)));
+}
+
 function getWeeklyStatDate(stat: SleepWeeklyStatDTO) {
+    const source = stat as Record<string, unknown>;
     return normalizeDateValue(
-        stat.date ??
-            stat.recordDate ??
-            stat.sleepDate ??
-            stat.sleepTime ??
-            stat.wakeTime,
+        readFieldValue(source, [
+            "date",
+            "recordDate",
+            "sleepDate",
+            "statDate",
+            "day",
+            "createdAt",
+            "sleepTime",
+            "bedTime",
+            "bedtime",
+            "startTime",
+            "wakeTime",
+            "endTime",
+        ]),
         "",
     );
 }
 
 function getWeeklyDuration(stat?: SleepWeeklyStatDTO) {
     if (!stat) return 0;
-    const minuteValue = readNumberValue(
-        stat.durationMinutes ??
-            stat.sleepDuration ??
-            stat.totalMinutes ??
-            stat.duration ??
-            stat.sleepMinutes ??
-            stat.totalSleepMinutes,
+    const source = stat as Record<string, unknown>;
+    const minuteValue = readDurationFromFields(
+        source,
+        [
+            "durationMinutes",
+            "durationMinute",
+            "durationInMinutes",
+            "sleepDurationMinutes",
+            "sleepMinutes",
+            "sleepingMinutes",
+            "totalSleepMinutes",
+            "totalMinutes",
+            "totalDurationMinutes",
+            "totalAsleepMinutes",
+            "minutes",
+        ],
+        "minutes",
     );
-    if (minuteValue > 0) return Math.round(minuteValue);
+    if (minuteValue > 0) return minuteValue;
 
-    const hourValue = readNumberValue(
-        stat.durationHours ?? stat.sleepHours ?? stat.totalHours,
+    const hourValue = readDurationFromFields(
+        source,
+        ["durationHours", "sleepHours", "sleepingHours", "totalHours", "hours"],
+        "hours",
     );
-    if (hourValue > 0) return Math.round(hourValue * 60);
+    if (hourValue > 0) return hourValue;
 
-    if (stat.sleepTime && stat.wakeTime) {
+    const durationValue = readDurationFromFields(
+        source,
+        ["sleepDuration", "duration", "totalDuration"],
+        "auto",
+    );
+    if (durationValue > 0) return durationValue;
+
+    const sleepStart = readStringField(
+        source,
+        ["sleepTime", "bedTime", "bedtime", "startTime"],
+        "",
+    );
+    const wakeEnd = readStringField(source, ["wakeTime", "endTime"], "");
+    if (sleepStart && wakeEnd) {
         return calcDurationBetween(
-            ensureTimeValue(stat.sleepTime, initialSleepTime),
-            ensureTimeValue(stat.wakeTime, initialWakeTime),
+            ensureTimeValue(sleepStart, initialSleepTime),
+            ensureTimeValue(wakeEnd, initialWakeTime),
         );
     }
 
@@ -1450,11 +1710,19 @@ function hasSleepRecordPayload(
         "recordDate",
         "sleepDate",
         "sleepTime",
+        "bedTime",
+        "bedtime",
+        "startTime",
         "wakeTime",
+        "endTime",
         "quality",
         "sleepQuality",
         "sleepStage",
         "sleepTagsJson",
+        "durationMinutes",
+        "sleepMinutes",
+        "totalSleepMinutes",
+        "sleepDuration",
     ].some((key) => source[key] != null);
 }
 
@@ -1464,22 +1732,22 @@ function normalizeSleepRecord(
 ): SleepRecord {
     const source = data as Record<string, unknown>;
     const dateISO = inferRecordDateFromSource(source, fallbackDateISO);
-    const normalizedSleepTime = ensureTimeValue(
-        readStringField(
-            source,
-            ["sleepTime", "bedTime", "bedtime", "startTime"],
-            sleepTime.value,
-        ),
-        initialSleepTime,
+    const rawSleepTime = readStringField(
+        source,
+        ["sleepTime", "bedTime", "bedtime", "startTime"],
+        "",
     );
-    const normalizedWakeTime = ensureTimeValue(
-        readStringField(
-            source,
-            ["wakeTime", "getUpTime", "endTime"],
-            wakeTime.value,
-        ),
-        initialWakeTime,
+    const rawWakeTime = readStringField(
+        source,
+        ["wakeTime", "getUpTime", "endTime"],
+        "",
     );
+    const normalizedSleepTime = ensureTimeValue(rawSleepTime, initialSleepTime);
+    const normalizedWakeTime = ensureTimeValue(rawWakeTime, initialWakeTime);
+    const hasTimeRange = Boolean(rawSleepTime && rawWakeTime);
+    const sleepDurationMinutes = hasTimeRange
+        ? calcDurationBetween(normalizedSleepTime, normalizedWakeTime)
+        : getWeeklyDuration(data as SleepWeeklyStatDTO);
     const normalizedAwakeCount = Math.max(
         0,
         Math.round(
@@ -1490,23 +1758,26 @@ function normalizeSleepRecord(
             ),
         ),
     );
-    const stages =
-        parseStageValue(
-            source.stages ?? source.sleepStages,
-            normalizedSleepTime,
-            normalizedWakeTime,
-        ) ??
-        buildStageSegmentsByDominantStage(
-            normalizedSleepTime,
-            normalizedWakeTime,
-            normalizedAwakeCount,
-            normalizeStageName(readStringField(source, ["sleepStage"], "core")),
-        );
+    const stages = hasTimeRange
+        ? (parseStageValue(
+              source.stages ?? source.sleepStages,
+              normalizedSleepTime,
+              normalizedWakeTime,
+          ) ??
+          buildStageSegmentsByDominantStage(
+              normalizedSleepTime,
+              normalizedWakeTime,
+              normalizedAwakeCount,
+              normalizeStageName(
+                  readStringField(source, ["sleepStage"], "core"),
+              ),
+          ))
+        : [];
 
     const record: SleepRecord = {
         dateISO,
-        sleepTime: normalizedSleepTime,
-        wakeTime: normalizedWakeTime,
+        sleepTime: hasTimeRange ? normalizedSleepTime : "",
+        wakeTime: hasTimeRange ? normalizedWakeTime : "",
         quality: Math.min(
             5,
             Math.max(
@@ -1527,6 +1798,9 @@ function normalizeSleepRecord(
         ),
         stages,
     };
+    if (sleepDurationMinutes > 0) {
+        record.durationMinutes = sleepDurationMinutes;
+    }
     const serverId = source.id;
     if (typeof serverId === "number" || typeof serverId === "string") {
         record.serverId = serverId;
@@ -1588,6 +1862,16 @@ function buildSleepRecordPayload(record: SleepRecord): SleepRecordPayload {
     return payload;
 }
 
+function withServerRecord(
+    record: SleepRecord,
+    serverId: number | string,
+    apiSleepStage?: string,
+): SleepRecord {
+    const nextRecord: SleepRecord = { ...record, serverId };
+    if (apiSleepStage) nextRecord.apiSleepStage = apiSleepStage;
+    return nextRecord;
+}
+
 async function loadSleepRecord(dateISO: string, shouldApplyToForm: boolean) {
     if (!isValidUserId(activeUserId.value)) return null;
     isLoadingSleep.value = true;
@@ -1641,18 +1925,41 @@ async function persistSleepRecord(record: SleepRecord, successMessage: string) {
     if (!isValidUserId(activeUserId.value)) {
         throw new Error("缺少登录用户 ID");
     }
-    const shouldUpdate =
-        savedRecordDates.value[record.dateISO] === true &&
-        record.serverId != null;
-    const payload = buildSleepRecordPayload(record);
+    let recordToPersist = record;
+    if (
+        recordToPersist.serverId == null &&
+        savedRecordDates.value[record.dateISO] === true
+    ) {
+        const latestRecord = await loadSleepRecord(record.dateISO, false);
+        if (latestRecord?.serverId != null) {
+            recordToPersist = withServerRecord(
+                record,
+                latestRecord.serverId,
+                record.apiSleepStage ?? latestRecord.apiSleepStage,
+            );
+        }
+    }
+
+    const shouldUpdate = recordToPersist.serverId != null;
+    const payload = buildSleepRecordPayload(recordToPersist);
     let response: SleepRecordDTO;
     try {
         response = shouldUpdate
             ? await ApiSleep.updateRecord(payload)
             : await ApiSleep.createRecord(payload);
     } catch (error) {
-        if (shouldUpdate || record.serverId == null) throw error;
-        response = await ApiSleep.updateRecord(payload);
+        if (shouldUpdate) throw error;
+        const latestRecord = await loadSleepRecord(record.dateISO, false);
+        if (latestRecord?.serverId == null) throw error;
+        response = await ApiSleep.updateRecord(
+            buildSleepRecordPayload(
+                withServerRecord(
+                    record,
+                    latestRecord.serverId,
+                    record.apiSleepStage ?? latestRecord.apiSleepStage,
+                ),
+            ),
+        );
     }
     const savedRecord = hasSleepRecordPayload(response)
         ? normalizeSleepRecord(response, record.dateISO)
@@ -1726,32 +2033,6 @@ const deepSleepRate = computed(() =>
         ),
     ),
 );
-const wakeCountLabel = computed(() => wakeCount.value);
-const sleepStatusText = computed(() => sleepTagSelected.value[0] || "状态平稳");
-const sleepScore = computed(() => {
-    const duration = durationMinutes.value;
-    const durationScore =
-        duration >= 420 && duration <= 540
-            ? 26
-            : Math.max(10, 26 - Math.abs(duration - 480) / 20);
-    const wakePenalty =
-        wakeCount.value === "0 次"
-            ? 0
-            : wakeCount.value === "1 次"
-              ? 4
-              : wakeCount.value === "2 次"
-                ? 8
-                : 14;
-    const tagBonus = sleepTagSelected.value.includes("入睡快")
-        ? 6
-        : sleepTagSelected.value.includes("入睡慢")
-          ? -6
-          : 0;
-    const raw =
-        sleepQuality.value * 12 + durationScore - wakePenalty + tagBonus;
-    return Math.round(Math.min(100, Math.max(45, raw)));
-});
-
 const pickerTitle = computed(() =>
     pickerField.value === "sleep" ? "选择入睡时间" : "选择起床时间",
 );
@@ -2361,13 +2642,15 @@ onBeforeUnmount(() => {
 
 .summary-grid {
     margin-bottom: 20px;
-    align-items: start;
+    align-items: stretch;
 }
 .summary-grid > .card {
     margin-top: 0;
+    display: flex;
+    flex-direction: column;
 }
 .sleep-summary-shell {
-    height: 356px;
+    height: 430px;
     border-radius: 16px;
     background: transparent;
     cursor: pointer;
@@ -2500,11 +2783,32 @@ onBeforeUnmount(() => {
     font-size: 12px;
     outline: none;
 }
+.stage-overview-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 18px;
+}
+.stage-overview-strip span {
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(244, 237, 223, 0.1);
+    color: rgba(250, 252, 248, 0.62);
+    font-size: 11px;
+}
+.stage-overview-strip strong {
+    display: block;
+    margin-top: 4px;
+    color: rgba(250, 252, 248, 0.96);
+    font-size: 13px;
+    white-space: nowrap;
+}
 .stage-chart {
     display: grid;
     grid-template-columns: 42px 1fr;
     column-gap: 10px;
-    margin-top: 22px;
+    margin-top: 18px;
 }
 .stage-y-labels {
     grid-column: 1;
@@ -2550,6 +2854,16 @@ onBeforeUnmount(() => {
     margin-top: 2px;
     color: rgba(250, 252, 248, 0.56);
     font-size: 11px;
+}
+.stage-empty {
+    margin-top: 26px;
+    min-height: 184px;
+    display: grid;
+    place-items: center;
+    border: 1px dashed rgba(244, 237, 223, 0.22);
+    border-radius: 12px;
+    color: rgba(250, 252, 248, 0.62);
+    font-size: 13px;
 }
 .stage-legend {
     display: flex;
@@ -3029,13 +3343,16 @@ onBeforeUnmount(() => {
         padding-left: 0;
     }
     .sleep-summary-shell {
-        height: 420px;
+        height: 440px;
     }
     .sleep-stage-head {
         flex-direction: column;
     }
     .summary-date-picker {
         align-self: flex-start;
+    }
+    .stage-overview-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .stage-chart {
         grid-template-columns: 36px 1fr;

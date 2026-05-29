@@ -265,6 +265,7 @@ import { useUserStore } from "@/store";
 
 type CalendarDay = {
     key: string;
+    recordId?: number;
     dateISO: string;
     text: string;
     classes: string[];
@@ -493,7 +494,7 @@ function normalizeCalendarDay(day: MenstrualCalendarDayVO): CalendarDay {
     const classes = calendarDayClasses(day, label, dateISO);
     const isToday = dateISO === todayISO;
     if (isToday) classes.push("today");
-    return {
+    const calendarDay: CalendarDay = {
         key: dateISO,
         dateISO,
         text,
@@ -507,6 +508,9 @@ function normalizeCalendarDay(day: MenstrualCalendarDayVO): CalendarDay {
         bodyStatus: normalizeNumber(day.bodyStatus),
         painLevel: normalizeNumber(day.painLevel),
     };
+    const recordId = readMenstrualRecordId(day);
+    if (recordId != null) calendarDay.recordId = recordId;
+    return calendarDay;
 }
 
 function calendarDayClasses(
@@ -667,7 +671,24 @@ async function saveSymptoms() {
                 }),
             ),
         };
-        await ApiMenstrual.createRecord(payload);
+        const shouldUpdate =
+            dayDetail.value?.hasRecord === true || selectedDay.value.hasRecord;
+        try {
+            if (shouldUpdate) {
+                await ApiMenstrual.updateRecord(
+                    await buildMenstrualUpdatePayload(payload),
+                );
+            } else {
+                await ApiMenstrual.createRecord(payload);
+            }
+        } catch (error) {
+            if (shouldUpdate || !isExistingMenstrualRecordError(error)) {
+                throw error;
+            }
+            await ApiMenstrual.updateRecord(
+                await buildMenstrualUpdatePayload(payload),
+            );
+        }
         await Promise.all([
             loadCalendar(),
             loadDayDetail(selectedDateISO.value),
@@ -679,6 +700,79 @@ async function saveSymptoms() {
         showToast("保存失败，请稍后重试");
     } finally {
         isSavingRecord.value = false;
+    }
+}
+
+function isExistingMenstrualRecordError(error: unknown) {
+    if (typeof error !== "object" || error === null) return false;
+    const source = error as {
+        response?: { status?: number; data?: unknown };
+        message?: string;
+    };
+    const message = [source.message, responseDataText(source.response?.data)]
+        .filter(Boolean)
+        .join(" ");
+    return source.response?.status === 500 && /已存在|更新逻辑/.test(message);
+}
+
+async function buildMenstrualUpdatePayload(
+    payload: MenstrualRecordCreatePayload,
+): Promise<MenstrualRecordCreatePayload> {
+    const recordId =
+        readMenstrualRecordId(dayDetail.value) ?? selectedDay.value.recordId;
+    if (recordId != null) return { ...payload, id: recordId };
+
+    const latestDetail = await ApiMenstrual.getDayDetail(
+        payload.userId,
+        payload.recordDate,
+    );
+    dayDetail.value = latestDetail;
+    applyDayDetailToForm(latestDetail);
+
+    const latestRecordId = readMenstrualRecordId(latestDetail);
+    if (latestRecordId != null) return { ...payload, id: latestRecordId };
+
+    throw new Error("经期记录已存在，但后端未返回记录 ID，无法调用更新接口");
+}
+
+function readMenstrualRecordId(
+    source:
+        | MenstrualCalendarDayVO
+        | MenstrualDayDetailVO
+        | CalendarDay
+        | null
+        | undefined,
+) {
+    if (!source) return undefined;
+    const recordSource = source as Record<string, unknown>;
+    return normalizeRecordId(
+        recordSource.id ??
+            recordSource.recordId ??
+            recordSource.menstrualRecordId ??
+            recordSource.menstrualId ??
+            recordSource.record_id,
+    );
+}
+
+function normalizeRecordId(value: unknown) {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue) || numberValue <= 0) return undefined;
+    return numberValue;
+}
+
+function responseDataText(data: unknown) {
+    if (typeof data === "string") return data;
+    if (typeof data !== "object" || data === null) return "";
+    if (
+        "message" in data &&
+        typeof (data as { message?: unknown }).message === "string"
+    ) {
+        return (data as { message: string }).message;
+    }
+    try {
+        return JSON.stringify(data);
+    } catch {
+        return "";
     }
 }
 
