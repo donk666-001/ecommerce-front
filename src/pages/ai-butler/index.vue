@@ -8,7 +8,7 @@
                 <div class="hero-text">
                     <div class="hero-label">AI WELLNESS STEWARD · 私人养生 AI 助理</div>
                     <h1 class="font-serif">AI 管家</h1>
-                    <p class="hero-sub">小荷，立夏快乐 ☀️ 我可以帮你<strong style="color:var(--jade);">答养生疑问、做个性化计划、推荐适合的好物</strong> —— 在同一段对话里都能完成。</p>
+                    <p class="hero-sub">{{ greetingName }}，{{ currentSolarTermName }}快乐 ☀️ 我可以帮你<strong style="color:var(--jade);">答养生疑问、做个性化计划、推荐适合的好物</strong> —— 在同一段对话里都能完成。</p>
                 </div>
                 <div class="hero-meta">
                     <span class="meta-item">💬 今日 <strong>3 次</strong></span>
@@ -20,67 +20,19 @@
             <div class="chat-app">
                 <!-- Left Sidebar -->
                 <aside class="side">
-                    <div class="side-section">
+                    <div class="side-top">
                         <button class="new-chat-btn" @click="newChat">＋ 开启新对话</button>
                     </div>
 
-                    <div class="side-section">
-                        <div class="side-title">AI 管家可以帮你</div>
-
-                        <div class="cap-item qa">
-                            <div class="cap-head"><div class="ico">💬</div><h6>回答养生问题</h6></div>
-                            <div class="desc">基于平台知识库的多轮问答，附文章引用</div>
-                            <button class="example" @click="send('立夏怎么养心？')">💡 立夏怎么养心？</button>
-                        </div>
-
-                        <div class="cap-item plan">
-                            <div class="cap-head"><div class="ico">🌿</div><h6>制定个性化养生计划</h6></div>
-                            <div class="desc">饮食 / 节气 / 睡眠 / 运动 四维一键生成</div>
-                            <button class="example" @click="send('给我做一份立夏养心 7 天计划')">🌿 给我做一份 7 天计划</button>
-                        </div>
-
-                        <div class="cap-item reco">
-                            <div class="cap-head"><div class="ico">🛒</div><h6>推荐适合你的商品</h6></div>
-                            <div class="desc">综合体质 / 节气 / 计划三维度选品并解释理由</div>
-                            <button class="example" @click="send('推荐一些适合江南体质的养心好物')">🛒 推荐养心好物</button>
-                        </div>
-                    </div>
-
-                    <div class="side-section">
-                        <div class="side-title">我的偏好（个性化基础）</div>
-                        <div class="profile-chip" @click="toast('⚙ 打开偏好设置抽屉（演示）')">
-                            <div class="prow"><span>体质</span><span>江南 · 气虚偏湿</span></div>
-                            <div class="prow"><span>目标</span><span>养心 · 祛湿</span></div>
-                            <div class="prow"><span>过敏</span><span>花生 · 芒果</span></div>
-                            <div class="prow"><span>所在地</span><span>江浙</span></div>
-                            <div class="edit">⚙ 编辑我的偏好</div>
-                        </div>
-                    </div>
-
-                    <div class="side-section">
-                        <div class="side-title">历史对话</div>
+                    <div class="side-main">
+                        <div class="side-title side-title--compact">历史对话</div>
                         <div class="history-list">
-                            <div class="history-group">今天</div>
                             <div class="history-item" :class="{ active: activeHistory === 0 }" @click="activeHistory = 0">
-                                <h6>立夏养心 + 7 天计划</h6>
-                                <div class="time">14:32</div>
-                            </div>
-                            <div class="history-item" :class="{ active: activeHistory === 1 }" @click="activeHistory = 1">
-                                <h6>气虚体质能吃当归吗</h6>
-                                <div class="time">11:08</div>
-                            </div>
-                            <div class="history-group">本周</div>
-                            <div class="history-item" :class="{ active: activeHistory === 2 }" @click="activeHistory = 2">
-                                <h6>湿气重怎么调理</h6>
-                                <div class="time">昨天</div>
-                            </div>
-                            <div class="history-item" :class="{ active: activeHistory === 3 }" @click="activeHistory = 3">
-                                <h6>八段锦哪一式护肝</h6>
-                                <div class="time">前天</div>
-                            </div>
-                            <div class="history-item" :class="{ active: activeHistory === 4 }" @click="activeHistory = 4">
-                                <h6>夏天泡什么茶最养生</h6>
-                                <div class="time">5月22日</div>
+                                <div class="history-line">
+                                    <h6>立夏养心 + 7 天计划</h6>
+                                    <span class="history-time">14:32</span>
+                                </div>
+                                <div class="history-sub">今天</div>
                             </div>
                         </div>
                     </div>
@@ -320,8 +272,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from "vue";
+import { ref, computed, nextTick, onMounted } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
+import { ApiSeasonalHealth } from "@/network";
+import { useUserStore } from "@/store/user";
 
 // ---- Keywords ----
 const EMERGENCY = ['胸痛', '呼吸困难', '出血', '昏迷', '剧烈痛'];
@@ -330,11 +284,16 @@ const PLAN = ['计划', '方案', '安排', '7 天', '一周', '本月', '怎么
 const RECO = ['推荐', '买', '购买', '商品', '药材', '茶', '礼盒'];
 
 // ---- State ----
+const userStore = useUserStore();
 const chatInput = ref("");
 const messages = ref<Message[]>([]);
 const isNewChat = ref(false);
 const activeHistory = ref(0);
 const chatBodyEl = ref<HTMLElement | null>(null);
+const currentSolarTermName = ref("立夏");
+const greetingName = computed(
+    () => userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account || "小荷",
+);
 
 // ---- Toast ----
 const toastVisible = ref(false);
@@ -488,7 +447,19 @@ function newChat() {
 // ---- Delegated click handler for dynamic v-html content ----
 onMounted(() => {
     chatBodyEl.value?.addEventListener('click', handleArtifactClick);
+    void loadCurrentSolarTerm();
 });
+
+async function loadCurrentSolarTerm() {
+    try {
+        const data = await ApiSeasonalHealth.getCurrent();
+        if (data?.solarTerm?.termName) {
+            currentSolarTermName.value = data.solarTerm.termName;
+        }
+    } catch (error) {
+        console.error("AI 管家节气加载失败", error);
+    }
+}
 
 // ---- Add to cart ----
 function addToCart(event: Event) {
@@ -524,108 +495,137 @@ function handleArtifactClick(event: Event) {
 <style scoped lang="scss">
 .page-wrapper { min-height: 100vh; }
 
-.hub { max-width: 1280px; margin: 0 auto; padding: 28px 40px 60px; }
+.hub { max-width: 1200px; margin: 0 auto; padding: 32px 40px 80px; }
 
 // Hero
 .hero {
-    background: linear-gradient(135deg, #E4EFE8 0%, #EDF4EF 50%, #FDFAF3 100%);
+    background: linear-gradient(135deg, #E4EFE8 0%, #EDF4EF 60%, #FDFAF3 100%);
     border: 1px solid var(--jade-soft);
-    border-radius: 18px; padding: 24px 32px; margin-bottom: 20px;
+    border-radius: 20px; padding: 36px 40px; margin-bottom: 28px;
     position: relative; overflow: hidden;
-    display: flex; align-items: center; gap: 24px;
 }
 .hero::before {
     content: '智'; position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
-    font-family: "STKaiti", serif; font-size: 150px;
-    color: var(--jade); opacity: 0.12; line-height: 1; font-weight: 900;
+    font-family: "STKaiti", serif; font-size: 200px;
+    color: var(--jade); opacity: 0.10; line-height: 1; font-weight: 900;
 }
-.hero-text { flex: 1; z-index: 1; }
-.hero-label { font-size: 12px; color: var(--jade); letter-spacing: 3px; margin-bottom: 4px; }
-.hero h1 { font-family: "STKaiti", serif; font-size: 26px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
-.hero-sub { color: var(--ink-muted); font-size: 13px; }
-.hero-meta { display: flex; gap: 20px; font-size: 12px; flex-wrap: wrap; z-index: 1; }
-.meta-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); }
+.hero-text { position: relative; z-index: 1; }
+.hero-label { font-size: 13px; color: var(--jade); letter-spacing: 3px; margin-bottom: 8px; }
+.hero h1 { font-family: "STKaiti", serif; font-size: 38px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.hero-sub { color: var(--ink-muted); font-size: 15px; max-width: 600px; }
+.hero-meta { display: flex; gap: 24px; margin-top: 24px; font-size: 13px; flex-wrap: wrap; position: relative; z-index: 1; }
+.meta-item { display: flex; align-items: center; gap: 8px; color: var(--ink-muted); }
 .meta-item strong { color: var(--jade); font-weight: 600; }
 
 // Chat App
 .chat-app {
     background: var(--paper); border-radius: 16px; box-shadow: var(--shadow);
     border: 1px solid rgba(232, 223, 208, 0.4); overflow: hidden;
-    display: grid; grid-template-columns: 280px 1fr; min-height: 720px;
+    display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 760px;
 }
 
 // Sidebar
 .side {
-    background: var(--paper-warm); border-right: 1px solid var(--line-soft);
-    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #F9F3E7 0%, #F6EFE4 100%);
+    border-right: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 24px 20px;
 }
-.side-section { padding: 16px; border-bottom: 1px solid var(--line-soft); }
-.side-section:last-child { border-bottom: none; flex: 1; overflow-y: auto; }
+.side-top { flex-shrink: 0; }
+.side-main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: 4px;
+    padding-right: 4px;
+}
 .side-title {
-    font-family: "STKaiti", serif; font-size: 13px; color: var(--ink-muted);
-    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
-    letter-spacing: 1px;
+    font-family: "STKaiti", serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .side-title::before {
-    content: ''; width: 3px; height: 12px; background: var(--jade); border-radius: 2px;
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: var(--jade);
+    border-radius: 2px;
+}
+.side-title--compact {
+    margin-bottom: 10px;
+    font-size: 16px;
 }
 .new-chat-btn {
-    width: 100%; background: var(--jade); color: white; border: none;
-    padding: 10px; border-radius: 10px; font-family: inherit;
-    font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%;
+    background: var(--jade);
+    color: white;
+    border: none;
+    padding: 16px 18px;
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 10px 22px rgba(92, 131, 116, 0.18);
 }
 .new-chat-btn:hover { background: var(--ink); }
 
-.cap-item {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    padding: 10px 12px; margin-bottom: 8px; cursor: default; transition: all .2s;
-}
-.cap-item:last-child { margin-bottom: 0; }
-.cap-item .cap-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.cap-item .ico {
-    width: 26px; height: 26px; border-radius: 7px;
-    display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
-}
-.cap-item.qa .ico { background: var(--jade-soft); color: var(--jade); }
-.cap-item.plan .ico { background: var(--gold-soft); color: var(--gold-deep); }
-.cap-item.reco .ico { background: var(--pink-soft); color: var(--pink); }
-.cap-item h6 { font-size: 13px; color: var(--ink); font-weight: 600; }
-.cap-item .desc { font-size: 11px; color: var(--ink-muted); margin-bottom: 6px; line-height: 1.5; }
-.cap-item .example {
-    font-size: 11px; color: var(--jade); cursor: pointer; padding: 4px 8px;
-    background: var(--paper-warm); border-radius: 6px; display: inline-block;
-    transition: all .2s; font-family: inherit; border: 1px solid transparent;
-}
-.cap-item .example:hover { background: var(--jade-soft); border-color: var(--jade-light); }
-
-.history-list { display: flex; flex-direction: column; gap: 2px; }
-.history-group { font-size: 11px; color: var(--ink-muted); padding: 8px 10px 4px; font-family: "STKaiti", serif; }
+.history-list { display: flex; flex-direction: column; }
 .history-item {
-    padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all .2s;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: 14px 14px;
+    cursor: pointer;
+    transition: all .2s;
 }
-.history-item:hover { background: var(--paper); }
-.history-item.active { background: var(--paper); border-left: 3px solid var(--jade); padding-left: 7px; }
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.66);
+}
+.history-item.active {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(92, 131, 116, 0.14);
+    box-shadow: 0 10px 24px rgba(60, 50, 30, 0.06);
+}
+.history-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
 .history-item h6 {
-    font-size: 12px; font-weight: 600; color: var(--ink);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.5;
+    margin: 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.history-item .time { font-size: 10px; color: var(--ink-muted); }
-
-.profile-chip {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    padding: 12px; cursor: pointer; transition: all .2s;
+.history-time {
+    flex-shrink: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
 }
-.profile-chip:hover { box-shadow: var(--shadow); }
-.profile-chip .prow {
-    display: flex; justify-content: space-between; font-size: 12px;
-    padding: 3px 0; color: var(--ink-soft);
-}
-.profile-chip .prow span:first-child { color: var(--ink-muted); }
-.profile-chip .edit {
-    text-align: center; color: var(--jade); font-size: 11px;
-    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
-    font-family: "STKaiti", serif;
+.history-sub {
+    margin-top: 6px;
+    color: var(--ink-muted);
+    font-size: 12px;
 }
 
 // Main chat
@@ -634,40 +634,40 @@ function handleArtifactClick(event: Event) {
     display: flex; flex-direction: column;
 }
 .chat-body {
-    flex: 1; padding: 28px 36px; overflow-y: auto;
-    display: flex; flex-direction: column; gap: 22px;
-    max-height: 600px;
+    flex: 1; padding: 32px 30px 36px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 28px;
+    max-height: 660px;
 }
-.msg-row { display: flex; gap: 14px; max-width: 92%; }
+.msg-row { display: flex; gap: 18px; max-width: 98%; }
 .msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
 .msg-row.full { max-width: 100%; }
 .msg-avatar {
-    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 600;
+    font-size: 16px; font-weight: 600;
 }
 .msg-avatar.ai {
     background: linear-gradient(135deg, var(--jade), var(--jade-light));
     color: white; font-family: "STKaiti", serif;
 }
 .msg-avatar.user { background: var(--gold-soft); color: var(--gold-deep); }
-.bubble-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.bubble-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
 .msg-row.me .bubble-wrap { align-items: flex-end; }
 .bub-tag {
-    display: inline-block; font-size: 10px; padding: 1px 8px; border-radius: 4px;
+    display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px;
     background: var(--jade-soft); color: var(--jade); font-weight: 600;
 }
 .bubble {
-    padding: 14px 18px; border-radius: 14px; font-size: 14px; line-height: 1.75;
-    box-shadow: 0 1px 4px rgba(60, 50, 30, 0.04);
+    padding: 18px 22px; border-radius: 16px; font-size: 14px; line-height: 1.85;
+    box-shadow: 0 6px 18px rgba(60, 50, 30, 0.05);
 }
 .bub-ai { background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-top-left-radius: 4px; }
 .bub-me { background: var(--jade); color: white; border-top-right-radius: 4px; }
 
-.msg-actions { display: flex; gap: 6px; margin-top: 4px; }
+.msg-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .msg-action {
     background: transparent; border: 1px solid var(--line); border-radius: 6px;
-    padding: 3px 9px; font-family: inherit; color: var(--ink-muted); cursor: pointer;
+    padding: 5px 10px; font-family: inherit; color: var(--ink-muted); cursor: pointer;
     transition: all .2s; font-size: 11px;
 }
 .msg-action:hover { background: var(--cream); color: var(--ink); border-color: var(--ink-muted); }
@@ -694,11 +694,11 @@ function handleArtifactClick(event: Event) {
 .artifact-plan {
     background: linear-gradient(135deg, #FDFAF3 0%, #EDF4EF 100%);
     border: 1.5px solid var(--jade-light); border-radius: 14px;
-    padding: 18px; margin-top: 12px;
+    padding: 22px; margin-top: 16px;
 }
 .artifact-head {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
-    padding-bottom: 10px; border-bottom: 1px dashed var(--line);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+    padding-bottom: 12px; border-bottom: 1px dashed var(--line);
 }
 .artifact-head .seal {
     background: var(--jade); color: white; border-radius: 6px;
@@ -734,7 +734,7 @@ function handleArtifactClick(event: Event) {
 }
 .plan-dim .row .c strong { color: var(--ink); }
 
-.artifact-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.artifact-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 .artifact-actions .btn-sm {
     background: var(--jade); color: white; border: none; border-radius: 18px;
     padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500;
@@ -748,9 +748,9 @@ function handleArtifactClick(event: Event) {
 // Product reco
 .artifact-recos {
     background: var(--paper-warm); border-radius: 14px; padding: 14px;
-    margin-top: 12px; border: 1px solid var(--line);
+    margin-top: 16px; border: 1px solid var(--line);
 }
-.reco-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.reco-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .reco-card {
     background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
     overflow: hidden; cursor: pointer; transition: all .2s; display: flex; flex-direction: column;
@@ -777,7 +777,7 @@ function handleArtifactClick(event: Event) {
 .handoff-card {
     background: linear-gradient(135deg, #FBEEF1 0%, var(--cinnabar-soft) 100%);
     border: 1.5px dashed var(--cinnabar); border-radius: 12px;
-    padding: 14px; margin-top: 12px;
+    padding: 18px; margin-top: 16px;
 }
 .handoff-card h6 { font-family: "STKaiti", serif; font-size: 13px; color: var(--cinnabar); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 .handoff-card p { font-size: 12px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.6; }
@@ -788,14 +788,14 @@ function handleArtifactClick(event: Event) {
 
 // Quick prompts
 .quick-prompts {
-    padding: 10px 36px; background: var(--paper);
-    display: flex; gap: 8px; overflow-x: auto; border-top: 1px solid var(--line-soft);
+    padding: 16px 30px 14px; background: var(--paper);
+    display: flex; gap: 10px; overflow-x: auto; border-top: 1px solid var(--line-soft);
 }
 .quick-prompts::-webkit-scrollbar { height: 4px; }
 .quick-prompts::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 .quick-prompt {
-    flex-shrink: 0; padding: 6px 14px; background: var(--cream);
-    border: 1px solid var(--line); border-radius: 14px; font-size: 12px;
+    flex-shrink: 0; padding: 8px 16px; background: var(--cream);
+    border: 1px solid var(--line); border-radius: 16px; font-size: 12px;
     color: var(--ink-soft); cursor: pointer; transition: all .2s; font-family: inherit;
     display: inline-flex; align-items: center; gap: 4px;
 }
@@ -803,15 +803,15 @@ function handleArtifactClick(event: Event) {
 .quick-prompt .tagico { font-size: 11px; }
 
 // Chat Input
-.chat-input-wrap { background: var(--paper); border-top: 1px solid var(--line-soft); padding: 14px 36px 18px; }
+.chat-input-wrap { background: var(--paper); border-top: 1px solid var(--line-soft); padding: 18px 30px 24px; }
 .chat-input-row {
-    background: var(--paper-warm); border: 1.5px solid var(--line); border-radius: 14px;
-    display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+    background: var(--paper-warm); border: 1.5px solid var(--line); border-radius: 18px;
+    display: flex; gap: 10px; align-items: center; padding: 10px 14px;
 }
 .chat-input-row:focus-within { border-color: var(--jade); box-shadow: 0 0 0 3px rgba(92, 131, 116, 0.1); }
 .chat-input-row input {
     flex: 1; border: none; outline: none; padding: 8px;
-    font-size: 14px; font-family: inherit; background: transparent;
+    font-size: 15px; font-family: inherit; background: transparent;
 }
 .chat-input-row input::placeholder { color: var(--ink-muted); }
 .icon-btn {
@@ -821,12 +821,12 @@ function handleArtifactClick(event: Event) {
 }
 .icon-btn:hover { background: var(--cream); color: var(--jade); }
 .send-btn {
-    background: var(--jade); color: white; border: none; border-radius: 10px;
-    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    background: var(--jade); color: white; border: none; border-radius: 12px;
+    padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
     display: flex; align-items: center; gap: 4px;
 }
 .send-btn:hover { background: var(--ink); }
-.disclaimer { font-size: 11px; color: var(--ink-muted); margin-top: 8px; text-align: center; }
+.disclaimer { font-size: 11px; color: var(--ink-muted); margin-top: 10px; text-align: center; }
 
 // Toast
 .toast {
