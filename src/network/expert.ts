@@ -65,9 +65,7 @@ export const ApiExpert = {
     uploadAttachment: (file: File) => {
         const form = new FormData();
         form.append('file', file);
-        return GAxiosWithCredentials.post<string>('/experts/apply/attachment', form, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        return GAxiosWithCredentials.post<string>('/experts/apply/attachment', form);
     },
 
     submitApplication: (req: SubmitApplicationRequest) =>

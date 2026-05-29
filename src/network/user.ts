@@ -1,4 +1,4 @@
-import { GAxios } from "@/plugins";
+import { GAxios, GAxiosWithCredentials } from "@/plugins";
 
 function normalizeAssetUrl(url: string, baseURL?: string) {
     if (!url || /^(https?:)?\/\//.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
@@ -123,9 +123,7 @@ class ApiUser {
         const formData = new FormData();
         formData.append("file", file);
         try {
-            const response = await GAxios.post("/users/avatar", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
+            const response = await GAxiosWithCredentials.post("/users/avatar", formData);
             const res = response.data;
             return res.code === 200 ? normalizeAssetUrl(res.data as string, response.config.baseURL) : null;
         } catch {

@@ -9,7 +9,6 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
         timeout: 10000,
         withCredentials,
         headers: {
-            "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
             Accept: "application/json",
         },
@@ -18,6 +17,14 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     // 通用请求拦截器
     instance.interceptors.request.use(
         (config) => {
+            const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+            if (isFormData) {
+                if (config.headers) {
+                    delete (config.headers as Record<string, unknown>)["Content-Type"];
+                }
+            } else if (config.data != null && config.headers) {
+                (config.headers as Record<string, unknown>)["Content-Type"] = "application/json";
+            }
             console.log("完整请求路径：", (config.baseURL || "") + config.url);
             if (withCredentials) {
                 console.log(`[携带cookie]请求参数:${JSON.stringify(config)}`);
