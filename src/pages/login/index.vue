@@ -132,6 +132,12 @@
                     <el-form-item prop="confirmPassword">
                         <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" size="large" prefix-icon="Lock" show-password />
                     </el-form-item>
+                    <el-form-item label="性别">
+                        <el-radio-group v-model="registerForm.gender">
+                            <el-radio :value="1">男</el-radio>
+                            <el-radio :value="2">女</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
                     <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="submitRegister">注册</el-button>
                 </el-form>
             </div>
@@ -146,6 +152,7 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
+import { resolvePostLoginPath } from "@/utils";
 
 // ── 路由 & Store ────────────────────────────────
 const router = useRouter();
@@ -159,7 +166,7 @@ const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
 
 const loginForm = reactive({ account: "", password: "" });
-const registerForm = reactive({ account: "", email: "", password: "", confirmPassword: "" });
+const registerForm = reactive({ account: "", email: "", password: "", confirmPassword: "", gender: 0 });
 
 // ── 动画状态 ────────────────────────────────────
 const mouseX = ref(0);
@@ -531,15 +538,6 @@ async function submitLogin() {
     const valid = await loginFormRef.value?.validate().catch(() => false);
     if (!valid) return;
 
-    if (loginForm.account === "root" && loginForm.password === "123456") {
-        userStore.G_LoginInfo = { id: 1, isLogin: true, nickName: "Root", account: "root", email: "", status: 1 };
-        userStore.isInitialized = true;
-        await userStore.loadUserInfo();
-        ElMessage.success("登录成功（开发模式）");
-        router.push(getRedirectPath());
-        return;
-    }
-
     loading.value = true;
     try {
         const result = await ApiUser.login({ username: loginForm.account, password: loginForm.password });
@@ -552,11 +550,11 @@ async function submitLogin() {
                 account: loginForm.account,
                 status: 1,
             };
-            // 先从 login 响应的 privileges 快速推导 role_id
             const codes: number[] = result.privileges ?? [];
-            const role_id = codes.includes(100) ? 3 : codes.includes(200) ? 2 : 1;
+            const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
             userStore.G_UserInfo = { ...userStore.G_UserInfo, role_id };
             userStore.isInitialized = true;
+            sessionStorage.setItem("tab-user-id", String(result.id));
             await userStore.loadUserInfo();
             ElMessage.success("登录成功");
             router.push(getRedirectPath());
@@ -580,6 +578,8 @@ async function submitRegister() {
             username: registerForm.account,
             password: registerForm.password,
             email: registerForm.email,
+            // gender=0 表示用户未选择，传 undefined 让后端沿用默认值
+            gender: registerForm.gender === 0 ? undefined : registerForm.gender,
         });
         if (result) {
             ElMessage.success("注册成功，请登录");

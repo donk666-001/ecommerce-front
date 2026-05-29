@@ -22,9 +22,52 @@
                     <span class="search-icon">🔍</span>
                     <span class="search-placeholder">搜索节气、食谱、穴位…</span>
                 </div>
-                <div class="top-bell">
+                <el-dropdown
+                    v-if="userStore.G_LoginInfo.isLogin"
+                    trigger="click"
+                    @visible-change="handleNotificationVisible"
+                    @command="handleNotificationCommand"
+                >
+                    <div ref="bellRef" class="top-bell">
+                        🔔
+                        <span v-if="unreadCount > 0" class="badge-dot"></span>
+                        <span v-if="unreadCount > 0" class="badge-count">{{ unreadCountLabel }}</span>
+                    </div>
+                    <template #dropdown>
+                        <el-dropdown-menu class="notification-menu">
+                            <el-dropdown-item v-if="notifications.length === 0" disabled>
+                                暂无通知
+                            </el-dropdown-item>
+                            <el-dropdown-item
+                                v-for="item in notifications"
+                                :key="item.id"
+                                :command="{ type: 'detail', id: item.id }"
+                            >
+                                <div class="notification-item" :class="{ unread: !item.isRead }">
+                                    <div class="notification-title">{{ item.title }}</div>
+                                    <div class="notification-body">{{ item.body || '您有一条新通知' }}</div>
+                                    <div class="notification-time">{{ formatNotificationTime(item.createdAt) }}</div>
+                                </div>
+                            </el-dropdown-item>
+                            <!-- 查看更多通知入口 -->
+                            <el-dropdown-item
+                                v-if="notifications.length > 0"
+                                command="viewAll"
+                                divided
+                            >
+                                <div class="view-all-entry">查看更多通知</div>
+                            </el-dropdown-item>
+                            <el-dropdown-item
+                                v-if="notifications.length > 0 && unreadCount > 0"
+                                command="readAll"
+                            >
+                                全部标记已读
+                            </el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+                <div v-else class="top-bell">
                     🔔
-                    <span class="badge-dot"></span>
                 </div>
 
                 <!-- 未登录：点击跳转登录页 -->
@@ -53,15 +96,95 @@
                     </template>
                 </el-dropdown>
             </div>
+
+            <!-- 通知详情气泡弹窗 -->
+            <el-popover
+                v-model:visible="detailPopoverVisible"
+                :virtual-ref="bellRef"
+                trigger="manual"
+                placement="bottom-end"
+                :width="360"
+                :show-arrow="true"
+                popper-class="notification-detail-popover"
+            >
+                <template v-if="detailNotification">
+                    <div class="popover-detail">
+                        <div class="detail-header">
+                            <span class="detail-title">{{ detailNotification.title }}</span>
+                            <span class="detail-close" @click="detailPopoverVisible = false">✕</span>
+                        </div>
+                        <div class="detail-type">
+                            <el-tag size="small" type="info">{{ formatNotificationType(detailNotification.type) }}</el-tag>
+                        </div>
+                        <div class="detail-body">{{ detailNotification.body || '暂无详细内容' }}</div>
+                        <div class="detail-time">{{ formatDetailTime(detailNotification.createdAt) }}</div>
+                    </div>
+                </template>
+            </el-popover>
+
         </div>
     </header>
+
+    <!-- 全部通知弹窗（根层级 + append-to-body，避免导航栏 z-index/overflow 影响） -->
+    <el-dialog
+        v-model="allNotificationsVisible"
+        width="580px"
+        :close-on-click-modal="true"
+        :lock-scroll="false"
+        destroy-on-close
+        append-to-body
+        custom-class="all-notifications-dialog"
+    >
+        <template #header>
+            <div class="dialog-header">
+                <span class="dot"></span>
+                <span>全部通知</span>
+            </div>
+        </template>
+        <div class="all-notifications-list" v-loading="allNotificationsLoading">
+            <div v-if="allNotifications.length === 0" class="all-empty">
+                <div class="all-empty-icon">🔔</div>
+                <div>暂无通知</div>
+            </div>
+            <div
+                v-for="item in allNotifications"
+                :key="item.id"
+                class="all-notif-card"
+                :class="{ unread: !item.isRead }"
+                @click="openDetailFromAll(item)"
+            >
+                <div class="all-notif-top">
+                    <div class="all-notif-left">
+                        <span class="unread-dot" v-if="!item.isRead"></span>
+                        <span class="all-notif-title">{{ item.title }}</span>
+                    </div>
+                    <span class="all-notif-time">{{ formatNotificationTime(item.createdAt) }}</span>
+                </div>
+                <div class="all-notif-body">{{ item.body || '暂无内容' }}</div>
+            </div>
+        </div>
+        <div class="all-pagination" v-if="allNotificationsTotal > allNotificationsPageSize">
+            <el-pagination
+                v-model:current-page="allNotificationsPage"
+                :page-size="allNotificationsPageSize"
+                :total="allNotificationsTotal"
+                layout="prev, pager, next"
+                small
+                background
+                @current-change="handleAllPageChange"
+            />
+        </div>
+    </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "@/store/user";
 import { ElMessage } from "element-plus";
+import { useExpertPresenceSocket } from "@/composables/useExpertPresenceSocket";
+import { useNotificationSocket } from "@/composables/useNotificationSocket";
+import { ApiNotification, type NotificationVO } from "@/network";
 
 const router = useRouter();
 const route = useRoute();
@@ -71,6 +194,105 @@ const displayInitial = computed(() => {
     const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
     return name ? name.charAt(0) : "我";
 });
+
+/** 当前登录用户是否为认证专家（role_id === 2） */
+const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
+
+const { connect, disconnect } = useExpertPresenceSocket();
+const {
+    connect: connectNotifications,
+    disconnect: disconnectNotifications,
+} = useNotificationSocket();
+
+const notifications = ref<NotificationVO[]>([]);
+
+/** 未读通知数量（独立从服务端加载，保证准确性） */
+const unreadCount = ref(0);
+const unreadCountLabel = computed(() => unreadCount.value > 99 ? "99+" : String(unreadCount.value));
+
+/** 通知总数（用于判断是否显示"查看更多"入口） */
+const totalNotificationCount = ref(0);
+
+/** 铃铛元素引用（气泡弹窗定位用） */
+const bellRef = ref<HTMLElement | null>(null);
+
+/** 通知详情气泡弹窗 */
+const detailPopoverVisible = ref(false);
+const detailNotification = ref<NotificationVO | null>(null);
+
+// 气泡弹窗打开时监听 document 点击以关闭
+watch(detailPopoverVisible, (visible) => {
+    if (visible) {
+        nextTick(() => document.addEventListener('click', closePopoverOnClickOutside));
+    } else {
+        document.removeEventListener('click', closePopoverOnClickOutside);
+    }
+});
+
+/** 点击弹窗外部时关闭气泡 */
+function closePopoverOnClickOutside(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    // 点击气泡内部、下拉菜单、铃铛时不关闭
+    if (target.closest('.el-popover') || target.closest('.el-dropdown-menu') || target.closest('.top-bell')) {
+        return;
+    }
+    detailPopoverVisible.value = false;
+}
+
+/** 全部通知弹窗 */
+const allNotificationsVisible = ref(false);
+const allNotifications = ref<NotificationVO[]>([]);
+const allNotificationsLoading = ref(false);
+const allNotificationsPage = ref(1);
+const allNotificationsTotal = ref(0);
+const allNotificationsPageSize = 10;
+
+onMounted(() => {
+    // 专家登录后全局建立 STOMP 连接，使在线状态对用户可见
+    if (isExpertView.value && userStore.G_LoginInfo.id) {
+        connect();
+    }
+    if (userStore.G_LoginInfo.isLogin && userStore.G_LoginInfo.id) {
+        loadNotifications();
+        loadUnreadCount();
+        connectNotifications(userStore.G_LoginInfo.id, handleRealtimeNotification);
+    }
+});
+
+onUnmounted(() => {
+    // 页面卸载时断开连接（浏览器关闭时 beforeunload 也会触发 STOMP DISCONNECT）
+    if (isExpertView.value) {
+        disconnect();
+    }
+    disconnectNotifications();
+});
+
+// 监听 userStore 异步加载完成后的变化，处理 onMounted 时 store 尚未就绪的竞态
+watch(
+    () => ({ expert: isExpertView.value, id: userStore.G_LoginInfo.id }),
+    ({ expert, id }) => {
+        if (expert && id) connect();
+        else if (!expert) disconnect();
+    },
+    { immediate: true }
+);
+
+watch(
+    () => ({ login: userStore.G_LoginInfo.isLogin, id: userStore.G_LoginInfo.id }),
+    ({ login, id }) => {
+        if (login && id) {
+            loadNotifications();
+            loadUnreadCount();
+            connectNotifications(id, handleRealtimeNotification);
+        } else {
+            notifications.value = [];
+            unreadCount.value = 0;
+            totalNotificationCount.value = 0;
+            disconnectNotifications();
+        }
+    },
+    { immediate: true }
+);
 
 function goHome() {
     router.push("/");
@@ -84,10 +306,149 @@ async function handleCommand(command: string) {
     if (command === "settings") {
         router.push("/settings");
     } else if (command === "logout") {
-        await userStore.logout();
+        if (isExpertView.value) disconnect(); // 主动登出时断开连接
+        await userStore.logout(); // 本地状态已同步清除，几乎立即返回
         ElMessage.success("已退出登录");
-        router.push("/");
+        router.push("/login"); // 直接跳登录页，不再绕道首页
     }
+}
+
+/** 加载未读通知数量（独立请求，保证角标准确） */
+async function loadUnreadCount() {
+    if (!userStore.G_LoginInfo.isLogin) return;
+    try {
+        const res = await ApiNotification.listMyNotifications(1, 1, true);
+        unreadCount.value = (res as any)?.data?.data?.total ?? 0;
+    } catch {
+        unreadCount.value = 0;
+    }
+}
+
+async function loadNotifications() {
+    if (!userStore.G_LoginInfo.isLogin) return;
+    try {
+        const res = await ApiNotification.listMyNotifications(1, 3);
+        notifications.value = (res as any)?.data?.data?.records ?? [];
+        totalNotificationCount.value = (res as any)?.data?.data?.total ?? 0;
+    } catch {
+        notifications.value = [];
+    }
+}
+
+function handleRealtimeNotification(notification: NotificationVO) {
+    // 追加到下拉列表头部，保持最多 3 条
+    notifications.value = [
+        notification,
+        ...notifications.value.filter(item => item.id !== notification.id),
+    ].slice(0, 3);
+    totalNotificationCount.value++;
+    unreadCount.value++;
+    ElMessage.info(notification.body || notification.title);
+}
+
+async function handleNotificationVisible(visible: boolean) {
+    if (visible) {
+        detailPopoverVisible.value = false; // 关掉可能打开的气泡
+        await Promise.all([loadNotifications(), loadUnreadCount()]);
+    }
+}
+
+async function handleNotificationCommand(command: string | { type: string; id?: number }) {
+    if (command === "readAll") {
+        await ApiNotification.markAllRead();
+        notifications.value = notifications.value.map(item => ({ ...item, isRead: true }));
+        unreadCount.value = 0;
+        return;
+    }
+    if (command === "viewAll") {
+        openAllNotifications();
+        return;
+    }
+    if (typeof command === "object" && command.type === "detail" && command.id != null) {
+        const notif = notifications.value.find(n => n.id === command.id);
+        if (notif) openDetail(notif);
+        return;
+    }
+}
+
+function formatNotificationTime(value: string) {
+    const time = new Date(value).getTime();
+    if (Number.isNaN(time)) return "";
+    const diff = Date.now() - time;
+    if (diff < 60_000) return "刚刚";
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+    return new Date(value).toLocaleDateString();
+}
+
+/** 通知详情页的完整时间格式 */
+function formatDetailTime(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString();
+}
+
+/** 将通知类型码转换为可读中文标签 */
+function formatNotificationType(type: string) {
+    const map: Record<string, string> = {
+        "expert.approved": "专家审核",
+        "consult.transfer_request": "转人工请求",
+    };
+    return map[type] || "系统通知";
+}
+
+/** 打开通知详情气泡弹窗，同时标记该通知已读 */
+async function openDetail(notification: NotificationVO) {
+    detailNotification.value = notification;
+    detailPopoverVisible.value = true;
+    if (!notification.isRead) {
+        try {
+            await ApiNotification.markRead(notification.id);
+            notification.isRead = true;
+            if (unreadCount.value > 0) unreadCount.value--;
+            // 同步更新下拉列表中的状态
+            const idx = notifications.value.findIndex(n => n.id === notification.id);
+            if (idx !== -1) {
+                notifications.value[idx] = { ...notifications.value[idx], isRead: true };
+            }
+        } catch {
+            // 标记已读失败不影响详情查看
+        }
+    }
+}
+
+/** 从全部通知弹窗中点击单条，打开详情 */
+async function openDetailFromAll(item: NotificationVO) {
+    allNotificationsVisible.value = false;
+    // 等弹窗关闭后再打开详情弹窗
+    setTimeout(() => openDetail(item), 200);
+}
+
+/** 打开全部通知弹窗 */
+function openAllNotifications() {
+    allNotificationsPage.value = 1;
+    allNotificationsVisible.value = true;
+    loadAllNotifications(1);
+}
+
+/** 加载全部通知（分页） */
+async function loadAllNotifications(page: number) {
+    allNotificationsLoading.value = true;
+    try {
+        const res = await ApiNotification.listMyNotifications(page, allNotificationsPageSize);
+        allNotifications.value = (res as any)?.data?.data?.records ?? [];
+        allNotificationsTotal.value = (res as any)?.data?.data?.total ?? 0;
+    } catch {
+        allNotifications.value = [];
+    } finally {
+        allNotificationsLoading.value = false;
+    }
+}
+
+/** 全部通知弹窗分页切换 */
+function handleAllPageChange(page: number) {
+    allNotificationsPage.value = page;
+    loadAllNotifications(page);
 }
 </script>
 
@@ -207,6 +568,11 @@ async function handleCommand(command: string) {
     position: relative;
     cursor: pointer;
     line-height: 1;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     .badge-dot {
         position: absolute;
@@ -218,6 +584,62 @@ async function handleCommand(command: string) {
         background: var(--cinnabar);
         border: 1.5px solid white;
     }
+
+    .badge-count {
+        position: absolute;
+        top: -8px;
+        right: -12px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: var(--cinnabar);
+        color: white;
+        border: 1.5px solid white;
+        font-size: 10px;
+        line-height: 14px;
+        text-align: center;
+        box-sizing: border-box;
+    }
+}
+
+:deep(.notification-menu) {
+    width: 320px;
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+:deep(.notification-menu .el-dropdown-menu__item) {
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.notification-item {
+    width: 280px;
+    padding: 4px 0;
+    color: var(--ink);
+}
+
+.notification-item.unread .notification-title {
+    color: var(--jade);
+}
+
+.notification-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.notification-body {
+    color: var(--ink-muted);
+    font-size: 12px;
+}
+
+.notification-time {
+    color: var(--ink-muted);
+    opacity: 0.75;
+    font-size: 11px;
+    margin-top: 4px;
 }
 
 .avatar {
@@ -254,9 +676,214 @@ async function handleCommand(command: string) {
     align-items: center;
 }
 
+/* 查看更多通知入口 */
+.view-all-entry {
+    text-align: center;
+    color: var(--jade);
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+}
+
+/* 全部通知弹窗 - 标题 */
+.dialog-header {
+    font-family: "STKaiti", "KaiTi", serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .dot {
+        width: 4px;
+        height: 16px;
+        background: var(--jade);
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+}
+
+/* 全部通知弹窗 - 列表 */
+.all-notifications-list {
+    min-height: 120px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.all-empty {
+    text-align: center;
+    color: var(--ink-muted);
+    padding: 50px 0;
+    font-size: 14px;
+}
+
+.all-empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+}
+
+.all-notif-card {
+    background: var(--paper-warm);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 1px solid var(--line-soft);
+    transition: all 0.2s;
+
+    &:hover {
+        border-color: var(--jade-light);
+        box-shadow: var(--shadow);
+        transform: translateY(-1px);
+    }
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    &.unread {
+        background: linear-gradient(135deg, var(--paper), var(--jade-soft));
+        border-color: rgba(92, 131, 116, 0.15);
+    }
+}
+
+.all-notif-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.all-notif-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cinnabar);
+    flex-shrink: 0;
+    box-shadow: 0 0 4px rgba(179, 60, 44, 0.3);
+}
+
+.all-notif-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.all-notif-card.unread .all-notif-title {
+    font-weight: 600;
+}
+
+.all-notif-time {
+    font-size: 12px;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+    margin-left: 16px;
+}
+
+.all-notif-body {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 16px;
+}
+
+.all-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-soft);
+}
+
 @media (max-width: 900px) {
     .topbar-inner { padding: 12px 20px; gap: 16px; }
     .search-box { display: none; }
     .top-nav { gap: 14px; font-size: 13px; }
+}
+</style>
+
+<!-- 气泡弹窗样式（非 scoped，因为 el-popover 内容会 teleport 到 body） -->
+<style lang="scss">
+.notification-detail-popover {
+    padding: 16px !important;
+
+    .detail-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .detail-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ink);
+    }
+
+    .detail-close {
+        font-size: 14px;
+        color: var(--ink-muted);
+        cursor: pointer;
+        line-height: 1;
+        padding: 2px 4px;
+        transition: color 0.15s;
+
+        &:hover {
+            color: var(--ink);
+        }
+    }
+
+    .detail-type {
+        margin-bottom: 12px;
+    }
+
+    .detail-body {
+        font-size: 14px;
+        line-height: 1.8;
+        color: var(--ink);
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+    }
+
+    .detail-time {
+        font-size: 12px;
+        color: var(--ink-muted);
+    }
+}
+
+/* 全部通知弹窗全局覆盖 */
+.all-notifications-dialog {
+    border-radius: 14px;
+    overflow: hidden;
+
+    .el-dialog__header {
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid var(--line-soft);
+    }
+
+    .el-dialog__body {
+        padding: 16px 24px 20px;
+    }
+
+    .el-dialog__headerbtn {
+        top: 20px;
+        right: 20px;
+    }
 }
 </style>

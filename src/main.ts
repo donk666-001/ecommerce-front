@@ -20,4 +20,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(createPinia());
 app.use(router);
+
+// 等待初次导航（含 auth 守卫的 refreshToken 请求）完全完成后再渲染
+// 避免未登录时短暂渲染首页后才跳转登录页（首屏闪烁）
+await router.isReady();
+
 app.mount("#app");
