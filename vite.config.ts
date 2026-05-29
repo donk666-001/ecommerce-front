@@ -76,15 +76,15 @@ export default defineConfig(({ mode }) => {
             // 监听地址（开放了 0.0.0.0 地址后，将监听当前设备所有可用的本地或网络 IP 地址）
             // host: isDev ? "0.0.0.0" : "localhost",
             host: "localhost",
-            https: {
-                rejectUnauthorized: false,
-                key: fs.readFileSync(
-                    resolve(__dirname, "./resource/certs/key.pem"),
-                ),
-                cert: fs.readFileSync(
-                    resolve(__dirname, "./resource/certs/cert.pem"),
-                ),
-            },
+            // https: {
+            //     rejectUnauthorized: false,
+            //     key: fs.readFileSync(
+            //         resolve(__dirname, "./resource/certs/key.pem"),
+            //     ),
+            //     cert: fs.readFileSync(
+            //         resolve(__dirname, "./resource/certs/cert.pem"),
+            //     ),
+            // },
             proxy: {
                 "/e-commerce/api": {
                     target: "http://localhost:9090",
