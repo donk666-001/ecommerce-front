@@ -262,7 +262,12 @@ import {
     ref,
     watch,
 } from "vue";
-import { ApiCircle } from "@/network";
+import {
+    ApiSeasonalHealth,
+    type SeasonalHealthContentDTO,
+    type SeasonalHealthDTO,
+    type SeasonalRecipeDTO,
+} from "@/network";
 
 type Recipe = {
     id: number;
@@ -551,31 +556,27 @@ termInfo["立夏"] = {
 
 const selectedTermName = ref("小满");
 const todayTermName = ref("小满");
-interface CircleSolarTerm { name: string; solarDate: string; today: string; gradientFrom: string; gradientTo: string; tagline: string; description: string }
-const circleSolarTerm = ref<CircleSolarTerm | null>(null);
+const seasonalHealth = ref<SeasonalHealthDTO | null>(null);
+const isCurrentTermData = ref(false);
 const isLoading = ref(false);
-
-/** 从 solarTerms 数组获取节气的序号 */
-function termIndex(name: string): number {
-    return solarTerms.indexOf(name);
-}
+let requestSerial = 0;
 
 const currentTerm = computed<SolarTermInfo>(() => {
     const fallback = termInfo[selectedTermName.value] ?? termInfo["立夏"]!;
-    const st = circleSolarTerm.value;
-    if (st && st.name === selectedTermName.value) {
-        const theme = termInfo[st.name] ?? fallback;
-        const idx = termIndex(st.name);
-        return {
-            ...theme,
-            name: st.name,
-            tag: `当前节气 · 第 ${idx + 1} 个`,
-            dateRange: `${formatDate(st.solarDate)} — ${formatDate(st.solarDate)}`,
-            subtitle: st.tagline,
-            desc: st.description,
-        };
-    }
-    return fallback;
+    const solarTerm = seasonalHealth.value?.solarTerm;
+    if (!solarTerm) return fallback;
+
+    const theme = termInfo[solarTerm.termName] ?? fallback;
+    return {
+        ...theme,
+        name: solarTerm.termName,
+        tag: isCurrentTermData.value
+            ? `当前节气 · 第 ${solarTerm.termNo} 个`
+            : `二十四节气 · 第 ${solarTerm.termNo} 个`,
+        dateRange: `${formatDate(solarTerm.startTime)} — ${formatDate(solarTerm.endTime)}`,
+        subtitle: solarTerm.shortDesc,
+        desc: solarTerm.longDesc,
+    };
 });
 const heroStyle = computed<Record<string, string>>(() => ({
     "--term-hero-start": currentTerm.value.heroStart,
@@ -586,12 +587,70 @@ const heroStyle = computed<Record<string, string>>(() => ({
 const activeTipTab = ref("饮食");
 const termWheelRef = ref<HTMLElement | null>(null);
 
-const backendTips = computed<Record<string, HealthTip[]>>(() => ({
-    饮食: [],
-    起居: [],
-    运动: [],
-    情志: [],
-}));
+const contentTypeName: Record<string, string> = {
+    "1": "饮食",
+    diet: "饮食",
+    food: "饮食",
+    饮食: "饮食",
+    "2": "起居",
+    daily: "起居",
+    rest: "起居",
+    routine: "起居",
+    起居: "起居",
+    "3": "运动",
+    sport: "运动",
+    exercise: "运动",
+    运动: "运动",
+    "4": "情志",
+    emotion: "情志",
+    mood: "情志",
+    情志: "情志",
+};
+
+const backendTips = computed<Record<string, HealthTip[]>>(() => {
+    const tips: Record<string, HealthTip[]> = {
+        饮食: [],
+        起居: [],
+        运动: [],
+        情志: [],
+    };
+
+    seasonalHealth.value?.healthContents
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .forEach((content) => {
+            const groupName = getHealthContentGroup(content);
+            if (!groupName) return;
+            tips[groupName]?.push({
+                icon: content.contentIcon,
+                title: content.contentTitle,
+                content: content.contentText,
+            });
+        });
+
+    return tips;
+});
+
+function getHealthContentGroup(content: SeasonalHealthContentDTO) {
+    const normalizedType = String(content.contentType).trim().toLowerCase();
+    const matchedByType = contentTypeName[normalizedType];
+    if (matchedByType) return matchedByType;
+
+    const searchableText = `${content.contentTitle}${content.contentText}`;
+    if (/饮食|食|蔬果|汤|粥|脾胃|清润|辛辣|油腻/.test(searchableText)) {
+        return "饮食";
+    }
+    if (/起居|作息|睡|早起|熬夜|衣物|久坐/.test(searchableText)) {
+        return "起居";
+    }
+    if (/运动|散步|八段锦|太极|微汗|大汗/.test(searchableText)) {
+        return "运动";
+    }
+    if (/情志|情绪|心态|焦虑|静坐|呼吸|放松/.test(searchableText)) {
+        return "情志";
+    }
+    return undefined;
+}
 
 const currentTips = computed(() => {
     return backendTips.value[activeTipTab.value] || [];
@@ -718,7 +777,12 @@ const fallbackRecipes: Recipe[] = [
     },
 ];
 
-const allRecipes = computed(() => fallbackRecipes);
+const allRecipes = computed(() => {
+    const backendRecipes = seasonalHealth.value?.dietTherapyRecipes ?? [];
+    return backendRecipes.length > 0
+        ? backendRecipes.map(mapRecipeFromBackend)
+        : fallbackRecipes;
+});
 
 const recipes = computed(() => allRecipes.value.slice(0, 6));
 
@@ -727,6 +791,7 @@ async function selectTerm(term: string) {
     activeTipTab.value = "饮食";
     await nextTick();
     scrollTermIntoView(term);
+    await loadSeasonalHealthByName(term);
 }
 
 function scrollTerms(direction: number) {
@@ -738,7 +803,7 @@ function scrollTerms(direction: number) {
 
 async function returnToToday() {
     activeTipTab.value = "饮食";
-    selectedTermName.value = todayTermName.value;
+    await loadCurrentSeasonalHealth();
     await nextTick();
     scrollTermIntoView(todayTermName.value);
 }
@@ -754,31 +819,100 @@ function scrollTermIntoView(term: string) {
     });
 }
 
+const propertyLevelText: Record<number, string> = {
+    1: "大寒",
+    2: "性寒",
+    3: "性凉",
+    4: "微凉",
+    5: "性平",
+    6: "平和",
+    7: "微温",
+    8: "性温",
+    9: "性热",
+    10: "大热",
+};
+
+function mapRecipeFromBackend(recipe: SeasonalRecipeDTO): Recipe {
+    return {
+        id: recipe.id,
+        name: recipe.foodName,
+        emoji: getRecipeEmoji(recipe.foodName),
+        tag: propertyLevelText[recipe.propertyLevel] || "寒热程度未知",
+        effect: recipe.effectText,
+        usageNote: recipe.usageNote,
+        propertyLevel: recipe.propertyLevel,
+    };
+}
+
+function getRecipeEmoji(foodName: string) {
+    if (foodName.includes("莲子") || foodName.includes("茶")) return "🍵";
+    if (foodName.includes("山药")) return "🍠";
+    if (foodName.includes("银耳")) return "🍐";
+    if (foodName.includes("薏米") || foodName.includes("小米")) return "🍚";
+    if (foodName.includes("南瓜")) return "🎃";
+    if (foodName.includes("姜") || foodName.includes("枣")) return "🫖";
+    if (foodName.includes("苦瓜")) return "🥒";
+    if (foodName.includes("汤") || foodName.includes("羹")) return "🥣";
+    return "🍲";
+}
+
 function formatDate(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value.split("T")[0] || value;
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-async function loadSolarTerm() {
+async function loadCurrentSeasonalHealth() {
+    await loadSeasonalHealth(
+        () => ApiSeasonalHealth.getCurrent(),
+        todayTermName.value || "小满",
+        true,
+    );
+}
+
+async function loadSeasonalHealthByName(termName: string) {
+    await loadSeasonalHealth(
+        () => ApiSeasonalHealth.getByName(termName),
+        termName,
+        false,
+    );
+}
+
+async function loadSeasonalHealth(
+    loader: () => Promise<SeasonalHealthDTO>,
+    fallbackTermName: string,
+    isCurrent: boolean,
+) {
+    const currentRequest = ++requestSerial;
     isLoading.value = true;
+    selectedTermName.value = fallbackTermName;
+    seasonalHealth.value = null;
+    isCurrentTermData.value = isCurrent;
+
     try {
-        const res = await ApiCircle.getSolarTerm();
-        const data = res.data?.data as CircleSolarTerm | undefined;
-        if (data?.name) {
-            circleSolarTerm.value = data;
-            todayTermName.value = data.name;
-            selectedTermName.value = data.name;
+        const data = await loader();
+        if (currentRequest !== requestSerial) return;
+        if (isCurrent) {
+            todayTermName.value = data.solarTerm.termName;
         }
-    } catch {
-        // 接口异常时保持默认显示
+        selectedTermName.value = data.solarTerm.termName;
+        seasonalHealth.value = data;
+        isCurrentTermData.value = isCurrent;
+    } catch (error) {
+        console.error("节气养生接口请求失败", error);
+        if (currentRequest !== requestSerial) return;
+        seasonalHealth.value = null;
+        isCurrentTermData.value = false;
+        selectedTermName.value = fallbackTermName;
     } finally {
-        isLoading.value = false;
+        if (currentRequest === requestSerial) {
+            isLoading.value = false;
+        }
     }
 }
 
 onMounted(() => {
-    void loadSolarTerm();
+    void loadCurrentSeasonalHealth();
 });
 
 watch(showRecipeModal, async (visible) => {
