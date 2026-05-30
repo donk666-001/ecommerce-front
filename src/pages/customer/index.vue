@@ -121,9 +121,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/user";
+import { ApiCustomer } from "@/network/customer";
+import { customerWS } from "@/network/customer.ws";
 import { ElMessage } from "element-plus";
 
 // 导入子组件（稍后创建）
@@ -202,10 +204,20 @@ function toggleStatusMenu() {
     showStatusMenu.value = !showStatusMenu.value;
 }
 
-function setStatus(status: string, label: string) {
-    agentStatus.value = status as any;
-    showStatusMenu.value = false;
-    ElMessage.success(`状态已切换：${label}`);
+async function setStatus(status: string, label: string) {
+    try {
+        const success = await ApiCustomer.updateStatus(status as any);
+        if (success) {
+            agentStatus.value = status as any;
+            showStatusMenu.value = false;
+            ElMessage.success(`状态已切换：${label}`);
+        } else {
+            ElMessage.error("状态切换失败");
+        }
+    } catch (error) {
+        console.error("切换状态失败:", error);
+        ElMessage.error("状态切换失败");
+    }
 }
 
 // 退出登录
@@ -217,10 +229,24 @@ async function handleLogout() {
 }
 
 // 点击外部关闭状态菜单
-onMounted(() => {
+onMounted(async () => {
     document.addEventListener("click", () => {
         showStatusMenu.value = false;
     });
+
+    // 连接WebSocket
+    try {
+        await customerWS.connect();
+        console.log("[CustomerPage] WebSocket已连接");
+    } catch (error) {
+        console.error("[CustomerPage] WebSocket连接失败:", error);
+    }
+});
+
+onUnmounted(() => {
+    // 页面卸载时断开WebSocket
+    customerWS.disconnect();
+    console.log("[CustomerPage] WebSocket已断开");
 });
 </script>
 

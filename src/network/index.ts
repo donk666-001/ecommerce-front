@@ -9,3 +9,4 @@ export * from "./notification.ts";
 export * from "./menstrual.ts";
 export * from "./sleep.ts";
 export * from "./emotion.ts";
+export * from "./customer.ts";

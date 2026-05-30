@@ -7,31 +7,33 @@
             <div class="stat-card jade">
                 <div class="stat-label">接待中</div>
                 <div class="stat-value">
-                    3<span style="font-size: 16px; color: var(--ink-muted)"
-                        >/5</span
+                    {{ stats.currentSessions
+                    }}<span style="font-size: 16px; color: var(--ink-muted)"
+                        >/{{ stats.maxSessions }}</span
                     >
                 </div>
                 <div class="stat-foot">当前同时接待 / 上限</div>
             </div>
             <div class="stat-card gold">
                 <div class="stat-label">排队中</div>
-                <div class="stat-value">2</div>
+                <div class="stat-value">{{ stats.queueCount }}</div>
                 <div class="stat-foot">全店排队人数</div>
             </div>
             <div class="stat-card cinnabar">
                 <div class="stat-label">今日已接待</div>
-                <div class="stat-value">28</div>
+                <div class="stat-value">{{ stats.todayServed }}</div>
                 <div class="stat-foot">较昨日 +12%</div>
             </div>
             <div class="stat-card ink">
                 <div class="stat-label">今日消息</div>
-                <div class="stat-value">412</div>
+                <div class="stat-value">{{ stats.todayMessages }}</div>
                 <div class="stat-foot">收发总数</div>
             </div>
             <div class="stat-card jade">
                 <div class="stat-label">平均首响</div>
                 <div class="stat-value">
-                    38<span style="font-size: 14px">s</span>
+                    {{ stats.avgFirstResponse
+                    }}<span style="font-size: 14px">s</span>
                 </div>
                 <div class="stat-foot">行业 P50 = 60s</div>
             </div>
@@ -46,39 +48,64 @@
                 >
             </div>
             <div class="panel-card-body">
-                <div class="todo-item urgent">
-                    <span style="font-size: 22px">🔥</span>
-                    <div class="todo-text">
-                        <strong>清风明月</strong> · 商品咨询【枸杞红枣茶】
-                        <div
-                            style="
-                                font-size: 12px;
-                                color: var(--ink-muted);
-                                margin-top: 2px;
-                            "
-                        >
-                            "这个孕妇可以喝吗？"
-                        </div>
+                <div v-if="loading" class="loading-state">
+                    <div
+                        style="
+                            text-align: center;
+                            padding: 20px;
+                            color: var(--ink-muted);
+                        "
+                    >
+                        加载中...
                     </div>
-                    <div class="todo-time">已等待 3:12</div>
-                    <button class="btn btn-cinnabar">立即回复</button>
                 </div>
-                <div class="todo-item">
-                    <span style="font-size: 22px">📦</span>
-                    <div class="todo-text">
-                        <strong>云栖之客</strong> · 订单 YYG20260525008
-                        <div
-                            style="
-                                font-size: 12px;
-                                color: var(--ink-muted);
-                                margin-top: 2px;
-                            "
-                        >
-                            "物流好像停了，能帮我查一下吗"
-                        </div>
+                <div
+                    v-else-if="urgentSessions.length === 0"
+                    class="empty-state"
+                >
+                    <div
+                        style="
+                            text-align: center;
+                            padding: 20px;
+                            color: var(--ink-muted);
+                        "
+                    >
+                        ✨ 暂无待办事项
                     </div>
-                    <div class="todo-time" style="color: var(--gold)">1:42</div>
-                    <button class="btn">查看</button>
+                </div>
+                <div v-else>
+                    <div
+                        v-for="session in urgentSessions"
+                        :key="session.id"
+                        class="todo-item"
+                        :class="{ urgent: isUrgent(session.startedAt) }"
+                    >
+                        <span style="font-size: 22px">{{
+                            getTodoIcon(session.sourceTag)
+                        }}</span>
+                        <div class="todo-text">
+                            <strong>{{ session.custName }}</strong> ·
+                            {{ session.source }}
+                            <div
+                                style="
+                                    font-size: 12px;
+                                    color: var(--ink-muted);
+                                    margin-top: 2px;
+                                "
+                            >
+                                "{{ session.lastMsg }}"
+                            </div>
+                        </div>
+                        <div class="todo-time">
+                            {{ formatWaitTime(session.startedAt) }}
+                        </div>
+                        <button
+                            class="btn btn-cinnabar"
+                            @click="handleReply(session.id)"
+                        >
+                            立即回复
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,7 +116,18 @@
                 <h3>📋 全店客服在线情况</h3>
             </div>
             <div class="panel-card-body">
-                <table class="queue-table">
+                <div v-if="colleaguesLoading" class="loading-state">
+                    <div
+                        style="
+                            text-align: center;
+                            padding: 20px;
+                            color: var(--ink-muted);
+                        "
+                    >
+                        加载中...
+                    </div>
+                </div>
+                <table v-else class="queue-table">
                     <thead>
                         <tr>
                             <th>客服</th>
@@ -100,34 +138,31 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>小翠（我）</td>
-                            <td><span class="tag tag-jade">售前</span></td>
+                        <tr
+                            v-for="colleague in colleagues"
+                            :key="colleague.name"
+                        >
+                            <td>{{ colleague.name }}</td>
                             <td>
-                                <span class="status-led led-online"></span>
-                                接待中
+                                <span
+                                    class="tag"
+                                    :class="getRoleTagClass(colleague.role)"
+                                >
+                                    {{ getRoleText(colleague.role) }}
+                                </span>
                             </td>
-                            <td>3 / 5</td>
-                            <td>28</td>
-                        </tr>
-                        <tr>
-                            <td>阿岚</td>
-                            <td><span class="tag tag-cinnabar">售后</span></td>
                             <td>
-                                <span class="status-led led-online"></span>
-                                接待中
+                                <span
+                                    class="status-led"
+                                    :class="`led-${colleague.status}`"
+                                ></span>
+                                {{ getStatusText(colleague.status) }}
                             </td>
-                            <td>2 / 5</td>
-                            <td>19</td>
-                        </tr>
-                        <tr>
-                            <td>暮雨</td>
-                            <td><span class="tag tag-jade">售前</span></td>
                             <td>
-                                <span class="status-led led-break"></span> 小休
+                                {{ colleague.currentLoad }} /
+                                {{ colleague.maxLoad }}
                             </td>
-                            <td>0 / 5</td>
-                            <td>15</td>
+                            <td>{{ colleague.todayServed }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -137,7 +172,124 @@
 </template>
 
 <script setup lang="ts">
-// Dashboard 面板暂时使用静态数据，后续可接入 API
+import { ref, onMounted } from "vue";
+import {
+    ApiCustomer,
+    type CustomerStats,
+    type AgentColleague,
+    type CustomerSession,
+} from "@/network/customer";
+import { ElMessage } from "element-plus";
+
+const loading = ref(false);
+const colleaguesLoading = ref(false);
+const stats = ref<CustomerStats>({
+    currentSessions: 0,
+    maxSessions: 5,
+    queueCount: 0,
+    todayServed: 0,
+    todayMessages: 0,
+    avgFirstResponse: 0,
+});
+const colleagues = ref<AgentColleague[]>([]);
+const urgentSessions = ref<CustomerSession[]>([]);
+
+async function loadStats() {
+    try {
+        const data = await ApiCustomer.getStats();
+        if (data) {
+            stats.value = data;
+        }
+    } catch (error) {
+        console.error("加载统计数据失败:", error);
+    }
+}
+
+async function loadColleagues() {
+    colleaguesLoading.value = true;
+    try {
+        const data = await ApiCustomer.getColleagues();
+        colleagues.value = data;
+    } catch (error) {
+        console.error("加载客服列表失败:", error);
+    } finally {
+        colleaguesLoading.value = false;
+    }
+}
+
+async function loadUrgentSessions() {
+    loading.value = true;
+    try {
+        const sessions = await ApiCustomer.getSessions();
+        // 筛选出超过2分钟未回复的会话
+        urgentSessions.value = sessions.filter((session) => {
+            const waitTime = Date.now() - new Date(session.startedAt).getTime();
+            return waitTime > 2 * 60 * 1000; // 2分钟
+        });
+    } catch (error) {
+        console.error("加载会话列表失败:", error);
+    } finally {
+        loading.value = false;
+    }
+}
+
+function handleReply(sessionId: string) {
+    // TODO: 跳转到聊天面板并选中该会话
+    ElMessage.success("正在切换到会话...");
+    console.log("切换到会话:", sessionId);
+}
+
+function isUrgent(startedAt: string): boolean {
+    const waitTime = Date.now() - new Date(startedAt).getTime();
+    return waitTime > 3 * 60 * 1000; // 3分钟以上为紧急
+}
+
+function formatWaitTime(startedAt: string): string {
+    const waitTime = Date.now() - new Date(startedAt).getTime();
+    const minutes = Math.floor(waitTime / 60000);
+    const seconds = Math.floor((waitTime % 60000) / 1000);
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getTodoIcon(sourceTag: string): string {
+    const map: Record<string, string> = {
+        product: "🔥",
+        order: "📦",
+        general: "💬",
+    };
+    return map[sourceTag] || "💬";
+}
+
+function getRoleTagClass(role: string): string {
+    const map: Record<string, string> = {
+        presale: "tag-jade",
+        aftersale: "tag-cinnabar",
+    };
+    return map[role] || "";
+}
+
+function getRoleText(role: string): string {
+    const map: Record<string, string> = {
+        presale: "售前",
+        aftersale: "售后",
+    };
+    return map[role] || role;
+}
+
+function getStatusText(status: string): string {
+    const map: Record<string, string> = {
+        online: "接待中",
+        break: "小休",
+        off: "下班",
+    };
+    return map[status] || status;
+}
+
+onMounted(() => {
+    loadStats();
+    loadColleagues();
+    loadUrgentSessions();
+});
 </script>
 
 <style scoped lang="scss">

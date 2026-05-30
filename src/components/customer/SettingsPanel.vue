@@ -38,6 +38,12 @@
         <div class="panel-card">
             <div class="panel-card-head">
                 <h3>自动欢迎语</h3>
+                <el-button
+                    type="primary"
+                    size="small"
+                    @click="saveWelcomeMessage"
+                    >保存</el-button
+                >
             </div>
             <div class="panel-card-body">
                 <el-input
@@ -53,7 +59,9 @@
         <div class="panel-card">
             <div class="panel-card-head">
                 <h3>常用语库</h3>
-                <el-button type="primary" size="small">+ 新增</el-button>
+                <el-button type="primary" size="small" @click="addQuickReply"
+                    >+ 新增</el-button
+                >
             </div>
             <div class="panel-card-body">
                 <div class="quick-replies">
@@ -73,8 +81,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useUserStore } from "@/store/user";
+import { ElMessage } from "element-plus";
 
 const userStore = useUserStore();
 
@@ -97,9 +106,32 @@ const quickReplies = ref([
     "这款适合气血不足、手脚冰凉的朋友",
 ]);
 
+async function saveWelcomeMessage() {
+    try {
+        // TODO: 实现保存欢迎语到后端
+        console.log("保存欢迎语:", welcomeMessage.value);
+        ElMessage.success("欢迎语已保存");
+    } catch (error) {
+        console.error("保存欢迎语失败:", error);
+        ElMessage.error("保存失败");
+    }
+}
+
+async function addQuickReply() {
+    // TODO: 实现添加常用语对话框
+    ElMessage.info("添加常用语功能开发中");
+}
+
 function removeReply(index: number) {
     quickReplies.value.splice(index, 1);
+    // TODO: 同步删除到后端
+    console.log("删除常用语:", index);
 }
+
+onMounted(() => {
+    // TODO: 加载用户的设置
+    console.log("加载客服设置");
+});
 </script>
 
 <style scoped lang="scss">

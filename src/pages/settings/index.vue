@@ -125,6 +125,20 @@
                         </button>
                     </el-form-item>
                 </el-form>
+
+                <!-- 客服工作台入口（仅客服可见） -->
+                <div v-if="isCustomerService" class="cs-entry-section">
+                    <h3 class="cs-entry-heading font-serif">客服工作台</h3>
+                    <p class="cs-entry-note">
+                        您拥有客服权限，可以进入客服工作台处理客户咨询。
+                    </p>
+                    <button
+                        class="action-btn primary cs-entry-btn"
+                        @click="goToCustomerWorkspace"
+                    >
+                        进入客服工作台 →
+                    </button>
+                </div>
             </section>
 
             <!-- 账号安全 -->
@@ -262,6 +276,11 @@ const displayInitial = computed(() => {
     return name ? name.charAt(0) : "我";
 });
 
+// 判断是否为客服（role_id === 4）
+const isCustomerService = computed(() => {
+    return userStore.G_UserInfo.role_id === 4;
+});
+
 onMounted(async () => {
     await userStore.loadUserInfo();
     const info = userStore.G_UserInfo;
@@ -369,6 +388,11 @@ async function handleLogout() {
     await userStore.logout();
     ElMessage.success("已退出登录");
     router.push("/");
+}
+
+// 跳转到客服工作台
+function goToCustomerWorkspace() {
+    router.push("/customer");
 }
 </script>
 
@@ -662,5 +686,39 @@ async function handleLogout() {
 .danger-zone {
     padding-top: 40px;
     border-top: 1px solid var(--line-soft);
+}
+
+/* ── 客服工作台入口 ─────────────────────────── */
+.cs-entry-section {
+    margin-top: 32px;
+    padding: 24px;
+    background: linear-gradient(
+        135deg,
+        rgba(92, 131, 116, 0.08) 0%,
+        rgba(139, 172, 130, 0.05) 100%
+    );
+    border: 1px solid var(--jade-light);
+    border-radius: 10px;
+}
+
+.cs-entry-heading {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+}
+
+.cs-entry-note {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.cs-entry-btn {
+    min-width: 180px;
+    font-size: 14px;
+    padding: 0 28px;
 }
 </style>
