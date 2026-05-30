@@ -1,0 +1,2913 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>客服工作台 · 颐养阁</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            :root {
+                --cream: #faf6ee;
+                --paper: #ffffff;
+                --paper-warm: #fdfaf3;
+                --jade: #5c8374;
+                --jade-light: #8fa89c;
+                --jade-soft: #e8f0ec;
+                --jade-pale: #eaf1e4;
+                --gold: #c9a55c;
+                --gold-soft: #f5ebd3;
+                --cinnabar: #b33c2c;
+                --cinnabar-soft: #fae5e0;
+                --ink: #2c3639;
+                --ink-light: #4a565a;
+                --ink-muted: #6b7c7a;
+                --line: #e8dfd0;
+                --shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
+                --shadow-lg: 0 8px 28px rgba(60, 50, 30, 0.1);
+            }
+            body {
+                font-family:
+                    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                    sans-serif;
+                background: var(--cream);
+                color: var(--ink);
+                line-height: 1.6;
+                min-height: 100vh;
+                font-size: 15px;
+                background-image:
+                    radial-gradient(
+                        circle at 10% 0%,
+                        rgba(201, 165, 92, 0.04) 0%,
+                        transparent 40%
+                    ),
+                    radial-gradient(
+                        circle at 90% 100%,
+                        rgba(92, 131, 116, 0.05) 0%,
+                        transparent 40%
+                    );
+            }
+            .font-serif {
+                font-family: "STKaiti", "KaiTi", serif;
+            }
+
+            /* =========== Login =========== */
+            .login-mask {
+                position: fixed;
+                inset: 0;
+                background: linear-gradient(
+                    135deg,
+                    #eaf1e4 0%,
+                    #faf6ee 50%,
+                    #f5ebd3 100%
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 2000;
+            }
+            .login-card {
+                background: var(--paper);
+                border-radius: 18px;
+                box-shadow: var(--shadow-lg);
+                padding: 40px 44px;
+                width: 380px;
+                border: 1px solid rgba(232, 223, 208, 0.5);
+            }
+            .login-card .seal {
+                width: 64px;
+                height: 64px;
+                background: var(--cinnabar);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                font-family: "STKaiti", serif;
+                font-size: 28px;
+                font-weight: 700;
+                box-shadow: 0 6px 18px rgba(179, 60, 44, 0.3);
+                margin: 0 auto 18px;
+            }
+            .login-card h2 {
+                font-family: "STKaiti", serif;
+                font-size: 22px;
+                text-align: center;
+                margin-bottom: 4px;
+            }
+            .login-card .sub {
+                text-align: center;
+                color: var(--ink-muted);
+                font-size: 13px;
+                margin-bottom: 28px;
+            }
+            .form-row {
+                margin-bottom: 16px;
+            }
+            .form-row label {
+                display: block;
+                font-size: 13px;
+                color: var(--ink-muted);
+                margin-bottom: 6px;
+            }
+            .form-row input {
+                width: 100%;
+                padding: 11px 14px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                font-size: 14px;
+                background: var(--paper-warm);
+                font-family: inherit;
+                outline: none;
+                transition: border 0.2s;
+            }
+            .form-row input:focus {
+                border-color: var(--jade);
+                background: white;
+            }
+            .login-btn {
+                width: 100%;
+                padding: 12px;
+                background: var(--cinnabar);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 15px;
+                font-weight: 600;
+                cursor: pointer;
+                font-family: inherit;
+                transition: background 0.2s;
+                margin-top: 8px;
+            }
+            .login-btn:hover {
+                background: #9c3325;
+            }
+            .login-tip {
+                text-align: center;
+                font-size: 12px;
+                color: var(--ink-muted);
+                margin-top: 14px;
+            }
+
+            /* =========== App Layout =========== */
+            .app {
+                display: none;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .app.show {
+                display: flex;
+            }
+
+            /* Sidebar */
+            .sidebar {
+                width: 220px;
+                background: linear-gradient(
+                    180deg,
+                    var(--jade-pale) 0%,
+                    #d9e5d1 100%
+                );
+                border-right: 1px solid rgba(92, 131, 116, 0.2);
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+            }
+            .sidebar-header {
+                height: 76px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 0 18px;
+                border-bottom: 1px solid rgba(92, 131, 116, 0.15);
+            }
+            .logo-seal {
+                width: 42px;
+                height: 42px;
+                background: var(--cinnabar);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                font-family: "STKaiti", serif;
+                font-size: 20px;
+                font-weight: 700;
+                box-shadow: 0 3px 8px rgba(179, 60, 44, 0.3);
+            }
+            .sidebar-title {
+                font-family: "STKaiti", serif;
+                font-size: 17px;
+                font-weight: 600;
+                color: var(--ink);
+            }
+            .sidebar-sub {
+                font-size: 11px;
+                color: var(--ink-muted);
+                margin-top: 2px;
+            }
+            .nav {
+                flex: 1;
+                padding: 14px 0;
+            }
+            .nav-item {
+                width: 100%;
+                background: transparent;
+                border: none;
+                padding: 12px 18px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-family: inherit;
+                font-size: 14px;
+                color: var(--ink-light);
+                cursor: pointer;
+                border-left: 4px solid transparent;
+                transition: all 0.2s;
+                text-align: left;
+            }
+            .nav-item:hover {
+                background: rgba(255, 255, 255, 0.4);
+                color: var(--cinnabar);
+            }
+            .nav-item .nav-icon {
+                width: 18px;
+                font-size: 16px;
+                text-align: center;
+            }
+            .nav-item.active {
+                background: rgba(255, 255, 255, 0.75);
+                color: var(--cinnabar);
+                font-weight: 600;
+                border-left-color: var(--cinnabar);
+            }
+            .nav-badge {
+                margin-left: auto;
+                background: var(--cinnabar);
+                color: white;
+                font-size: 11px;
+                padding: 1px 7px;
+                border-radius: 9px;
+                font-weight: 700;
+            }
+            .nav-badge.gold {
+                background: var(--gold);
+            }
+            .sidebar-footer {
+                padding: 14px;
+                text-align: center;
+                font-size: 11px;
+                color: var(--ink-muted);
+                border-top: 1px solid rgba(92, 131, 116, 0.15);
+            }
+
+            /* Main */
+            .main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+            .topbar {
+                height: 64px;
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+                padding: 0 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            .breadcrumb {
+                font-size: 15px;
+                color: var(--ink-muted);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .breadcrumb .current {
+                color: var(--ink);
+                font-weight: 500;
+            }
+            .topbar-right {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+            .status-selector {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 12px;
+                border: 1px solid var(--line);
+                border-radius: 20px;
+                background: var(--paper-warm);
+                cursor: pointer;
+                font-size: 13px;
+                position: relative;
+            }
+            .status-selector:hover {
+                border-color: var(--jade);
+            }
+            .status-led {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+            }
+            .led-online {
+                background: #2eae6f;
+                box-shadow: 0 0 6px rgba(46, 174, 111, 0.6);
+            }
+            .led-busy {
+                background: var(--gold);
+            }
+            .led-full {
+                background: #e08a3e;
+            }
+            .led-break {
+                background: #999;
+            }
+            .led-off {
+                background: #555;
+            }
+            .status-menu {
+                position: absolute;
+                top: 100%;
+                right: 0;
+                margin-top: 6px;
+                background: white;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                box-shadow: var(--shadow-lg);
+                min-width: 160px;
+                z-index: 100;
+                display: none;
+            }
+            .status-menu.show {
+                display: block;
+            }
+            .status-menu-item {
+                padding: 10px 14px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .status-menu-item:hover {
+                background: var(--cream);
+            }
+            .agent-card {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 13px;
+            }
+            .agent-avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--cinnabar)
+                );
+                color: white;
+                font-family: "STKaiti", serif;
+                font-weight: 600;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .agent-name {
+                font-weight: 600;
+            }
+            .agent-meta {
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+            .logout {
+                background: transparent;
+                border: none;
+                color: var(--ink-muted);
+                cursor: pointer;
+                font-size: 13px;
+                font-family: inherit;
+            }
+            .logout:hover {
+                color: var(--cinnabar);
+            }
+
+            .content {
+                flex: 1;
+                overflow: auto;
+                padding: 24px;
+            }
+            .panel {
+                display: none;
+            }
+            .panel.active {
+                display: block;
+                animation: fadeIn 0.25s ease;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(4px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .section-title {
+                font-family: "STKaiti", serif;
+                font-size: 19px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 18px;
+            }
+            .section-title::before {
+                content: "";
+                width: 4px;
+                height: 18px;
+                background: var(--cinnabar);
+                border-radius: 2px;
+            }
+
+            /* =========== Dashboard =========== */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 14px;
+                margin-bottom: 22px;
+            }
+            .stat-card {
+                background: var(--paper);
+                border-radius: 12px;
+                padding: 18px;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.5);
+                position: relative;
+                overflow: hidden;
+            }
+            .stat-card::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 4px;
+            }
+            .stat-card.jade::before {
+                background: var(--jade);
+            }
+            .stat-card.gold::before {
+                background: var(--gold);
+            }
+            .stat-card.cinnabar::before {
+                background: var(--cinnabar);
+            }
+            .stat-card.ink::before {
+                background: var(--ink-light);
+            }
+            .stat-label {
+                font-size: 13px;
+                color: var(--ink-muted);
+            }
+            .stat-value {
+                font-family: "STKaiti", serif;
+                font-size: 26px;
+                font-weight: 700;
+                margin-top: 6px;
+            }
+            .stat-foot {
+                font-size: 11px;
+                color: var(--ink-muted);
+                margin-top: 6px;
+            }
+
+            .panel-card {
+                background: var(--paper);
+                border-radius: 14px;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.5);
+                margin-bottom: 16px;
+            }
+            .panel-card-head {
+                padding: 14px 18px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .panel-card-head h3 {
+                font-family: "STKaiti", serif;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .panel-card-body {
+                padding: 14px 18px;
+            }
+
+            .todo-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                margin-bottom: 10px;
+                background: var(--paper-warm);
+            }
+            .todo-item:last-child {
+                margin-bottom: 0;
+            }
+            .todo-item.urgent {
+                border-color: var(--cinnabar);
+                background: var(--cinnabar-soft);
+            }
+            .todo-text {
+                flex: 1;
+                font-size: 14px;
+            }
+            .todo-time {
+                font-size: 12px;
+                color: var(--cinnabar);
+                font-weight: 600;
+            }
+
+            /* =========== Chat (Three-column) =========== */
+            .chat-layout {
+                display: grid;
+                grid-template-columns: 260px 1fr 280px;
+                gap: 14px;
+                height: calc(100vh - 64px - 48px);
+            }
+            .col-card {
+                background: var(--paper);
+                border-radius: 14px;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.5);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            /* Left: Session list */
+            .session-head {
+                padding: 12px 14px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+            }
+            .session-head .count {
+                color: var(--cinnabar);
+                font-weight: 600;
+            }
+            .session-list {
+                flex: 1;
+                overflow-y: auto;
+            }
+            .session-item {
+                padding: 12px 14px;
+                border-bottom: 1px solid var(--line);
+                cursor: pointer;
+                display: flex;
+                gap: 10px;
+                transition: background 0.15s;
+            }
+            .session-item:hover {
+                background: var(--cream);
+            }
+            .session-item.active {
+                background: var(--jade-soft);
+                border-left: 3px solid var(--jade);
+                padding-left: 11px;
+            }
+            .session-avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: var(--jade-pale);
+                color: var(--jade);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: "STKaiti", serif;
+                font-weight: 600;
+                flex-shrink: 0;
+                position: relative;
+            }
+            .session-body {
+                flex: 1;
+                min-width: 0;
+            }
+            .session-top {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+            }
+            .session-name {
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .session-time {
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+            .session-msg {
+                font-size: 12px;
+                color: var(--ink-muted);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .session-tag {
+                display: inline-block;
+                font-size: 10px;
+                padding: 1px 6px;
+                border-radius: 3px;
+                margin-right: 4px;
+                background: var(--gold-soft);
+                color: var(--gold);
+                font-family: "STKaiti", serif;
+            }
+            .session-tag.order {
+                background: var(--cinnabar-soft);
+                color: var(--cinnabar);
+            }
+            .session-tag.product {
+                background: var(--jade-soft);
+                color: var(--jade);
+            }
+            .unread-dot {
+                background: var(--cinnabar);
+                color: white;
+                font-size: 10px;
+                min-width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                padding: 0 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: auto;
+                font-weight: 700;
+            }
+
+            /* Center: Chat */
+            .chat-head {
+                padding: 14px 18px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .chat-head .who {
+                flex: 1;
+            }
+            .chat-head .who h4 {
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .chat-head .who .meta {
+                font-size: 12px;
+                color: var(--ink-muted);
+            }
+            .chat-head-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .btn {
+                border: 1px solid var(--line);
+                background: white;
+                padding: 6px 14px;
+                font-size: 13px;
+                border-radius: 7px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: all 0.15s;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .btn:hover {
+                border-color: var(--ink-muted);
+            }
+            .btn-jade {
+                background: var(--jade);
+                color: white;
+                border-color: var(--jade);
+            }
+            .btn-jade:hover {
+                background: #4a6f60;
+            }
+            .btn-cinnabar {
+                border-color: var(--cinnabar);
+                color: var(--cinnabar);
+            }
+            .btn-cinnabar:hover {
+                background: var(--cinnabar);
+                color: white;
+            }
+            .btn-gold {
+                border-color: var(--gold);
+                color: var(--gold);
+            }
+            .btn-gold:hover {
+                background: var(--gold);
+                color: white;
+            }
+
+            .chat-banner {
+                padding: 8px 18px;
+                background: var(--jade-soft);
+                color: var(--jade);
+                font-size: 12px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .chat-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                background: var(--paper-warm);
+            }
+            .msg {
+                display: flex;
+                gap: 10px;
+                max-width: 70%;
+            }
+            .msg.me {
+                align-self: flex-end;
+                flex-direction: row-reverse;
+            }
+            .msg.sys {
+                align-self: center;
+                font-size: 11px;
+                color: var(--ink-muted);
+                background: rgba(0, 0, 0, 0.04);
+                padding: 4px 12px;
+                border-radius: 10px;
+                max-width: none;
+            }
+            .msg-avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: "STKaiti", serif;
+                font-weight: 600;
+                font-size: 13px;
+            }
+            .msg.customer .msg-avatar {
+                background: var(--jade-pale);
+                color: var(--jade);
+            }
+            .msg.me .msg-avatar {
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--cinnabar)
+                );
+                color: white;
+            }
+            .msg-body {
+                min-width: 0;
+            }
+            .msg-meta {
+                font-size: 11px;
+                color: var(--ink-muted);
+                margin-bottom: 4px;
+                padding: 0 4px;
+            }
+            .msg.me .msg-meta {
+                text-align: right;
+            }
+            .bubble {
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-size: 14px;
+                line-height: 1.5;
+                word-break: break-word;
+            }
+            .msg.customer .bubble {
+                background: white;
+                border: 1px solid var(--line);
+                border-top-left-radius: 4px;
+            }
+            .msg.me .bubble {
+                background: var(--jade);
+                color: white;
+                border-top-right-radius: 4px;
+            }
+
+            .card-msg {
+                background: white;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                padding: 10px;
+                display: flex;
+                gap: 10px;
+                width: 240px;
+            }
+            .card-msg .ic {
+                width: 48px;
+                height: 48px;
+                background: var(--cream);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                flex-shrink: 0;
+            }
+            .card-msg .body {
+                flex: 1;
+                min-width: 0;
+            }
+            .card-msg .t {
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .card-msg .s {
+                font-size: 11px;
+                color: var(--ink-muted);
+                margin-top: 2px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .card-msg .p {
+                font-size: 14px;
+                color: var(--cinnabar);
+                font-family: "STKaiti", serif;
+                font-weight: 600;
+                margin-top: 4px;
+            }
+
+            .chat-input-area {
+                border-top: 1px solid var(--line);
+                padding: 10px 14px;
+                background: white;
+            }
+            .chat-toolbar {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 8px;
+                flex-wrap: wrap;
+            }
+            .tool-btn {
+                background: transparent;
+                border: 1px solid var(--line);
+                padding: 4px 10px;
+                font-size: 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                color: var(--ink-light);
+                font-family: inherit;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .tool-btn:hover {
+                border-color: var(--jade);
+                color: var(--jade);
+            }
+            .chat-input {
+                width: 100%;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 14px;
+                resize: none;
+                height: 70px;
+                font-family: inherit;
+                outline: none;
+                background: var(--paper-warm);
+            }
+            .chat-input:focus {
+                border-color: var(--jade);
+                background: white;
+            }
+            .send-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: 6px;
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+            .send-btn {
+                background: var(--cinnabar);
+                color: white;
+                border: none;
+                padding: 6px 18px;
+                font-size: 13px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-family: inherit;
+                font-weight: 600;
+            }
+            .send-btn:hover {
+                background: #9c3325;
+            }
+
+            /* Right: Customer info */
+            .cust-card {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+            .cust-head {
+                text-align: center;
+                padding-bottom: 14px;
+                border-bottom: 1px dashed var(--line);
+                margin-bottom: 14px;
+            }
+            .cust-avatar-big {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: var(--jade-pale);
+                color: var(--jade);
+                font-family: "STKaiti", serif;
+                font-weight: 700;
+                font-size: 22px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 10px;
+            }
+            .cust-name {
+                font-family: "STKaiti", serif;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .cust-tags {
+                margin-top: 6px;
+            }
+            .tag {
+                display: inline-block;
+                padding: 2px 8px;
+                font-size: 11px;
+                border-radius: 3px;
+                font-family: "STKaiti", serif;
+                margin: 0 2px;
+            }
+            .tag-jade {
+                background: var(--jade-soft);
+                color: var(--jade);
+            }
+            .tag-gold {
+                background: var(--gold-soft);
+                color: var(--gold);
+            }
+            .tag-cinnabar {
+                background: var(--cinnabar-soft);
+                color: var(--cinnabar);
+            }
+
+            .cust-section {
+                margin-bottom: 16px;
+            }
+            .cust-section h5 {
+                font-family: "STKaiti", serif;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--ink-muted);
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12px;
+                padding: 4px 0;
+                color: var(--ink-light);
+            }
+            .info-row .v {
+                color: var(--ink);
+                font-weight: 500;
+            }
+            .mini-product {
+                display: flex;
+                gap: 8px;
+                padding: 6px;
+                background: var(--paper-warm);
+                border-radius: 6px;
+                margin-bottom: 6px;
+                align-items: center;
+                font-size: 12px;
+            }
+            .mini-product .ic {
+                font-size: 18px;
+            }
+            .mini-product .qty {
+                color: var(--cinnabar);
+                font-weight: 600;
+            }
+
+            /* =========== Queue =========== */
+            .queue-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            .queue-table thead {
+                background: var(--cream);
+            }
+            .queue-table th {
+                text-align: left;
+                font-weight: 500;
+                font-size: 13px;
+                color: var(--ink-muted);
+                padding: 12px 16px;
+            }
+            .queue-table td {
+                padding: 14px 16px;
+                border-top: 1px solid var(--line);
+                vertical-align: middle;
+            }
+            .queue-table tr:hover td {
+                background: rgba(250, 246, 238, 0.5);
+            }
+            .queue-num {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--cinnabar);
+                color: white;
+                font-family: "STKaiti", serif;
+                font-weight: 700;
+                font-size: 13px;
+            }
+            .wait-time {
+                color: var(--cinnabar);
+                font-weight: 600;
+            }
+
+            /* History */
+            .filter-row {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 12px;
+                flex-wrap: wrap;
+            }
+            .filter-input {
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                padding: 7px 12px;
+                font-size: 13px;
+                background: white;
+                font-family: inherit;
+            }
+
+            /* Settings */
+            .setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 14px 0;
+                border-bottom: 1px solid var(--line);
+            }
+            .setting-row:last-child {
+                border-bottom: none;
+            }
+            .setting-label {
+                font-size: 14px;
+            }
+            .setting-desc {
+                font-size: 12px;
+                color: var(--ink-muted);
+                margin-top: 2px;
+            }
+            .quick-replies {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .quick-reply-chip {
+                background: var(--cream);
+                border: 1px solid var(--line);
+                padding: 6px 12px;
+                border-radius: 16px;
+                font-size: 13px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .quick-reply-chip .del {
+                color: var(--cinnabar);
+                cursor: pointer;
+                font-weight: 700;
+            }
+
+            /* Modal */
+            .modal-mask {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(44, 54, 57, 0.45);
+                backdrop-filter: blur(2px);
+                z-index: 1000;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }
+            .modal-mask.show {
+                display: flex;
+            }
+            .modal {
+                background: white;
+                border-radius: 14px;
+                width: 460px;
+                max-width: 100%;
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+            }
+            .modal-head {
+                padding: 16px 20px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .modal-head h3 {
+                font-family: "STKaiti", serif;
+                font-size: 17px;
+            }
+            .modal-close {
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                color: var(--ink-muted);
+                font-size: 18px;
+            }
+            .modal-body {
+                padding: 20px;
+            }
+            .modal-foot {
+                padding: 14px 20px;
+                border-top: 1px solid var(--line);
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+            }
+            .transfer-agent {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                margin-bottom: 8px;
+                cursor: pointer;
+            }
+            .transfer-agent:hover {
+                border-color: var(--jade);
+            }
+            .transfer-agent.selected {
+                border-color: var(--cinnabar);
+                background: var(--cinnabar-soft);
+            }
+            .transfer-agent .ag-info {
+                flex: 1;
+            }
+            .transfer-agent .ag-name {
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .transfer-agent .ag-load {
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+
+            /* Toast */
+            .toast {
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--ink);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+                z-index: 3000;
+            }
+            .toast.show {
+                opacity: 1;
+            }
+
+            /* Product/Order picker */
+            .picker-list {
+                max-height: 360px;
+                overflow-y: auto;
+            }
+            .picker-item {
+                display: flex;
+                gap: 10px;
+                padding: 10px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                margin-bottom: 8px;
+                cursor: pointer;
+            }
+            .picker-item:hover {
+                border-color: var(--jade);
+                background: var(--jade-soft);
+            }
+            .picker-item .ic {
+                width: 44px;
+                height: 44px;
+                background: var(--cream);
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+                flex-shrink: 0;
+            }
+            .picker-item .nm {
+                font-size: 14px;
+                font-weight: 600;
+            }
+            .picker-item .ds {
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+            .picker-item .pr {
+                font-size: 13px;
+                color: var(--cinnabar);
+                font-family: "STKaiti", serif;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- ===== Login ===== -->
+        <div class="login-mask" id="login-mask">
+            <div class="login-card">
+                <div class="seal">颐</div>
+                <h2 class="font-serif">客服工作台</h2>
+                <div class="sub">颐养阁官方店铺 · 服务中心</div>
+                <div class="form-row">
+                    <label>工号</label>
+                    <input
+                        type="text"
+                        id="login-account"
+                        value="CS001"
+                        placeholder="请输入工号"
+                    />
+                </div>
+                <div class="form-row">
+                    <label>密码</label>
+                    <input
+                        type="password"
+                        id="login-pwd"
+                        value="123456"
+                        placeholder="请输入密码"
+                    />
+                </div>
+                <button class="login-btn" onclick="doLogin()">
+                    登录工作台
+                </button>
+                <div class="login-tip">
+                    测试账号：CS001 / 123456（小翠 · 售前）
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== App ===== -->
+        <div class="app" id="app">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo-seal">颐</div>
+                    <div>
+                        <div class="sidebar-title">客服工作台</div>
+                        <div class="sidebar-sub">颐养阁官方店铺</div>
+                    </div>
+                </div>
+                <nav class="nav">
+                    <button class="nav-item active" data-panel="dashboard">
+                        <span class="nav-icon">📊</span><span>工作台</span>
+                    </button>
+                    <button class="nav-item" data-panel="chat">
+                        <span class="nav-icon">💬</span><span>接待中</span>
+                        <span class="nav-badge" id="badge-active">3</span>
+                    </button>
+                    <button class="nav-item" data-panel="queue">
+                        <span class="nav-icon">⏳</span><span>排队队列</span>
+                        <span class="nav-badge gold" id="badge-queue">2</span>
+                    </button>
+                    <button class="nav-item" data-panel="history">
+                        <span class="nav-icon">📜</span><span>历史会话</span>
+                    </button>
+                    <button class="nav-item" data-panel="tools">
+                        <span class="nav-icon">🔍</span
+                        ><span>商品订单速查</span>
+                    </button>
+                    <button class="nav-item" data-panel="settings">
+                        <span class="nav-icon">⚙️</span><span>个人设置</span>
+                    </button>
+                </nav>
+                <div class="sidebar-footer">v1.0 · 颐养阁 © 2026</div>
+            </aside>
+
+            <!-- Main -->
+            <div class="main">
+                <!-- Topbar -->
+                <div class="topbar">
+                    <div class="breadcrumb">
+                        客服中心 /
+                        <span class="current" id="crumb">工作台</span>
+                    </div>
+                    <div class="topbar-right">
+                        <div
+                            class="status-selector"
+                            onclick="toggleStatusMenu(event)"
+                        >
+                            <span
+                                class="status-led led-online"
+                                id="my-led"
+                            ></span>
+                            <span id="my-status-text">在线</span>
+                            <span
+                                style="font-size: 10px; color: var(--ink-muted)"
+                                >▼</span
+                            >
+                            <div class="status-menu" id="status-menu">
+                                <div
+                                    class="status-menu-item"
+                                    onclick="setMyStatus('online', '在线')"
+                                >
+                                    <span class="status-led led-online"></span
+                                    ><span>在线</span>
+                                </div>
+                                <div
+                                    class="status-menu-item"
+                                    onclick="setMyStatus('break', '小休')"
+                                >
+                                    <span class="status-led led-break"></span
+                                    ><span>小休</span>
+                                </div>
+                                <div
+                                    class="status-menu-item"
+                                    onclick="setMyStatus('off', '下班')"
+                                >
+                                    <span class="status-led led-off"></span
+                                    ><span>下班</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="agent-card">
+                            <div class="agent-avatar">翠</div>
+                            <div>
+                                <div class="agent-name">小翠</div>
+                                <div class="agent-meta">CS001 · 售前客服</div>
+                            </div>
+                        </div>
+                        <button class="logout" onclick="doLogout()">
+                            退出
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <!-- Dashboard Panel -->
+                    <div class="panel active" id="panel-dashboard">
+                        <div class="section-title font-serif">今日数据</div>
+                        <div class="stats-grid">
+                            <div class="stat-card jade">
+                                <div class="stat-label">接待中</div>
+                                <div class="stat-value">
+                                    3<span
+                                        style="
+                                            font-size: 16px;
+                                            color: var(--ink-muted);
+                                        "
+                                        >/5</span
+                                    >
+                                </div>
+                                <div class="stat-foot">当前同时接待 / 上限</div>
+                            </div>
+                            <div class="stat-card gold">
+                                <div class="stat-label">排队中</div>
+                                <div class="stat-value">2</div>
+                                <div class="stat-foot">全店排队人数</div>
+                            </div>
+                            <div class="stat-card cinnabar">
+                                <div class="stat-label">今日已接待</div>
+                                <div class="stat-value">28</div>
+                                <div class="stat-foot">较昨日 +12%</div>
+                            </div>
+                            <div class="stat-card ink">
+                                <div class="stat-label">今日消息</div>
+                                <div class="stat-value">412</div>
+                                <div class="stat-foot">收发总数</div>
+                            </div>
+                            <div class="stat-card jade">
+                                <div class="stat-label">平均首响</div>
+                                <div class="stat-value">
+                                    38<span style="font-size: 14px">s</span>
+                                </div>
+                                <div class="stat-foot">行业 P50 = 60s</div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-card-head">
+                                <h3>⚠ 待办提醒</h3>
+                                <span
+                                    style="
+                                        font-size: 12px;
+                                        color: var(--ink-muted);
+                                    "
+                                    >超 2 分钟未回复的会话</span
+                                >
+                            </div>
+                            <div class="panel-card-body">
+                                <div class="todo-item urgent">
+                                    <span style="font-size: 22px">🔥</span>
+                                    <div class="todo-text">
+                                        <strong>清风明月</strong> ·
+                                        商品咨询【枸杞红枣茶】
+                                        <div
+                                            style="
+                                                font-size: 12px;
+                                                color: var(--ink-muted);
+                                                margin-top: 2px;
+                                            "
+                                        >
+                                            "这个孕妇可以喝吗？"
+                                        </div>
+                                    </div>
+                                    <div class="todo-time">已等待 3:12</div>
+                                    <button
+                                        class="btn btn-cinnabar"
+                                        onclick="switchPanel('chat')"
+                                    >
+                                        立即回复
+                                    </button>
+                                </div>
+                                <div class="todo-item">
+                                    <span style="font-size: 22px">📦</span>
+                                    <div class="todo-text">
+                                        <strong>云栖之客</strong> · 订单
+                                        YYG20260525008
+                                        <div
+                                            style="
+                                                font-size: 12px;
+                                                color: var(--ink-muted);
+                                                margin-top: 2px;
+                                            "
+                                        >
+                                            "物流好像停了，能帮我查一下吗"
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="todo-time"
+                                        style="color: var(--gold)"
+                                    >
+                                        1:42
+                                    </div>
+                                    <button
+                                        class="btn"
+                                        onclick="switchPanel('chat')"
+                                    >
+                                        查看
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-card-head">
+                                <h3>📋 全店客服在线情况</h3>
+                            </div>
+                            <div class="panel-card-body">
+                                <table class="queue-table">
+                                    <thead>
+                                        <tr>
+                                            <th>客服</th>
+                                            <th>职能</th>
+                                            <th>状态</th>
+                                            <th>当前接待</th>
+                                            <th>今日已接待</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>小翠（我）</td>
+                                            <td>
+                                                <span class="tag tag-jade"
+                                                    >售前</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="status-led led-online"
+                                                ></span>
+                                                接待中
+                                            </td>
+                                            <td>3 / 5</td>
+                                            <td>28</td>
+                                        </tr>
+                                        <tr>
+                                            <td>阿岚</td>
+                                            <td>
+                                                <span class="tag tag-cinnabar"
+                                                    >售后</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="status-led led-online"
+                                                ></span>
+                                                接待中
+                                            </td>
+                                            <td>2 / 5</td>
+                                            <td>19</td>
+                                        </tr>
+                                        <tr>
+                                            <td>暮雨</td>
+                                            <td>
+                                                <span class="tag tag-jade"
+                                                    >售前</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="status-led led-break"
+                                                ></span>
+                                                小休
+                                            </td>
+                                            <td>0 / 5</td>
+                                            <td>15</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Panel -->
+                    <div class="panel" id="panel-chat">
+                        <div class="chat-layout">
+                            <!-- Left: Sessions -->
+                            <div class="col-card">
+                                <div class="session-head">
+                                    <span
+                                        >接待中
+                                        <span class="count">3 / 5</span></span
+                                    >
+                                    <button
+                                        class="tool-btn"
+                                        onclick="switchPanel('queue')"
+                                    >
+                                        从队列接入
+                                    </button>
+                                </div>
+                                <div class="session-list" id="session-list">
+                                    <!-- 动态渲染 -->
+                                </div>
+                            </div>
+
+                            <!-- Center: Chat -->
+                            <div class="col-card">
+                                <div class="chat-head">
+                                    <div class="session-avatar" id="cur-avatar">
+                                        风
+                                    </div>
+                                    <div class="who">
+                                        <h4 id="cur-name">清风明月</h4>
+                                        <div class="meta" id="cur-meta">
+                                            会话开始于 5 分钟前 · 来源：商品详情
+                                        </div>
+                                    </div>
+                                    <div class="chat-head-actions">
+                                        <button
+                                            class="btn"
+                                            onclick="openTransfer()"
+                                        >
+                                            ↪ 转接
+                                        </button>
+                                        <button
+                                            class="btn btn-cinnabar"
+                                            onclick="openEnd()"
+                                        >
+                                            ✓ 结束接待
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="chat-banner">
+                                    🔒 该客户已锁定到您的会话 · 其他客服无法接管
+                                    · 30 分钟无消息自动释放
+                                </div>
+                                <div class="chat-body" id="chat-body">
+                                    <!-- 动态渲染 -->
+                                </div>
+                                <div class="chat-input-area">
+                                    <div class="chat-toolbar">
+                                        <button
+                                            class="tool-btn"
+                                            onclick="openProductPicker()"
+                                        >
+                                            🛒 发商品
+                                        </button>
+                                        <button
+                                            class="tool-btn"
+                                            onclick="openOrderPicker()"
+                                        >
+                                            📦 发订单
+                                        </button>
+                                        <button class="tool-btn">
+                                            🖼 图片
+                                        </button>
+                                        <button class="tool-btn">
+                                            😊 表情
+                                        </button>
+                                        <button
+                                            class="tool-btn"
+                                            onclick="toggleQuickReplies()"
+                                        >
+                                            ⚡ 常用语
+                                        </button>
+                                        <div
+                                            id="quick-reply-list"
+                                            style="
+                                                display: none;
+                                                flex-wrap: wrap;
+                                                gap: 4px;
+                                                width: 100%;
+                                                margin-top: 4px;
+                                            "
+                                        ></div>
+                                    </div>
+                                    <textarea
+                                        class="chat-input"
+                                        id="chat-input"
+                                        placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+                                    ></textarea>
+                                    <div class="send-row">
+                                        <span>当前客户在线 · 已读最新消息</span>
+                                        <button
+                                            class="send-btn"
+                                            onclick="sendMsg()"
+                                        >
+                                            发送
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Customer info -->
+                            <div class="col-card">
+                                <div class="cust-card">
+                                    <div class="cust-head">
+                                        <div
+                                            class="cust-avatar-big"
+                                            id="cust-avatar-big"
+                                        >
+                                            风
+                                        </div>
+                                        <div
+                                            class="cust-name"
+                                            id="cust-name-big"
+                                        >
+                                            清风明月
+                                        </div>
+                                        <div class="cust-tags">
+                                            <span class="tag tag-jade"
+                                                >气虚体质</span
+                                            >
+                                            <span class="tag tag-gold"
+                                                >VIP</span
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="cust-section">
+                                        <h5>基本资料</h5>
+                                        <div class="info-row">
+                                            <span>注册时间</span
+                                            ><span class="v">2024-08-12</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>所在地</span
+                                            ><span class="v">浙江 · 杭州</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>累计消费</span
+                                            ><span class="v">¥ 1,286</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span>累计订单</span
+                                            ><span class="v">9 单</span>
+                                        </div>
+                                    </div>
+                                    <div class="cust-section">
+                                        <h5>
+                                            当前购物车
+                                            <span style="color: var(--cinnabar)"
+                                                >¥86</span
+                                            >
+                                        </h5>
+                                        <div class="mini-product">
+                                            <span class="ic">🍵</span>
+                                            <div style="flex: 1">
+                                                枸杞红枣茶
+                                                <span class="qty">×1</span>
+                                            </div>
+                                            <div>¥38</div>
+                                        </div>
+                                        <div class="mini-product">
+                                            <span class="ic">🌿</span>
+                                            <div style="flex: 1">
+                                                四物汤药膳包
+                                                <span class="qty">×1</span>
+                                            </div>
+                                            <div>¥48</div>
+                                        </div>
+                                    </div>
+                                    <div class="cust-section">
+                                        <h5>最近订单</h5>
+                                        <div class="info-row">
+                                            <span>YYG20260520003</span
+                                            ><span
+                                                class="v"
+                                                style="color: var(--jade)"
+                                                >已完成</span
+                                            >
+                                        </div>
+                                        <div class="info-row">
+                                            <span>YYG20260512007</span
+                                            ><span
+                                                class="v"
+                                                style="color: var(--jade)"
+                                                >已完成</span
+                                            >
+                                        </div>
+                                    </div>
+                                    <div class="cust-section">
+                                        <h5>历史咨询</h5>
+                                        <div
+                                            style="
+                                                font-size: 12px;
+                                                color: var(--ink-muted);
+                                            "
+                                        >
+                                            <div style="padding: 4px 0">
+                                                2026-05-20 · 由
+                                                <strong>小翠</strong> 接待 ·
+                                                商品咨询
+                                            </div>
+                                            <div style="padding: 4px 0">
+                                                2026-05-12 · 由
+                                                <strong>阿岚</strong> 接待 ·
+                                                物流催单
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Panel -->
+                    <div class="panel" id="panel-queue">
+                        <div class="section-title font-serif">排队队列</div>
+                        <div class="panel-card">
+                            <div class="panel-card-head">
+                                <h3>等待中的客户</h3>
+                                <span
+                                    style="
+                                        font-size: 12px;
+                                        color: var(--ink-muted);
+                                    "
+                                    >系统自动按 FIFO +
+                                    职能匹配分配，您也可主动接入</span
+                                >
+                            </div>
+                            <table class="queue-table">
+                                <thead>
+                                    <tr>
+                                        <th>排队号</th>
+                                        <th>客户</th>
+                                        <th>来源</th>
+                                        <th>首条消息</th>
+                                        <th>等待时长</th>
+                                        <th>偏好职能</th>
+                                        <th style="text-align: right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <span class="queue-num">1</span>
+                                        </td>
+                                        <td><strong>松涛</strong></td>
+                                        <td>
+                                            <span class="tag tag-jade"
+                                                >商品 · 艾灸盒</span
+                                            >
+                                        </td>
+                                        <td
+                                            style="
+                                                color: var(--ink-muted);
+                                                font-size: 13px;
+                                            "
+                                        >
+                                            "艾灸盒使用前需要预热吗"
+                                        </td>
+                                        <td>
+                                            <span class="wait-time">02:18</span>
+                                        </td>
+                                        <td>
+                                            <span class="tag tag-jade"
+                                                >售前</span
+                                            >
+                                        </td>
+                                        <td style="text-align: right">
+                                            <button
+                                                class="btn btn-jade"
+                                                onclick="acceptQueue('松涛')"
+                                            >
+                                                主动接入
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span class="queue-num">2</span>
+                                        </td>
+                                        <td><strong>南山客</strong></td>
+                                        <td>
+                                            <span class="tag tag-cinnabar"
+                                                >订单 · YYG…011</span
+                                            >
+                                        </td>
+                                        <td
+                                            style="
+                                                color: var(--ink-muted);
+                                                font-size: 13px;
+                                            "
+                                        >
+                                            "想退款怎么操作"
+                                        </td>
+                                        <td>
+                                            <span class="wait-time">01:04</span>
+                                        </td>
+                                        <td>
+                                            <span class="tag tag-cinnabar"
+                                                >售后</span
+                                            >
+                                        </td>
+                                        <td style="text-align: right">
+                                            <button class="btn">
+                                                非我职能
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- History Panel -->
+                    <div class="panel" id="panel-history">
+                        <div class="section-title font-serif">历史会话</div>
+                        <div class="filter-row">
+                            <input
+                                class="filter-input"
+                                placeholder="客户昵称"
+                                style="width: 160px"
+                            />
+                            <input
+                                class="filter-input"
+                                type="date"
+                                value="2026-05-20"
+                            />
+                            <span
+                                style="
+                                    line-height: 30px;
+                                    color: var(--ink-muted);
+                                "
+                                >至</span
+                            >
+                            <input
+                                class="filter-input"
+                                type="date"
+                                value="2026-05-27"
+                            />
+                            <select class="filter-input">
+                                <option>全部客服</option>
+                                <option>小翠（我）</option>
+                                <option>阿岚</option>
+                            </select>
+                            <button class="btn btn-jade">查询</button>
+                        </div>
+                        <div class="panel-card">
+                            <table class="queue-table">
+                                <thead>
+                                    <tr>
+                                        <th>会话 ID</th>
+                                        <th>客户</th>
+                                        <th>客服</th>
+                                        <th>开始时间</th>
+                                        <th>时长</th>
+                                        <th>消息数</th>
+                                        <th>评价</th>
+                                        <th>结束原因</th>
+                                        <th style="text-align: right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>S20260527-014</td>
+                                        <td>江南雪</td>
+                                        <td>小翠</td>
+                                        <td>10:24</td>
+                                        <td>12 min</td>
+                                        <td>23</td>
+                                        <td>★★★★★</td>
+                                        <td>
+                                            <span class="tag tag-jade"
+                                                >手动结束</span
+                                            >
+                                        </td>
+                                        <td style="text-align: right">
+                                            <button class="btn">查看</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>S20260527-013</td>
+                                        <td>梧桐雨</td>
+                                        <td>阿岚 → 小翠</td>
+                                        <td>09:50</td>
+                                        <td>28 min</td>
+                                        <td>41</td>
+                                        <td>★★★★☆</td>
+                                        <td>
+                                            <span class="tag tag-gold"
+                                                >转接</span
+                                            >
+                                        </td>
+                                        <td style="text-align: right">
+                                            <button class="btn">查看</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>S20260527-012</td>
+                                        <td>白露</td>
+                                        <td>小翠</td>
+                                        <td>09:12</td>
+                                        <td>4 min</td>
+                                        <td>6</td>
+                                        <td>—</td>
+                                        <td>
+                                            <span class="tag tag-cinnabar"
+                                                >超时</span
+                                            >
+                                        </td>
+                                        <td style="text-align: right">
+                                            <button class="btn">查看</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tools Panel -->
+                    <div class="panel" id="panel-tools">
+                        <div class="section-title font-serif">
+                            商品 / 订单速查
+                        </div>
+                        <div
+                            style="
+                                display: grid;
+                                grid-template-columns: 1fr 1fr;
+                                gap: 16px;
+                            "
+                        >
+                            <div class="panel-card">
+                                <div class="panel-card-head">
+                                    <h3>🛒 商品搜索</h3>
+                                </div>
+                                <div class="panel-card-body">
+                                    <input
+                                        class="filter-input"
+                                        placeholder="商品名 / 关键词"
+                                        style="width: 100%; margin-bottom: 10px"
+                                    />
+                                    <div class="picker-list">
+                                        <div class="picker-item">
+                                            <div class="ic">🍵</div>
+                                            <div style="flex: 1">
+                                                <div class="nm">枸杞红枣茶</div>
+                                                <div class="ds">
+                                                    滋阴补血 · 适合气血不足
+                                                </div>
+                                                <div class="pr">¥38</div>
+                                            </div>
+                                        </div>
+                                        <div class="picker-item">
+                                            <div class="ic">🌿</div>
+                                            <div style="flex: 1">
+                                                <div class="nm">
+                                                    四物汤药膳包
+                                                </div>
+                                                <div class="ds">
+                                                    补血调经 · 经期前后
+                                                </div>
+                                                <div class="pr">¥48</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel-card">
+                                <div class="panel-card-head">
+                                    <h3>📦 订单查询</h3>
+                                </div>
+                                <div class="panel-card-body">
+                                    <input
+                                        class="filter-input"
+                                        placeholder="订单号 / 客户昵称"
+                                        style="width: 100%; margin-bottom: 10px"
+                                    />
+                                    <div class="picker-list">
+                                        <div class="picker-item">
+                                            <div class="ic">📦</div>
+                                            <div style="flex: 1">
+                                                <div class="nm">
+                                                    YYG20260525008
+                                                </div>
+                                                <div class="ds">
+                                                    云栖之客 · 已发货 · 顺丰
+                                                </div>
+                                                <div class="pr">¥128</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Panel -->
+                    <div class="panel" id="panel-settings">
+                        <div class="section-title font-serif">个人设置</div>
+                        <div class="panel-card">
+                            <div class="panel-card-head"><h3>账号信息</h3></div>
+                            <div class="panel-card-body">
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">
+                                            工号 / 姓名
+                                        </div>
+                                        <div class="setting-desc">
+                                            由管理员分配，不可修改
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="
+                                            font-family:
+                                                &quot;STKaiti&quot;, serif;
+                                        "
+                                    >
+                                        CS001 · 小翠
+                                    </div>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">
+                                            职能角色
+                                        </div>
+                                        <div class="setting-desc">
+                                            影响客户分配的职能匹配
+                                        </div>
+                                    </div>
+                                    <span class="tag tag-jade">售前客服</span>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">
+                                            同时接待上限
+                                        </div>
+                                        <div class="setting-desc">
+                                            达到上限后不再分配新客户
+                                        </div>
+                                    </div>
+                                    <div>5 个会话</div>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">
+                                            修改密码
+                                        </div>
+                                    </div>
+                                    <button class="btn">修改</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-card-head">
+                                <h3>自动欢迎语</h3>
+                            </div>
+                            <div class="panel-card-body">
+                                <textarea
+                                    class="chat-input"
+                                    style="height: 60px"
+                                >
+您好，这边是颐养阁售前客服小翠，很高兴为您服务～</textarea
+                                >
+                            </div>
+                        </div>
+
+                        <div class="panel-card">
+                            <div class="panel-card-head">
+                                <h3>常用语库</h3>
+                                <button class="btn btn-jade">+ 新增</button>
+                            </div>
+                            <div class="panel-card-body">
+                                <div class="quick-replies">
+                                    <span class="quick-reply-chip"
+                                        >满 88 元包邮，江浙沪次日达
+                                        <span class="del">×</span></span
+                                    >
+                                    <span class="quick-reply-chip"
+                                        >质量问题 7 天无理由退换
+                                        <span class="del">×</span></span
+                                    >
+                                    <span class="quick-reply-chip"
+                                        >具体可看商品详情页的功效说明
+                                        <span class="del">×</span></span
+                                    >
+                                    <span class="quick-reply-chip"
+                                        >建议您先做一次体质测试再选购
+                                        <span class="del">×</span></span
+                                    >
+                                    <span class="quick-reply-chip"
+                                        >这款适合气血不足、手脚冰凉的朋友
+                                        <span class="del">×</span></span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Transfer Modal ===== -->
+        <div class="modal-mask" id="transfer-modal">
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>转接会话</h3>
+                    <button
+                        class="modal-close"
+                        onclick="closeModal('transfer-modal')"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div
+                        style="
+                            font-size: 13px;
+                            color: var(--ink-muted);
+                            margin-bottom: 12px;
+                        "
+                    >
+                        选择目标客服 · 完整聊天历史和客户信息将随转接一并迁移
+                    </div>
+                    <div
+                        class="transfer-agent selected"
+                        onclick="selectTransfer(this)"
+                    >
+                        <div class="agent-avatar">岚</div>
+                        <div class="ag-info">
+                            <div class="ag-name">
+                                阿岚 ·
+                                <span class="tag tag-cinnabar">售后</span>
+                            </div>
+                            <div class="ag-load">当前接待 2/5 · 在线</div>
+                        </div>
+                        <span class="status-led led-online"></span>
+                    </div>
+                    <div class="transfer-agent" onclick="selectTransfer(this)">
+                        <div class="agent-avatar">雨</div>
+                        <div class="ag-info">
+                            <div class="ag-name">
+                                暮雨 · <span class="tag tag-jade">售前</span>
+                            </div>
+                            <div class="ag-load">当前接待 0/5 · 小休</div>
+                        </div>
+                        <span class="status-led led-break"></span>
+                    </div>
+                    <div style="margin-top: 14px">
+                        <label style="font-size: 13px; color: var(--ink-muted)"
+                            >转接备注</label
+                        >
+                        <textarea
+                            class="chat-input"
+                            style="height: 60px; margin-top: 6px"
+                            placeholder="例如：客户咨询退款，已确认订单号，请协助处理"
+                        >
+客户咨询商品退款，请阿岚协助</textarea
+                        >
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button class="btn" onclick="closeModal('transfer-modal')">
+                        取消
+                    </button>
+                    <button class="btn btn-jade" onclick="confirmTransfer()">
+                        确认转接
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== End Modal ===== -->
+        <div class="modal-mask" id="end-modal">
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>结束接待</h3>
+                    <button
+                        class="modal-close"
+                        onclick="closeModal('end-modal')"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="font-size: 14px">
+                        确认结束与
+                        <strong id="end-cust">清风明月</strong> 的会话？
+                    </div>
+                    <div
+                        style="
+                            font-size: 12px;
+                            color: var(--ink-muted);
+                            margin-top: 10px;
+                        "
+                    >
+                        · 会话锁将立即释放，下次咨询会重新分配<br />
+                        · 系统将邀请客户进行 5 星评价<br />
+                        · 完整会话记录归档到「历史会话」
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button class="btn" onclick="closeModal('end-modal')">
+                        再聊一会
+                    </button>
+                    <button class="btn btn-cinnabar" onclick="confirmEnd()">
+                        确认结束
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Product Picker ===== -->
+        <div class="modal-mask" id="product-picker">
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>选择商品发送</h3>
+                    <button
+                        class="modal-close"
+                        onclick="closeModal('product-picker')"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input
+                        class="filter-input"
+                        placeholder="搜索商品"
+                        style="width: 100%; margin-bottom: 10px"
+                    />
+                    <div class="picker-list">
+                        <div
+                            class="picker-item"
+                            onclick="pickProduct('枸杞红枣茶', '🍵', 38)"
+                        >
+                            <div class="ic">🍵</div>
+                            <div style="flex: 1">
+                                <div class="nm">枸杞红枣茶</div>
+                                <div class="ds">滋阴补血 · 适合气血不足</div>
+                                <div class="pr">¥38</div>
+                            </div>
+                        </div>
+                        <div
+                            class="picker-item"
+                            onclick="pickProduct('四物汤药膳包', '🌿', 48)"
+                        >
+                            <div class="ic">🌿</div>
+                            <div style="flex: 1">
+                                <div class="nm">四物汤药膳包</div>
+                                <div class="ds">补血调经 · 经期前后</div>
+                                <div class="pr">¥48</div>
+                            </div>
+                        </div>
+                        <div
+                            class="picker-item"
+                            onclick="pickProduct('艾草足浴包', '🧂', 35)"
+                        >
+                            <div class="ic">🧂</div>
+                            <div style="flex: 1">
+                                <div class="nm">艾草足浴包</div>
+                                <div class="ds">驱寒祛湿 · 睡前泡脚</div>
+                                <div class="pr">¥35</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Order Picker ===== -->
+        <div class="modal-mask" id="order-picker">
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>选择订单发送</h3>
+                    <button
+                        class="modal-close"
+                        onclick="closeModal('order-picker')"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input
+                        class="filter-input"
+                        placeholder="订单号 / 客户"
+                        style="width: 100%; margin-bottom: 10px"
+                    />
+                    <div class="picker-list">
+                        <div
+                            class="picker-item"
+                            onclick="pickOrder('YYG20260525008', '已发货', 128)"
+                        >
+                            <div class="ic">📦</div>
+                            <div style="flex: 1">
+                                <div class="nm">YYG20260525008</div>
+                                <div class="ds">云栖之客 · 已发货 · 顺丰</div>
+                                <div class="pr">¥128</div>
+                            </div>
+                        </div>
+                        <div
+                            class="picker-item"
+                            onclick="pickOrder('YYG20260520003', '已完成', 86)"
+                        >
+                            <div class="ic">📦</div>
+                            <div style="flex: 1">
+                                <div class="nm">YYG20260520003</div>
+                                <div class="ds">清风明月 · 已完成</div>
+                                <div class="pr">¥86</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <script>
+            // ============= 数据 =============
+            const sessions = [
+                {
+                    id: "s1",
+                    custId: "c1",
+                    custName: "清风明月",
+                    avatar: "风",
+                    source: "商品 · 枸杞红枣茶",
+                    sourceTag: "product",
+                    startedAgo: "5 分钟前",
+                    unread: 0,
+                    lastMsg: "请问这个孕妇可以喝吗？",
+                    custTags: ["气虚体质", "VIP"],
+                    custCity: "浙江 · 杭州",
+                    custReg: "2024-08-12",
+                    custSpent: "¥ 1,286",
+                    custOrderCount: 9,
+                    custCart: [
+                        { name: "枸杞红枣茶", icon: "🍵", qty: 1, price: 38 },
+                        { name: "四物汤药膳包", icon: "🌿", qty: 1, price: 48 },
+                    ],
+                    cartTotal: 86,
+                    messages: [
+                        { from: "sys", text: "会话开始 · 10:24", time: "" },
+                        {
+                            from: "customer",
+                            text: "你好客服，我想问一下这款枸杞红枣茶",
+                            time: "10:24",
+                        },
+                        {
+                            from: "me",
+                            text: "您好，这边是颐养阁售前客服小翠，很高兴为您服务～请问您想了解哪方面呢？",
+                            time: "10:24",
+                        },
+                        {
+                            from: "customer",
+                            type: "product",
+                            text: "枸杞红枣茶",
+                            meta: { icon: "🍵", desc: "滋阴补血", price: 38 },
+                            time: "10:25",
+                        },
+                        {
+                            from: "customer",
+                            text: "这个孕妇可以喝吗？",
+                            time: "10:26",
+                        },
+                    ],
+                },
+                {
+                    id: "s2",
+                    custId: "c2",
+                    custName: "云栖之客",
+                    avatar: "云",
+                    source: "订单 · YYG…008",
+                    sourceTag: "order",
+                    startedAgo: "12 分钟前",
+                    unread: 2,
+                    lastMsg: "物流好像停了，能帮我查一下吗",
+                    custTags: ["阳虚体质"],
+                    custCity: "江苏 · 苏州",
+                    custReg: "2024-03-05",
+                    custSpent: "¥ 642",
+                    custOrderCount: 4,
+                    custCart: [],
+                    cartTotal: 0,
+                    messages: [
+                        { from: "sys", text: "会话开始 · 10:17", time: "" },
+                        {
+                            from: "customer",
+                            text: "我那个订单 YYG20260525008，3 天没动了",
+                            time: "10:17",
+                        },
+                        {
+                            from: "me",
+                            text: "稍等，我帮您查一下物流信息",
+                            time: "10:18",
+                        },
+                        {
+                            from: "customer",
+                            text: "物流好像停了，能帮我查一下吗",
+                            time: "10:29",
+                        },
+                    ],
+                },
+                {
+                    id: "s3",
+                    custId: "c3",
+                    custName: "听雨人",
+                    avatar: "听",
+                    source: "通用咨询",
+                    sourceTag: "general",
+                    startedAgo: "20 分钟前",
+                    unread: 0,
+                    lastMsg: "好的，谢谢～",
+                    custTags: ["平和体质"],
+                    custCity: "广东 · 广州",
+                    custReg: "2025-01-20",
+                    custSpent: "¥ 268",
+                    custOrderCount: 2,
+                    custCart: [
+                        { name: "艾草足浴包", icon: "🧂", qty: 2, price: 35 },
+                    ],
+                    cartTotal: 70,
+                    messages: [
+                        { from: "sys", text: "会话开始 · 10:09", time: "" },
+                        {
+                            from: "customer",
+                            text: "你好，想问下艾灸盒和足浴包能不能一起用",
+                            time: "10:09",
+                        },
+                        {
+                            from: "me",
+                            text: "您好～是可以的，建议先泡脚 15 分钟，再进行艾灸效果会更好哦",
+                            time: "10:10",
+                        },
+                        {
+                            from: "customer",
+                            text: "好的，谢谢～",
+                            time: "10:11",
+                        },
+                    ],
+                },
+            ];
+
+            let currentSessionId = "s1";
+
+            const quickReplies = [
+                "满 88 元包邮，江浙沪次日达",
+                "质量问题 7 天无理由退换",
+                "具体可看商品详情页的功效说明",
+                "建议您先做一次体质测试再选购",
+                "这款适合气血不足、手脚冰凉的朋友",
+            ];
+
+            // ============= 登录 / 退出 =============
+            function doLogin() {
+                document.getElementById("login-mask").style.display = "none";
+                document.getElementById("app").classList.add("show");
+                renderSessionList();
+                renderChat();
+                renderQuickReplies();
+                toast("登录成功，欢迎回来 · 小翠");
+            }
+            function doLogout() {
+                if (
+                    !confirm(
+                        "确认退出工作台？所有进行中的会话将释放并重新分配。",
+                    )
+                )
+                    return;
+                document.getElementById("login-mask").style.display = "flex";
+                document.getElementById("app").classList.remove("show");
+            }
+
+            // ============= 导航 =============
+            document.querySelectorAll(".nav-item").forEach((b) => {
+                b.addEventListener("click", () => switchPanel(b.dataset.panel));
+            });
+            function switchPanel(panel) {
+                document
+                    .querySelectorAll(".nav-item")
+                    .forEach((b) =>
+                        b.classList.toggle("active", b.dataset.panel === panel),
+                    );
+                document
+                    .querySelectorAll(".panel")
+                    .forEach((p) =>
+                        p.classList.toggle("active", p.id === "panel-" + panel),
+                    );
+                const crumbMap = {
+                    dashboard: "工作台",
+                    chat: "接待中",
+                    queue: "排队队列",
+                    history: "历史会话",
+                    tools: "商品订单速查",
+                    settings: "个人设置",
+                };
+                document.getElementById("crumb").textContent =
+                    crumbMap[panel] || "";
+            }
+
+            // ============= 状态切换 =============
+            function toggleStatusMenu(e) {
+                e.stopPropagation();
+                document.getElementById("status-menu").classList.toggle("show");
+            }
+            document.addEventListener("click", () =>
+                document.getElementById("status-menu").classList.remove("show"),
+            );
+            function setMyStatus(s, label) {
+                const led = document.getElementById("my-led");
+                led.className = "status-led led-" + s;
+                document.getElementById("my-status-text").textContent = label;
+                toast("状态已切换：" + label);
+                if (s === "break" || s === "off") {
+                    toast(
+                        s === "off"
+                            ? "已下班 · 所有会话锁将在 5 分钟后自动释放"
+                            : "已小休 · 不再分配新客户，现有会话保留",
+                    );
+                }
+            }
+
+            // ============= 会话列表 =============
+            function renderSessionList() {
+                const html = sessions
+                    .map(
+                        (s) => `
+    <div class="session-item ${s.id === currentSessionId ? "active" : ""}" onclick="switchSession('${s.id}')">
+      <div class="session-avatar">${s.avatar}</div>
+      <div class="session-body">
+        <div class="session-top">
+          <div class="session-name">${s.custName}</div>
+          <div class="session-time">${s.startedAgo.replace(" 分钟前", "m")}</div>
+        </div>
+        <div>
+          <span class="session-tag ${s.sourceTag}">${s.source}</span>
+        </div>
+        <div class="session-msg" style="margin-top: 4px;">${s.lastMsg}</div>
+      </div>
+      ${s.unread > 0 ? `<div class="unread-dot">${s.unread}</div>` : ""}
+    </div>
+  `,
+                    )
+                    .join("");
+                document.getElementById("session-list").innerHTML = html;
+            }
+
+            function switchSession(id) {
+                currentSessionId = id;
+                const s = sessions.find((x) => x.id === id);
+                if (s) s.unread = 0;
+                renderSessionList();
+                renderChat();
+            }
+
+            function getCurrent() {
+                return sessions.find((s) => s.id === currentSessionId);
+            }
+
+            // ============= 对话渲染 =============
+            function renderChat() {
+                const s = getCurrent();
+                if (!s) return;
+                document.getElementById("cur-avatar").textContent = s.avatar;
+                document.getElementById("cur-name").textContent = s.custName;
+                document.getElementById("cur-meta").textContent =
+                    `会话开始于 ${s.startedAgo} · 来源：${s.source}`;
+                document.getElementById("cust-avatar-big").textContent =
+                    s.avatar;
+                document.getElementById("cust-name-big").textContent =
+                    s.custName;
+
+                const body = document.getElementById("chat-body");
+                body.innerHTML = s.messages
+                    .map((m) => renderMsg(m, s))
+                    .join("");
+                body.scrollTop = body.scrollHeight;
+            }
+
+            function renderMsg(m, s) {
+                if (m.from === "sys") {
+                    return `<div class="msg sys">${m.text}</div>`;
+                }
+                const isMe = m.from === "me";
+                const avatar = isMe ? "翠" : s.avatar;
+                const cls = isMe ? "me" : "customer";
+                let content;
+                if (m.type === "product") {
+                    content = `<div class="card-msg"><div class="ic">${m.meta.icon}</div><div class="body"><div class="t">${m.text}</div><div class="s">${m.meta.desc}</div><div class="p">¥${m.meta.price}</div></div></div>`;
+                } else if (m.type === "order") {
+                    content = `<div class="card-msg"><div class="ic">📦</div><div class="body"><div class="t">${m.text}</div><div class="s">${m.meta.status}</div><div class="p">¥${m.meta.amount}</div></div></div>`;
+                } else {
+                    content = `<div class="bubble">${m.text}</div>`;
+                }
+                return `
+    <div class="msg ${cls}">
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-body">
+        <div class="msg-meta">${isMe ? "我" : s.custName} · ${m.time}</div>
+        ${content}
+      </div>
+    </div>
+  `;
+            }
+
+            // ============= 发送消息 =============
+            function sendMsg() {
+                const input = document.getElementById("chat-input");
+                const text = input.value.trim();
+                if (!text) return;
+                const s = getCurrent();
+                const now = new Date();
+                const time =
+                    String(now.getHours()).padStart(2, "0") +
+                    ":" +
+                    String(now.getMinutes()).padStart(2, "0");
+                s.messages.push({ from: "me", text, time });
+                s.lastMsg = text;
+                input.value = "";
+                renderChat();
+                renderSessionList();
+
+                setTimeout(() => {
+                    const replies = [
+                        "好的，明白了，谢谢～",
+                        "嗯嗯，我看一下",
+                        "请问还有别的吗",
+                        "👍",
+                    ];
+                    s.messages.push({
+                        from: "customer",
+                        text: replies[
+                            Math.floor(Math.random() * replies.length)
+                        ],
+                        time,
+                    });
+                    s.lastMsg = s.messages[s.messages.length - 1].text;
+                    renderChat();
+                    renderSessionList();
+                }, 1500);
+            }
+            document
+                .getElementById("chat-input")
+                .addEventListener("keydown", (e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMsg();
+                    }
+                });
+
+            // ============= 常用语 =============
+            function renderQuickReplies() {
+                document.getElementById("quick-reply-list").innerHTML =
+                    quickReplies
+                        .map(
+                            (q) =>
+                                `<span class="quick-reply-chip" style="cursor:pointer;" onclick="useReply('${q}')">${q}</span>`,
+                        )
+                        .join("");
+            }
+            function toggleQuickReplies() {
+                const el = document.getElementById("quick-reply-list");
+                el.style.display =
+                    el.style.display === "none" ? "flex" : "none";
+            }
+            function useReply(text) {
+                document.getElementById("chat-input").value = text;
+                document.getElementById("chat-input").focus();
+            }
+
+            // ============= 转接 =============
+            function openTransfer() {
+                document.getElementById("transfer-modal").classList.add("show");
+            }
+            function selectTransfer(el) {
+                document
+                    .querySelectorAll(".transfer-agent")
+                    .forEach((a) => a.classList.remove("selected"));
+                el.classList.add("selected");
+            }
+            function confirmTransfer() {
+                const s = getCurrent();
+                closeModal("transfer-modal");
+                toast("已转接到「阿岚」· 会话锁已迁移");
+                const idx = sessions.findIndex((x) => x.id === s.id);
+                if (idx > -1) sessions.splice(idx, 1);
+                if (sessions.length > 0) currentSessionId = sessions[0].id;
+                renderSessionList();
+                renderChat();
+                document.getElementById("badge-active").textContent =
+                    sessions.length;
+            }
+
+            // ============= 结束接待 =============
+            function openEnd() {
+                document.getElementById("end-cust").textContent =
+                    getCurrent().custName;
+                document.getElementById("end-modal").classList.add("show");
+            }
+            function confirmEnd() {
+                const s = getCurrent();
+                closeModal("end-modal");
+                toast("会话已结束 · 已邀请客户评价");
+                const idx = sessions.findIndex((x) => x.id === s.id);
+                if (idx > -1) sessions.splice(idx, 1);
+                if (sessions.length > 0) currentSessionId = sessions[0].id;
+                renderSessionList();
+                renderChat();
+                document.getElementById("badge-active").textContent =
+                    sessions.length;
+            }
+
+            // ============= 商品 / 订单 picker =============
+            function openProductPicker() {
+                document.getElementById("product-picker").classList.add("show");
+            }
+            function openOrderPicker() {
+                document.getElementById("order-picker").classList.add("show");
+            }
+            function pickProduct(name, icon, price) {
+                const s = getCurrent();
+                const time = nowTime();
+                s.messages.push({
+                    from: "me",
+                    type: "product",
+                    text: name,
+                    meta: { icon, desc: "商品卡片 · 点击查看详情", price },
+                    time,
+                });
+                closeModal("product-picker");
+                renderChat();
+                toast("已发送商品卡片");
+            }
+            function pickOrder(no, status, amount) {
+                const s = getCurrent();
+                const time = nowTime();
+                s.messages.push({
+                    from: "me",
+                    type: "order",
+                    text: no,
+                    meta: { status, amount },
+                    time,
+                });
+                closeModal("order-picker");
+                renderChat();
+                toast("已发送订单卡片");
+            }
+            function nowTime() {
+                const d = new Date();
+                return (
+                    String(d.getHours()).padStart(2, "0") +
+                    ":" +
+                    String(d.getMinutes()).padStart(2, "0")
+                );
+            }
+
+            // ============= 排队接入 =============
+            function acceptQueue(name) {
+                if (sessions.length >= 5) {
+                    toast("已达接待上限，请先结束已有会话");
+                    return;
+                }
+                const newId = "s" + (sessions.length + 1);
+                sessions.push({
+                    id: newId,
+                    custId: "q1",
+                    custName: name,
+                    avatar: name[0],
+                    source: "排队接入",
+                    sourceTag: "general",
+                    startedAgo: "刚刚",
+                    unread: 1,
+                    lastMsg: "艾灸盒使用前需要预热吗",
+                    custTags: ["新客户"],
+                    custCity: "未知",
+                    custReg: "2026-05-27",
+                    custSpent: "¥ 0",
+                    custOrderCount: 0,
+                    custCart: [],
+                    cartTotal: 0,
+                    messages: [
+                        {
+                            from: "sys",
+                            text:
+                                "会话开始 · " +
+                                nowTime() +
+                                " · 您从排队队列主动接入",
+                            time: "",
+                        },
+                        {
+                            from: "customer",
+                            text: "艾灸盒使用前需要预热吗",
+                            time: nowTime(),
+                        },
+                    ],
+                });
+                document.getElementById("badge-active").textContent =
+                    sessions.length;
+                document.getElementById("badge-queue").textContent = 1;
+                switchPanel("chat");
+                currentSessionId = newId;
+                renderSessionList();
+                renderChat();
+                toast("已接入「" + name + "」· 会话锁已建立");
+            }
+
+            // ============= 通用 =============
+            function closeModal(id) {
+                document.getElementById(id).classList.remove("show");
+            }
+            function toast(text) {
+                const t = document.getElementById("toast");
+                t.textContent = text;
+                t.classList.add("show");
+                setTimeout(() => t.classList.remove("show"), 2200);
+            }
+        </script>
+    </body>
+</html>

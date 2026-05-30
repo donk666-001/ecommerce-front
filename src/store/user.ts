@@ -79,7 +79,9 @@ export const useUserStore = defineStore("user", {
                         ? 1
                         : codes.includes(200)
                           ? 2
-                          : 3;
+                          : codes.includes(400)
+                            ? 4
+                            : 3;
                     this.G_UserInfo = { ...this.G_UserInfo, role_id };
                     // 刷新成功，更新本 tab 记录的用户 ID
                     sessionStorage.setItem("tab-user-id", String(result.id));
@@ -110,7 +112,9 @@ export const useUserStore = defineStore("user", {
                     ? 1
                     : codes.includes(200)
                       ? 2
-                      : 3;
+                      : codes.includes(400)
+                        ? 4
+                        : 3;
                 this.G_UserInfo = {
                     ...this.G_UserInfo,
                     ...result,

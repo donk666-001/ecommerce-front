@@ -11,10 +11,10 @@
             <!-- 角色舞台 -->
             <div class="stage-wrap">
                 <div class="character-stage">
-                    <!-- 紫色角色（后层） -->
+                    <!-- 紫色角色(后层) -->
                     <div ref="purpleRef" class="char" :style="purpleBodyStyle">
                         <div class="char-eyes" :style="purpleEyesStyle">
-                            <template v-for="n in 2" :key="n">
+                            <template v-for="_ in 2" :key="_">
                                 <div :style="eyeballSty(18, isPurpleBlinking)">
                                     <div
                                         v-if="!isPurpleBlinking"
@@ -31,10 +31,10 @@
                         </div>
                     </div>
 
-                    <!-- 黑色角色（中层） -->
+                    <!-- 黑色角色(中层) -->
                     <div ref="blackRef" class="char" :style="blackBodyStyle">
                         <div class="char-eyes" :style="blackEyesStyle">
-                            <template v-for="n in 2" :key="n">
+                            <template v-for="_ in 2" :key="_">
                                 <div :style="eyeballSty(16, isBlackBlinking)">
                                     <div
                                         v-if="!isBlackBlinking"
@@ -51,12 +51,12 @@
                         </div>
                     </div>
 
-                    <!-- 橙色半圆（前层左） -->
+                    <!-- 橙色半圆(前层左) -->
                     <div ref="orangeRef" class="char" :style="orangeBodyStyle">
                         <div class="char-eyes" :style="orangeEyesStyle">
                             <div
-                                v-for="n in 2"
-                                :key="n"
+                                v-for="_ in 2"
+                                :key="_"
                                 :style="
                                     dotSty(orangeEyeForce, orangePupilPos, 12)
                                 "
@@ -64,12 +64,12 @@
                         </div>
                     </div>
 
-                    <!-- 黄色圆柱（前层右） -->
+                    <!-- 黄色圆柱(前层右) -->
                     <div ref="yellowRef" class="char" :style="yellowBodyStyle">
                         <div class="char-eyes" :style="yellowEyesStyle">
                             <div
-                                v-for="n in 2"
-                                :key="n"
+                                v-for="_ in 2"
+                                :key="_"
                                 :style="
                                     dotSty(yellowEyeForce, yellowPupilPos, 12)
                                 "
@@ -155,6 +155,12 @@
                         @click="submitLogin"
                         >登录</el-button
                     >
+                    <div class="customer-login-link">
+                        <span>客服人员？</span>
+                        <button class="link-btn" @click="goToCustomerLogin">
+                            进入客服工作台
+                        </button>
+                    </div>
                 </el-form>
 
                 <!-- 注册表单 -->
@@ -238,6 +244,7 @@ import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
 import { resolvePostLoginPath } from "@/utils";
+import type { CSSProperties } from "vue";
 
 // ── 路由 & Store ────────────────────────────────
 const router = useRouter();
@@ -349,7 +356,7 @@ const yellowEyeForce = computed((): Vec | null => {
 });
 
 // ── 样式辅助函数 ─────────────────────────────────
-function eyeballSty(size: number, blinking: boolean) {
+function eyeballSty(size: number, blinking: boolean): CSSProperties {
     return {
         width: `${size}px`,
         height: blinking ? "2px" : `${size}px`,
@@ -364,7 +371,7 @@ function eyeballSty(size: number, blinking: boolean) {
     };
 }
 
-function pupilSty(force: Vec | null, pos: Vec, size: number) {
+function pupilSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
     const p = force ?? pos;
     return {
         width: `${size}px`,
@@ -377,7 +384,7 @@ function pupilSty(force: Vec | null, pos: Vec, size: number) {
     };
 }
 
-function dotSty(force: Vec | null, pos: Vec, size: number) {
+function dotSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
     const p = force ?? pos;
     return {
         width: `${size}px`,
@@ -391,7 +398,7 @@ function dotSty(force: Vec | null, pos: Vec, size: number) {
 }
 
 // ── 角色样式 ─────────────────────────────────────
-const purpleBodyStyle = computed(() => {
+const purpleBodyStyle = computed((): CSSProperties => {
     const hasPwd = loginForm.password.length > 0;
     const show = showPassword.value;
     const hiding = isTyping.value || (hasPwd && !show);
@@ -415,7 +422,7 @@ const purpleBodyStyle = computed(() => {
     };
 });
 
-const purpleEyesStyle = computed(() => {
+const purpleEyesStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = purplePos.value;
     return {
@@ -436,7 +443,7 @@ const purpleEyesStyle = computed(() => {
     };
 });
 
-const blackBodyStyle = computed(() => {
+const blackBodyStyle = computed((): CSSProperties => {
     const hasPwd = loginForm.password.length > 0,
         show = showPassword.value;
     const showing = hasPwd && show;
@@ -463,7 +470,7 @@ const blackBodyStyle = computed(() => {
     };
 });
 
-const blackEyesStyle = computed(() => {
+const blackEyesStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = blackPos.value;
     return {
@@ -484,7 +491,7 @@ const blackEyesStyle = computed(() => {
     };
 });
 
-const orangeBodyStyle = computed(() => {
+const orangeBodyStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
         left: "0",
@@ -501,7 +508,7 @@ const orangeBodyStyle = computed(() => {
     };
 });
 
-const orangeEyesStyle = computed(() => {
+const orangeEyesStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = orangePos.value;
     return {
@@ -514,7 +521,7 @@ const orangeEyesStyle = computed(() => {
     };
 });
 
-const yellowBodyStyle = computed(() => {
+const yellowBodyStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
         left: "310px",
@@ -531,7 +538,7 @@ const yellowBodyStyle = computed(() => {
     };
 });
 
-const yellowEyesStyle = computed(() => {
+const yellowEyesStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = yellowPos.value;
     return {
@@ -544,7 +551,7 @@ const yellowEyesStyle = computed(() => {
     };
 });
 
-const yellowMouthStyle = computed(() => {
+const yellowMouthStyle = computed((): CSSProperties => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = yellowPos.value;
     return {
@@ -657,6 +664,11 @@ function switchMode(m: "login" | "register") {
     registerFormRef.value?.clearValidate();
 }
 
+// 跳转到客服登录页面
+function goToCustomerLogin() {
+    router.push("/customer/login");
+}
+
 async function submitLogin() {
     const valid = await loginFormRef.value?.validate().catch(() => false);
     if (!valid) return;
@@ -694,7 +706,7 @@ async function submitLogin() {
                 role_id,
                 route.query.redirect,
             );
-            router.push(redirectPath);
+            await router.push(redirectPath);
         } else {
             ElMessage.error("账号或密码错误");
         }
@@ -711,13 +723,23 @@ async function submitRegister() {
 
     loading.value = true;
     try {
-        const result = await ApiUser.register({
+        // gender=0 表示用户未选择，不传该字段让后端沿用默认值
+        const registerData: {
+            username: string;
+            password: string;
+            email: string;
+            gender?: number;
+        } = {
             username: registerForm.account,
             password: registerForm.password,
             email: registerForm.email,
-            // gender=0 表示用户未选择，传 undefined 让后端沿用默认值
-            gender: registerForm.gender === 0 ? undefined : registerForm.gender,
-        });
+        };
+
+        if (registerForm.gender !== 0) {
+            registerData.gender = registerForm.gender;
+        }
+
+        const result = await ApiUser.register(registerData);
         if (result) {
             ElMessage.success("注册成功，请登录");
             loginForm.account = registerForm.account;
@@ -1054,6 +1076,30 @@ async function submitRegister() {
         box-shadow:
             0 1px 3px rgba(92, 131, 116, 0.22),
             inset 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    }
+}
+
+.customer-login-link {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-muted);
+
+    .link-btn {
+        background: none;
+        border: none;
+        color: var(--jade);
+        cursor: pointer;
+        font-size: 13px;
+        margin-left: 4px;
+        padding: 0;
+        font-family: inherit;
+        transition: color 0.15s;
+
+        &:hover {
+            color: var(--bamboo);
+            text-decoration: underline;
+        }
     }
 }
 

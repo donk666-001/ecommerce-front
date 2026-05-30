@@ -32,6 +32,20 @@ router.beforeEach(async (to): Promise<string | undefined> => {
         return undefined;
     }
 
+    // /customer 页面仅客服(role_id === 4)可访问
+    if (to.path.startsWith("/customer") && to.path !== "/customer/login") {
+        if (!isLogin) {
+            // 未登录 → 跳客服登录页
+            return `/customer/login?redirect=${encodeURIComponent(to.fullPath)}`;
+        }
+        if (userStore.G_UserInfo.role_id !== 4) {
+            // 非客服 → 跳首页
+            return "/";
+        }
+        // 客服已登录，允许访问
+        return undefined;
+    }
+
     // 已登录访问 /login → 根据角色跳转
     if (to.path === "/login" && isLogin) {
         return resolvePostLoginPath(
@@ -40,8 +54,8 @@ router.beforeEach(async (to): Promise<string | undefined> => {
         );
     }
 
-    // 未登录访问非 /login 页面 → 跳登录页
-    if (to.path !== "/login" && !isLogin) {
+    // 未登录访问非 /login 和非 /customer/login 页面 → 跳登录页
+    if (to.path !== "/login" && to.path !== "/customer/login" && !isLogin) {
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
     }
 

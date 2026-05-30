@@ -351,6 +351,7 @@ const userMenuSubtitle = computed(() => {
         1: "管理员",
         2: "认证专家",
         3: "普通用户",
+        4: "客服专员",
     };
     return roleMap[userStore.G_UserInfo.role_id] || "用户";
 });
