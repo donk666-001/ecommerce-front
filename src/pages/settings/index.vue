@@ -139,6 +139,20 @@
                         进入客服工作台 →
                     </button>
                 </div>
+
+                <!-- 管理后台入口（仅管理员可见） -->
+                <div v-if="isAdmin" class="admin-entry-section">
+                    <h3 class="admin-entry-heading font-serif">管理后台</h3>
+                    <p class="admin-entry-note">
+                        您拥有管理员权限，可以进入管理后台进行系统管理。
+                    </p>
+                    <button
+                        class="action-btn primary admin-entry-btn"
+                        @click="goToAdminDashboard"
+                    >
+                        进入管理后台 →
+                    </button>
+                </div>
             </section>
 
             <!-- 账号安全 -->
@@ -184,7 +198,7 @@
                             <button
                                 class="action-btn primary"
                                 :disabled="changingPwd"
-                                @click="submitPasswordChange"
+                                @click="changePassword"
                             >
                                 {{ changingPwd ? "修改中…" : "修改密码" }}
                             </button>
@@ -281,6 +295,11 @@ const isCustomerService = computed(() => {
     return userStore.G_UserInfo.role_id === 4;
 });
 
+// 判断是否为管理员（role_id === 1）
+const isAdmin = computed(() => {
+    return userStore.G_UserInfo.role_id === 1;
+});
+
 onMounted(async () => {
     await userStore.loadUserInfo();
     const info = userStore.G_UserInfo;
@@ -333,17 +352,35 @@ async function saveProfile() {
 
     savingProfile.value = true;
     try {
-        const result = await ApiUser.updateProfile({
-            nickname: profileForm.nickName,
-            gender: profileForm.gender,
-            email: profileForm.email,
-            phone: profileForm.phone,
-        });
+        // 构建只包含有值属性的对象
+        const updateData: {
+            nickname?: string;
+            gender?: number;
+            email?: string;
+            phone?: string;
+        } = {};
+
+        if (profileForm.nickName) {
+            updateData.nickname = profileForm.nickName;
+        }
+        if (profileForm.gender !== undefined) {
+            updateData.gender = profileForm.gender;
+        }
+        if (profileForm.email) {
+            updateData.email = profileForm.email;
+        }
+        if (profileForm.phone) {
+            updateData.phone = profileForm.phone;
+        }
+
+        const result = await ApiUser.updateProfile(updateData);
         if (result !== null) {
             // 同步更新本地 store，避免需要刷新页面才能看到变化
             userStore.G_LoginInfo.nickName = profileForm.nickName;
             userStore.G_LoginInfo.email = profileForm.email;
-            userStore.G_UserInfo.gender = profileForm.gender;
+            if (profileForm.gender !== undefined) {
+                userStore.G_UserInfo.gender = profileForm.gender;
+            }
             userStore.G_UserInfo.email = profileForm.email;
             userStore.G_UserInfo.phone = profileForm.phone;
             ElMessage.success("资料保存成功");
@@ -369,7 +406,7 @@ async function changePassword() {
             ElMessage.success("密码修改成功，请重新登录");
             pwdFormRef.value?.resetFields();
             await userStore.logout();
-            router.push("/login");
+            await router.push("/login");
         } else {
             ElMessage.error("修改失败，当前密码可能不正确");
         }
@@ -387,12 +424,17 @@ async function handleLogout() {
 
     await userStore.logout();
     ElMessage.success("已退出登录");
-    router.push("/");
+    await router.push("/");
 }
 
 // 跳转到客服工作台
 function goToCustomerWorkspace() {
     router.push("/customer");
+}
+
+// 跳转到管理后台
+function goToAdminDashboard() {
+    router.push("/admin");
 }
 </script>
 
@@ -717,6 +759,40 @@ function goToCustomerWorkspace() {
 }
 
 .cs-entry-btn {
+    min-width: 180px;
+    font-size: 14px;
+    padding: 0 28px;
+}
+
+/* ── 管理后台入口 ─────────────────────────── */
+.admin-entry-section {
+    margin-top: 32px;
+    padding: 24px;
+    background: linear-gradient(
+        135deg,
+        rgba(92, 131, 116, 0.08) 0%,
+        rgba(139, 172, 130, 0.05) 100%
+    );
+    border: 1px solid var(--jade-light);
+    border-radius: 10px;
+}
+
+.admin-entry-heading {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+}
+
+.admin-entry-note {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.admin-entry-btn {
     min-width: 180px;
     font-size: 14px;
     padding: 0 28px;

@@ -60,7 +60,8 @@
                     </div>
                 </div>
                 <div v-if="filteredProducts.length === 0" class="empty-tip">
-                    <span class="ic">🔍</span>未找到符合条件的商品
+                    <span class="ic">🔍</span
+                    >{{ loading ? "加载中..." : "未找到符合条件的商品" }}
                 </div>
                 <div v-else class="product-grid">
                     <div
@@ -103,7 +104,7 @@
                         🤖 本购物车已与「AI 管家」板块联通，由 AI
                         推荐加入的商品会在名称后标注「AI 推荐」徽章
                     </div>
-                    <div v-if="cart.length === 0" class="empty-tip">
+                    <div v-if="cartItems.length === 0" class="empty-tip">
                         <span class="ic">🛒</span>购物车空空如也<br />
                         <button
                             class="yy-btn"
@@ -115,24 +116,19 @@
                     </div>
                     <div v-else class="cart-list">
                         <div
-                            v-for="item in cart"
+                            v-for="item in cartItems"
                             :key="item.id"
                             class="cart-item"
                         >
                             <div class="cart-thumb">
-                                {{ getProduct(item.id).icon }}
+                                {{ getProductIcon(item.productId) }}
                             </div>
                             <div class="cart-item-info">
                                 <div class="cart-item-name">
-                                    {{ getProduct(item.id).name }}
-                                    <span
-                                        v-if="item.fromAi"
-                                        class="cart-from-ai"
-                                        >AI 推荐</span
-                                    >
+                                    {{ item.productName }}
                                 </div>
                                 <div class="cart-item-meta">
-                                    单价 ¥{{ getProduct(item.id).price }}
+                                    单价 ¥{{ item.price.toFixed(2) }}
                                 </div>
                             </div>
                             <div class="qty-ctrl">
@@ -142,7 +138,7 @@
                                 >
                                     −
                                 </button>
-                                <span class="qty-num">{{ item.qty }}</span>
+                                <span class="qty-num">{{ item.quantity }}</span>
                                 <button
                                     class="qty-btn"
                                     @click="changeQty(item.id, 1)"
@@ -151,11 +147,7 @@
                                 </button>
                             </div>
                             <div class="cart-item-price">
-                                ¥{{
-                                    (
-                                        getProduct(item.id).price * item.qty
-                                    ).toFixed(2)
-                                }}
+                                ¥{{ (item.price * item.quantity).toFixed(2) }}
                             </div>
                             <button
                                 class="cart-rm"
@@ -165,7 +157,7 @@
                             </button>
                         </div>
                     </div>
-                    <div v-if="cart.length > 0" class="cart-summary">
+                    <div v-if="cartItems.length > 0" class="cart-summary">
                         <div>
                             <span class="cart-total-label">合计：</span>
                             <span class="cart-total-num"
@@ -601,19 +593,17 @@
                 <div class="modal-body">
                     <div class="pay-card">
                         <div
-                            v-for="item in cart"
+                            v-for="item in cartItems"
                             :key="item.id"
                             class="pay-row"
                         >
                             <span
-                                >{{ getProduct(item.id).name }} ×
-                                {{ item.qty }}</span
+                                >{{ item.productName }} ×
+                                {{ item.quantity }}</span
                             >
                             <span
                                 >¥{{
-                                    (
-                                        getProduct(item.id).price * item.qty
-                                    ).toFixed(2)
+                                    (item.price * item.quantity).toFixed(2)
                                 }}</span
                             >
                         </div>
@@ -805,8 +795,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
+import {
+    ApiProduct,
+    type ProductVO,
+    type CategoryVO,
+    type CartItemVO,
+    type CartSummaryVO,
+} from "@/network/product";
 
 interface Product {
     id: string;
@@ -853,153 +850,7 @@ interface ChatMsg {
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
-const products: Product[] = [
-    {
-        id: "p1",
-        name: "枸杞红枣养生茶",
-        cat: "tea",
-        price: 38,
-        sold: 1287,
-        stock: 520,
-        icon: "🍵",
-        tags: ["滋阴", "补气"],
-        effect: "养肝明目、补气养血，气郁质兼阴虚体质宜",
-        desc: "精选宁夏中宁枸杞与新疆若羌灰枣，每日 1 包，沸水冲泡 3 分钟即饮。",
-    },
-    {
-        id: "p2",
-        name: "四物汤药膳包",
-        cat: "food",
-        price: 68,
-        sold: 856,
-        stock: 230,
-        icon: "🍲",
-        tags: ["补血", "女性"],
-        effect: "补血调经，适合女性月经后调理",
-        desc: "当归、川芎、白芍、熟地，经典四物配方，文火慢炖 40 分钟。",
-    },
-    {
-        id: "p3",
-        name: "五黑五谷粉",
-        cat: "food",
-        price: 58,
-        sold: 2103,
-        stock: 680,
-        icon: "🥣",
-        tags: ["脾胃", "营养"],
-        effect: "健脾养胃、补肾乌发",
-        desc: "黑米、黑豆、黑芝麻、黑枣、黑桑椹，五种黑色食材精磨。",
-    },
-    {
-        id: "p4",
-        name: "艾草足浴包（30包）",
-        cat: "health",
-        price: 45,
-        sold: 3210,
-        stock: 980,
-        icon: "🌿",
-        tags: ["驱寒", "安神"],
-        effect: "温经散寒、舒缓疲劳，睡前泡脚 15 分钟",
-        desc: "纯艾草、生姜、红花，棉布袋包装，开水冲泡 5 分钟后兑入温水。",
-    },
-    {
-        id: "p5",
-        name: "桂圆红枣枸杞茶",
-        cat: "tea",
-        price: 42,
-        sold: 912,
-        stock: 340,
-        icon: "🍯",
-        tags: ["补血", "安神"],
-        effect: "补血安神，气血不足者宜",
-        desc: "桂圆肉、和田大枣、宁夏枸杞，三味配方。",
-    },
-    {
-        id: "p6",
-        name: "传统艾灸盒",
-        cat: "health",
-        price: 128,
-        sold: 567,
-        stock: 120,
-        icon: "🔥",
-        tags: ["温灸", "穴位"],
-        effect: "温经通络、扶阳固本",
-        desc: "桃木艾灸盒，配 10 根纯艾条，附穴位图。",
-    },
-    {
-        id: "p7",
-        name: "红糖姜茶（暖宫）",
-        cat: "female",
-        price: 35,
-        sold: 4521,
-        stock: 1200,
-        icon: "🫖",
-        tags: ["暖宫", "经期"],
-        effect: "暖宫散寒，缓解痛经",
-        desc: "古法熬制黑糖块 + 老姜粉，经期前 3 天饮用最佳。",
-    },
-    {
-        id: "p8",
-        name: "益母草调理颗粒",
-        cat: "female",
-        price: 55,
-        sold: 1820,
-        stock: 430,
-        icon: "🌸",
-        tags: ["调经", "女性"],
-        effect: "活血调经，适合月经不调",
-        desc: "纯天然益母草提取，独立小包装。",
-    },
-    {
-        id: "p9",
-        name: "宁夏枸杞 250g",
-        cat: "herb",
-        price: 48,
-        sold: 6789,
-        stock: 2100,
-        icon: "🟥",
-        tags: ["滋补", "明目"],
-        effect: "滋肝明目、补肾益精",
-        desc: "中宁特级头茬枸杞，无熏硫无添加。",
-    },
-    {
-        id: "p10",
-        name: "当归片 100g",
-        cat: "herb",
-        price: 38,
-        sold: 2340,
-        stock: 870,
-        icon: "🌾",
-        tags: ["补血", "调经"],
-        effect: "补血活血、调经止痛",
-        desc: "甘肃岷县当归，传统刨片工艺。",
-    },
-    {
-        id: "p11",
-        name: "紫砂养生壶",
-        cat: "tool",
-        price: 198,
-        sold: 432,
-        stock: 65,
-        icon: "🫖",
-        tags: ["茶具"],
-        effect: "宜兴紫砂，泡茶聚香",
-        desc: "宜兴原矿紫砂，全手工拉胚，容量 280ml。",
-    },
-    {
-        id: "p12",
-        name: "砭石刮痧板",
-        cat: "tool",
-        price: 88,
-        sold: 1567,
-        stock: 340,
-        icon: "⚪",
-        tags: ["理疗", "刮痧"],
-        effect: "活血通络，肩颈保健",
-        desc: "泗滨砭石，富含矿物元素。",
-    },
-];
-
+// 客服数据（保持静态）
 const agents: Agent[] = [
     {
         id: "cs1",
@@ -1038,15 +889,15 @@ const tabDefs = [
     { key: "service", icon: "💬", label: "客服咨询" },
 ];
 
-const catDefs = [
-    { key: "all", label: "全部" },
-    { key: "food", label: "食疗食材类" },
-    { key: "tea", label: "养生茶饮" },
-    { key: "health", label: "健康调理类" },
-    { key: "female", label: "女性养生专区" },
-    { key: "herb", label: "中药材" },
-    { key: "tool", label: "养生器具" },
-];
+// 分类定义（从后端动态获取）
+const catDefs = computed(() => {
+    const dynamicCats = categories.value.map((cat) => ({
+        key: cat.name,
+        label: cat.name,
+    }));
+
+    return [{ key: "all", label: "全部" }, ...dynamicCats];
+});
 
 const orderStatusDefs = [
     { key: "all", label: "全部" },
@@ -1061,11 +912,15 @@ const activeTab = ref("shop");
 const currentCat = ref("all");
 const searchKw = ref("");
 
-const cart = ref<CartItem[]>([
-    { id: "p4", qty: 2, fromAi: false },
-    { id: "p1", qty: 1, fromAi: true },
-    { id: "p9", qty: 1, fromAi: false },
-]);
+// 商品列表（从后端获取）
+const products = ref<Product[]>([]);
+const categories = ref<CategoryVO[]>([]);
+const loading = ref(false);
+
+// 购物车（从后端获取）
+const cartItems = ref<CartItemVO[]>([]);
+const cartLoading = ref(false);
+const cartSummary = ref<CartSummaryVO | null>(null); // 购物车汇总信息
 
 const orders = ref<Order[]>([
     {
@@ -1195,7 +1050,7 @@ const openMoreIdx = ref(-1);
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const filteredProducts = computed(() =>
-    products
+    products.value
         .filter((p) => currentCat.value === "all" || p.cat === currentCat.value)
         .filter(
             (p) =>
@@ -1205,9 +1060,15 @@ const filteredProducts = computed(() =>
         ),
 );
 
-const cartCount = computed(() => cart.value.reduce((s, c) => s + c.qty, 0));
-const cartTotal = computed(() =>
-    cart.value.reduce((s, c) => s + getProduct(c.id).price * c.qty, 0),
+const cartCount = computed(
+    () =>
+        cartSummary.value?.totalQuantity ??
+        cartItems.value.reduce((s, c) => s + c.quantity, 0),
+);
+const cartTotal = computed(
+    () =>
+        cartSummary.value?.totalPrice ??
+        cartItems.value.reduce((s, c) => s + c.price * c.quantity, 0),
 );
 
 const filteredOrders = computed(() =>
@@ -1232,8 +1093,63 @@ const selectedOrderLogistics = computed(() => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+/** 将后端 ProductVO 转换为前端 Product */
+function convertProductVO(vo: ProductVO): Product {
+    // 使用后端返回的 categoryName 作为分类
+    const cat = vo.categoryName || "all";
+
+    // 从 tags 字符串中提取标签数组
+    const tags = vo.tags ? vo.tags.split(",") : [];
+
+    // 使用 emoji 映射（根据中文分类名）
+    const iconMap: Record<string, string> = {
+        食疗食材类: "🍲",
+        养生茶饮: "🍵",
+        健康调理类: "🌿",
+        女性养生专区: "🌸",
+        中药材: "🟥",
+        养生器具: "⚪",
+    };
+
+    return {
+        id: `p${vo.id}`,
+        name: vo.name,
+        cat,
+        price: vo.discountPrice,
+        sold: vo.soldCount,
+        stock: vo.stock,
+        icon: iconMap[cat] || "📦",
+        tags,
+        effect: vo.efficacy || "",
+        desc: vo.description || "",
+    };
+}
+
 function getProduct(id: string): Product {
-    return products.find((p) => p.id === id)!;
+    const product = products.value.find((p) => p.id === id);
+    if (!product) {
+        console.warn(`商品不存在: ${id}`);
+        // 返回一个默认商品对象，避免渲染错误
+        return {
+            id,
+            name: "未知商品",
+            cat: "all",
+            price: 0,
+            sold: 0,
+            stock: 0,
+            icon: "❓",
+            tags: [],
+            effect: "",
+            desc: "",
+        };
+    }
+    return product;
+}
+
+/** 根据 productId 获取商品图标 */
+function getProductIcon(productId: number): string {
+    const product = products.value.find((p) => p.id === `p${productId}`);
+    return product ? product.icon : "📦";
 }
 
 function orderCount(key: string): number {
@@ -1262,20 +1178,69 @@ function orderStatusClass(status: string): string {
 }
 
 // ── Cart actions ──────────────────────────────────────────────────────────────
-function addToCart(id: string, qty: number, fromAi: boolean) {
-    const existing = cart.value.find((c) => c.id === id);
-    if (existing) existing.qty += qty;
-    else cart.value.push({ id, qty, fromAi });
-    showToast(fromAi ? "已加入购物车（AI 推荐）" : "已加入购物车");
+/** 加载购物车列表 */
+async function loadCartList() {
+    cartLoading.value = true;
+    try {
+        const response = await ApiProduct.getCartDetail();
+        const apiResponse = response.data;
+        if (apiResponse && apiResponse.data) {
+            // 后端返回的是 CartSummaryVO 结构
+            cartSummary.value = apiResponse.data;
+            cartItems.value = apiResponse.data.items;
+            console.log("购物车商品数:", cartItems.value.length);
+            console.log("选中商品总数:", apiResponse.data.totalQuantity);
+            console.log("选中商品总金额:", apiResponse.data.totalPrice);
+        }
+    } catch (error) {
+        console.error("加载购物车失败:", error);
+        showToast("加载购物车失败，请重试");
+    } finally {
+        cartLoading.value = false;
+    }
 }
 
-function changeQty(id: string, delta: number) {
-    const item = cart.value.find((c) => c.id === id);
-    if (item) item.qty = Math.max(1, item.qty + delta);
+/** 添加商品到购物车 */
+async function addToCart(productId: number, qty: number) {
+    try {
+        await ApiProduct.addToCart({ productId, quantity: qty });
+        showToast("已加入购物车");
+        // 重新加载购物车列表（获取最新数据）
+        await loadCartList();
+    } catch (error) {
+        console.error("加入购物车失败:", error);
+        showToast("加入购物车失败，请重试");
+    }
 }
 
-function removeFromCart(id: string) {
-    cart.value = cart.value.filter((c) => c.id !== id);
+/** 更新购物车项数量 */
+async function changeQty(cartItemId: number, delta: number) {
+    const item = cartItems.value.find((c) => c.id === cartItemId);
+    if (!item) return;
+
+    const newQty = Math.max(1, item.quantity + delta);
+    try {
+        // 使用新的 API 方法名和参数格式
+        await ApiProduct.updateCartItemQuantity(cartItemId, newQty);
+        // 重新加载以获取最新的汇总信息
+        await loadCartList();
+    } catch (error) {
+        console.error("更新购物车失败:", error);
+        showToast("更新购物车失败，请重试");
+    }
+}
+
+/** 从购物车移除 */
+async function removeFromCart(cartItemId: number) {
+    try {
+        await ApiProduct.removeCartItem(cartItemId);
+        showToast("已从购物车移除");
+        // 重新加载以获取最新的汇总信息
+        await loadCartList();
+    } catch (error) {
+        console.error("移除购物车项失败:", error);
+        showToast("移除失败，请重试");
+    }
 }
 
 // ── Product detail ────────────────────────────────────────────────────────────
@@ -1287,20 +1252,23 @@ function openProduct(p: Product) {
 
 function addToCartFromDetail() {
     if (!selectedProduct.value) return;
-    addToCart(selectedProduct.value.id, pdQty.value, false);
+    // 从 id "p1" 中提取数字 1
+    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
+    addToCart(productId, pdQty.value);
     showPdModal.value = false;
 }
 
 function buyNow() {
     if (!selectedProduct.value) return;
-    addToCart(selectedProduct.value.id, pdQty.value, false);
+    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
+    addToCart(productId, pdQty.value);
     showPdModal.value = false;
     openPay();
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 function openPay() {
-    if (cart.value.length === 0) {
+    if (cartItems.value.length === 0) {
         showToast("购物车为空");
         return;
     }
@@ -1317,10 +1285,15 @@ function mockPaySuccess() {
         no,
         time: new Date().toISOString().slice(0, 16).replace("T", " "),
         status: "topay",
-        items: cart.value.map((c) => ({ id: c.id, qty: c.qty })),
+        items: cartItems.value.map((c) => ({
+            id: `p${c.productId}`,
+            qty: c.quantity,
+        })),
         amount: total,
     });
-    cart.value = [];
+    // 清空购物车
+    cartItems.value = [];
+    cartSummary.value = null; // 清空汇总信息
     showPayModal.value = false;
     showToast("支付成功，订单已生成");
     setTimeout(() => {
@@ -1366,9 +1339,9 @@ function reBuy(no: string) {
     const o = orders.value.find((x) => x.no === no);
     if (!o) return;
     o.items.forEach((it) => {
-        const existing = cart.value.find((c) => c.id === it.id && !c.fromAi);
-        if (existing) existing.qty += it.qty;
-        else cart.value.push({ id: it.id, qty: it.qty, fromAi: false });
+        // 从 id "p1" 中提取数字 1
+        const productId = parseInt(it.id.replace("p", ""));
+        addToCart(productId, it.qty);
     });
     showToast("商品已加入购物车");
 }
@@ -1396,17 +1369,33 @@ async function sendChat() {
         now.getHours().toString().padStart(2, "0") +
         ":" +
         now.getMinutes().toString().padStart(2, "0");
-    chatHistory.value[currentAgent.value].push({ from: "me", text, time });
+
+    // 确保聊天历史数组存在
+    const agentId = currentAgent.value;
+    if (!chatHistory.value[agentId]) {
+        chatHistory.value[agentId] = [];
+    }
+
+    chatHistory.value[agentId].push({ from: "me", text, time });
     chatInput.value = "";
     await nextTick();
     scrollChatToBottom();
     setTimeout(async () => {
-        const replies = presetReplies[currentAgent.value];
-        chatHistory.value[currentAgent.value].push({
-            from: "agent",
-            text: replies[Math.floor(Math.random() * replies.length)],
-            time,
-        });
+        const replies = presetReplies[agentId] || [];
+        if (!chatHistory.value[agentId]) {
+            chatHistory.value[agentId] = [];
+        }
+        if (replies.length > 0) {
+            const randomIndex = Math.floor(Math.random() * replies.length);
+            const replyText = replies[randomIndex];
+            if (replyText) {
+                chatHistory.value[agentId].push({
+                    from: "agent",
+                    text: replyText,
+                    time,
+                });
+            }
+        }
         await nextTick();
         scrollChatToBottom();
     }, 800);
@@ -1441,11 +1430,111 @@ function showToast(msg: string) {
     }, 1800);
 }
 
+// ── API Calls ─────────────────────────────────────────────────────────────────
+/** 加载商品列表 */
+async function loadProducts() {
+    loading.value = true;
+    try {
+        const response = await ApiProduct.listProducts({
+            page: 1,
+            size: 100, // 一次性加载所有商品
+            status: 1, // 只获取上架商品
+        });
+
+        console.log("商品列表响应:", response);
+        console.log("response.data:", response.data);
+
+        // response.data 的结构是 ApiResponse<PageResult<ProductVO>>
+        // 分页数据在 response.data.data 中
+        const apiResponse = response.data;
+        if (apiResponse && apiResponse.data && apiResponse.data.records) {
+            console.log("商品记录数:", apiResponse.data.records.length);
+            products.value = apiResponse.data.records.map(convertProductVO);
+            console.log("转换后的商品数:", products.value.length);
+        } else {
+            console.warn("商品数据格式异常:", response.data);
+        }
+    } catch (error) {
+        console.error("加载商品失败:", error);
+        showToast("加载商品失败，请稍后重试");
+    } finally {
+        loading.value = false;
+    }
+}
+
+/** 加载商品分类 */
+async function loadCategories() {
+    try {
+        const response = await ApiProduct.getActiveCategories();
+
+        console.log("分类列表响应:", response);
+        console.log("response.data:", response.data);
+        console.log(
+            "Array.isArray(response.data):",
+            Array.isArray(response.data),
+        );
+
+        // response.data 的结构是 ApiResponse<CategoryVO[]>
+        // 真正的数组在 response.data.data 中
+        const apiResponse = response.data;
+        if (
+            apiResponse &&
+            apiResponse.data &&
+            Array.isArray(apiResponse.data)
+        ) {
+            console.log("分类数量:", apiResponse.data.length);
+            categories.value = apiResponse.data;
+        } else {
+            console.warn("分类数据格式异常:", response.data);
+        }
+    } catch (error) {
+        console.error("加载分类失败:", error);
+    }
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 function handleGlobalClick() {
     openMoreIdx.value = -1;
 }
-onMounted(() => document.addEventListener("click", handleGlobalClick));
+
+// 监听 tab 切换，每次切换时重新加载数据
+watch(activeTab, (newTab, oldTab) => {
+    console.log(`Tab 切换: ${oldTab} -> ${newTab}`);
+
+    switch (newTab) {
+        case "shop":
+            // 商品页不需要重新加载，因为数据已经在初始化时加载
+            console.log("切换到商品浏览页");
+            break;
+
+        case "cart":
+            // 切换到购物车时，重新从后端获取最新数据
+            console.log("切换到购物车页，重新加载购物车数据");
+            loadCartList();
+            break;
+
+        case "order":
+            // 订单页可以重新加载订单列表（如果需要的话）
+            console.log("切换到订单页");
+            // TODO: 如果有订单列表接口，在这里调用
+            break;
+
+        case "service":
+            // 客服页不需要特殊处理
+            console.log("切换到客服咨询页");
+            break;
+    }
+});
+
+onMounted(() => {
+    document.addEventListener("click", handleGlobalClick);
+    // 加载商品和分类数据
+    loadProducts();
+    loadCategories();
+    // 加载购物车数据
+    loadCartList();
+});
+
 onUnmounted(() => {
     document.removeEventListener("click", handleGlobalClick);
     if (toastTimer) clearTimeout(toastTimer);

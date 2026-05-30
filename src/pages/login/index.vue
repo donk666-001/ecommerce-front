@@ -157,7 +157,11 @@
                     >
                     <div class="customer-login-link">
                         <span>客服人员？</span>
-                        <button class="link-btn" @click="goToCustomerLogin">
+                        <button
+                            type="button"
+                            class="link-btn"
+                            @click="goToCustomerLogin"
+                        >
                             进入客服工作台
                         </button>
                     </div>
