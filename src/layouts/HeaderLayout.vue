@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <header class="topbar">
         <div class="topbar-inner">
             <!-- Logo -->
@@ -9,38 +9,18 @@
 
             <!-- Navigation -->
             <nav class="top-nav">
-                <router-link to="/" :class="{ active: route.path === '/' }"
-                    >养生智库</router-link
-                >
-                <router-link
-                    to="/community"
-                    :class="{ active: route.path.startsWith('/community') }"
-                    >元气社区</router-link
-                >
-                <router-link
-                    to="/ai-butler"
-                    :class="{ active: route.path.startsWith('/ai-butler') }"
-                    >AI 管家</router-link
-                >
-                <router-link
-                    to="/consultation"
-                    :class="{ active: route.path.startsWith('/consultation') }"
-                    >名医健康圈</router-link
-                >
-                <router-link
-                    to="/shop"
-                    :class="{ active: route.path.startsWith('/shop') }"
-                    >商城</router-link
-                >
+                <router-link to="/" :class="{ active: route.path === '/' }">养生智库</router-link>
+                <router-link to="/community" :class="{ active: route.path.startsWith('/community') }">元气社区</router-link>
+                <router-link to="/ai-butler" :class="{ active: route.path.startsWith('/ai-butler') }">AI 管家</router-link>
+                <router-link to="/consultation" :class="{ active: route.path.startsWith('/consultation') }">名医健康圈</router-link>
+                <router-link to="/shop" :class="{ active: route.path.startsWith('/shop') }">商城</router-link>
             </nav>
 
             <!-- Actions -->
             <div class="top-actions">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
-                    <span class="search-placeholder"
-                        >搜索节气、食谱、穴位…</span
-                    >
+                    <span class="search-placeholder">搜索节气、食谱、穴位…</span>
                 </div>
                 <el-dropdown
                     v-if="userStore.G_LoginInfo.isLogin"
@@ -51,16 +31,22 @@
                     <div ref="bellRef" class="top-bell">
                         🔔
                         <span v-if="unreadCount > 0" class="badge-dot"></span>
-                        <span v-if="unreadCount > 0" class="badge-count">{{
-                            unreadCountLabel
-                        }}</span>
+                        <span v-if="unreadCount > 0" class="badge-count">{{ unreadCountLabel }}</span>
                     </div>
                     <template #dropdown>
                         <el-dropdown-menu class="notification-menu">
-                            <el-dropdown-item
-                                v-if="notifications.length === 0"
-                                disabled
-                            >
+                            <div v-if="notifications.length > 0" class="notification-menu-header">
+                                <div>
+                                    <div class="notification-menu-title">通知中心</div>
+                                    <div class="notification-menu-subtitle">
+                                        共 {{ totalNotificationCount }} 条，未读 {{ unreadCount }} 条
+                                    </div>
+                                </div>
+                                <div class="notification-menu-chip" :class="{ hot: unreadCount > 0 }">
+                                    {{ unreadCount > 0 ? "有新消息" : "已全部读完" }}
+                                </div>
+                            </div>
+                            <el-dropdown-item v-if="notifications.length === 0" disabled>
                                 暂无通知
                             </el-dropdown-item>
                             <el-dropdown-item
@@ -68,23 +54,10 @@
                                 :key="item.id"
                                 :command="{ type: 'detail', id: item.id }"
                             >
-                                <div
-                                    class="notification-item"
-                                    :class="{ unread: !item.isRead }"
-                                >
-                                    <div class="notification-title">
-                                        {{ item.title }}
-                                    </div>
-                                    <div class="notification-body">
-                                        {{ item.body || "您有一条新通知" }}
-                                    </div>
-                                    <div class="notification-time">
-                                        {{
-                                            formatNotificationTime(
-                                                item.createdAt,
-                                            )
-                                        }}
-                                    </div>
+                                <div class="notification-item" :class="{ unread: !item.isRead }">
+                                    <div class="notification-title">{{ item.title }}</div>
+                                    <div class="notification-body">{{ item.body || '您有一条新通知' }}</div>
+                                    <div class="notification-time">{{ formatNotificationTime(item.createdAt) }}</div>
                                 </div>
                             </el-dropdown-item>
                             <!-- 查看更多通知入口 -->
@@ -96,9 +69,7 @@
                                 <div class="view-all-entry">查看更多通知</div>
                             </el-dropdown-item>
                             <el-dropdown-item
-                                v-if="
-                                    notifications.length > 0 && unreadCount > 0
-                                "
+                                v-if="notifications.length > 0 && unreadCount > 0"
                                 command="readAll"
                             >
                                 全部标记已读
@@ -106,14 +77,12 @@
                         </el-dropdown-menu>
                     </template>
                 </el-dropdown>
-                <div v-else class="top-bell">🔔</div>
+                <div v-else class="top-bell">
+                    🔔
+                </div>
 
                 <!-- 未登录：点击跳转登录页 -->
-                <div
-                    v-if="!userStore.G_LoginInfo.isLogin"
-                    class="avatar"
-                    @click="goToLogin"
-                >
+                <div v-if="!userStore.G_LoginInfo.isLogin" class="avatar" @click="goToLogin">
                     用
                 </div>
 
@@ -129,16 +98,39 @@
                         <span v-else>{{ displayInitial }}</span>
                     </div>
                     <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item command="settings"
-                                >我的设置</el-dropdown-item
-                            >
-                            <el-dropdown-item
-                                command="logout"
-                                divided
-                                style="color: var(--cinnabar)"
-                            >
-                                退出登录
+                        <el-dropdown-menu class="user-menu">
+                            <div class="user-menu-header">
+                                <div class="user-menu-avatar">
+                                    <img
+                                        v-if="userStore.G_UserInfo.avatar"
+                                        :src="userStore.G_UserInfo.avatar"
+                                        alt="头像"
+                                        class="user-menu-avatar-img"
+                                    />
+                                    <span v-else>{{ displayInitial }}</span>
+                                </div>
+                                <div class="user-menu-meta">
+                                    <div class="user-menu-name">{{ userMenuName }}</div>
+                                    <div class="user-menu-subtitle">{{ userMenuSubtitle }}</div>
+                                </div>
+                            </div>
+                            <el-dropdown-item command="settings" class="user-menu-item">
+                                <div class="user-menu-card">
+                                    <span class="user-menu-icon">⚙</span>
+                                    <div class="user-menu-text">
+                                        <span class="user-menu-label">我的设置</span>
+                                        <span class="user-menu-desc">查看账号资料与个人配置</span>
+                                    </div>
+                                </div>
+                            </el-dropdown-item>
+                            <el-dropdown-item command="logout" class="user-menu-item logout">
+                                <div class="user-menu-card logout">
+                                    <span class="user-menu-icon logout">↗</span>
+                                    <div class="user-menu-text">
+                                        <span class="user-menu-label">退出登录</span>
+                                        <span class="user-menu-desc">安全退出当前账号</span>
+                                    </div>
+                                </div>
                             </el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
@@ -155,32 +147,25 @@
                 :show-arrow="true"
                 popper-class="notification-detail-popover"
             >
-                <template v-if="detailNotification">
-                    <div class="popover-detail">
-                        <div class="detail-header">
-                            <span class="detail-title">{{
-                                detailNotification.title
-                            }}</span>
-                            <span
-                                class="detail-close"
-                                @click="detailPopoverVisible = false"
-                                >✕</span
-                            >
-                        </div>
-                        <div class="detail-type">
-                            <el-tag size="small" type="info">{{
-                                formatNotificationType(detailNotification.type)
-                            }}</el-tag>
-                        </div>
-                        <div class="detail-body">
-                            {{ detailNotification.body || "暂无详细内容" }}
-                        </div>
-                        <div class="detail-time">
-                            {{ formatDetailTime(detailNotification.createdAt) }}
-                        </div>
+            <template v-if="detailNotification">
+                <div class="popover-detail" :class="{ unread: !detailNotification.isRead }">
+                    <div class="detail-banner">
+                        <span class="detail-badge">{{ formatNotificationType(detailNotification.type) }}</span>
+                        <span v-if="!detailNotification.isRead" class="detail-unread">未读</span>
                     </div>
-                </template>
-            </el-popover>
+                    <div class="detail-header">
+                        <span class="detail-title">{{ detailNotification.title }}</span>
+                        <span class="detail-close" @click="detailPopoverVisible = false">✕</span>
+                    </div>
+                    <div class="detail-body">
+                        <div class="detail-body-label">通知内容</div>
+                        <div class="detail-body-text">{{ detailNotification.body || '暂无详细内容' }}</div>
+                    </div>
+                    <div class="detail-time">{{ formatDetailTime(detailNotification.createdAt) }}</div>
+                </div>
+            </template>
+        </el-popover>
+
         </div>
     </header>
 
@@ -217,17 +202,12 @@
                         <span class="unread-dot" v-if="!item.isRead"></span>
                         <span class="all-notif-title">{{ item.title }}</span>
                     </div>
-                    <span class="all-notif-time">{{
-                        formatNotificationTime(item.createdAt)
-                    }}</span>
+                    <span class="all-notif-time">{{ formatNotificationTime(item.createdAt) }}</span>
                 </div>
-                <div class="all-notif-body">{{ item.body || "暂无内容" }}</div>
+                <div class="all-notif-body">{{ item.body || '暂无内容' }}</div>
             </div>
         </div>
-        <div
-            class="all-pagination"
-            v-if="allNotificationsTotal > allNotificationsPageSize"
-        >
+        <div class="all-pagination" v-if="allNotificationsTotal > allNotificationsPageSize">
             <el-pagination
                 v-model:current-page="allNotificationsPage"
                 :page-size="allNotificationsPageSize"
@@ -255,8 +235,7 @@ const route = useRoute();
 const userStore = useUserStore();
 
 const displayInitial = computed(() => {
-    const name =
-        userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+    const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
     return name ? name.charAt(0) : "我";
 });
 
@@ -264,16 +243,16 @@ const displayInitial = computed(() => {
 const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
 
 const { connect, disconnect } = useExpertPresenceSocket();
-const { connect: connectNotifications, disconnect: disconnectNotifications } =
-    useNotificationSocket();
+const {
+    connect: connectNotifications,
+    disconnect: disconnectNotifications,
+} = useNotificationSocket();
 
 const notifications = ref<NotificationVO[]>([]);
 
 /** 未读通知数量（独立从服务端加载，保证准确性） */
 const unreadCount = ref(0);
-const unreadCountLabel = computed(() =>
-    unreadCount.value > 99 ? "99+" : String(unreadCount.value),
-);
+const unreadCountLabel = computed(() => unreadCount.value > 99 ? "99+" : String(unreadCount.value));
 
 /** 通知总数（用于判断是否显示"查看更多"入口） */
 const totalNotificationCount = ref(0);
@@ -288,11 +267,9 @@ const detailNotification = ref<NotificationVO | null>(null);
 // 气泡弹窗打开时监听 document 点击以关闭
 watch(detailPopoverVisible, (visible) => {
     if (visible) {
-        nextTick(() =>
-            document.addEventListener("click", closePopoverOnClickOutside),
-        );
+        nextTick(() => document.addEventListener('click', closePopoverOnClickOutside));
     } else {
-        document.removeEventListener("click", closePopoverOnClickOutside);
+        document.removeEventListener('click', closePopoverOnClickOutside);
     }
 });
 
@@ -300,11 +277,7 @@ watch(detailPopoverVisible, (visible) => {
 function closePopoverOnClickOutside(e: MouseEvent) {
     const target = e.target as HTMLElement;
     // 点击气泡内部、下拉菜单、铃铛时不关闭
-    if (
-        target.closest(".el-popover") ||
-        target.closest(".el-dropdown-menu") ||
-        target.closest(".top-bell")
-    ) {
+    if (target.closest('.el-popover') || target.closest('.el-dropdown-menu') || target.closest('.top-bell')) {
         return;
     }
     detailPopoverVisible.value = false;
@@ -326,10 +299,7 @@ onMounted(() => {
     if (userStore.G_LoginInfo.isLogin && userStore.G_LoginInfo.id) {
         loadNotifications();
         loadUnreadCount();
-        connectNotifications(
-            userStore.G_LoginInfo.id,
-            handleRealtimeNotification,
-        );
+        connectNotifications(userStore.G_LoginInfo.id, handleRealtimeNotification);
     }
 });
 
@@ -348,14 +318,11 @@ watch(
         if (expert && id) connect();
         else if (!expert) disconnect();
     },
-    { immediate: true },
+    { immediate: true }
 );
 
 watch(
-    () => ({
-        login: userStore.G_LoginInfo.isLogin,
-        id: userStore.G_LoginInfo.id,
-    }),
+    () => ({ login: userStore.G_LoginInfo.isLogin, id: userStore.G_LoginInfo.id }),
     ({ login, id }) => {
         if (login && id) {
             loadNotifications();
@@ -368,7 +335,7 @@ watch(
             disconnectNotifications();
         }
     },
-    { immediate: true },
+    { immediate: true }
 );
 
 function goHome() {
@@ -416,8 +383,8 @@ function handleRealtimeNotification(notification: NotificationVO) {
     // 追加到下拉列表头部，保持最多 3 条
     notifications.value = [
         notification,
-        ...notifications.value.filter((item) => item.id !== notification.id),
-    ].slice(0, 3);
+        ...notifications.value.filter(item => item.id !== notification.id),
+    ]).slice(0, 3);
     totalNotificationCount.value++;
     unreadCount.value++;
     ElMessage.info(notification.body || notification.title);
@@ -430,15 +397,12 @@ async function handleNotificationVisible(visible: boolean) {
     }
 }
 
-async function handleNotificationCommand(
-    command: string | { type: string; id?: number },
-) {
+async function handleNotificationCommand(command: string | { type: string; id?: number }) {
     if (command === "readAll") {
         await ApiNotification.markAllRead();
-        notifications.value = notifications.value.map((item) => ({
-            ...item,
-            isRead: true,
-        }));
+        notifications.value = sortNotifications(
+            notifications.value.map(item => ({ ...item, isRead: true } as NotificationVO))
+        );
         unreadCount.value = 0;
         return;
     }
@@ -446,12 +410,8 @@ async function handleNotificationCommand(
         openAllNotifications();
         return;
     }
-    if (
-        typeof command === "object" &&
-        command.type === "detail" &&
-        command.id != null
-    ) {
-        const notif = notifications.value.find((n) => n.id === command.id);
+    if (typeof command === "object" && command.type === "detail" && command.id != null) {
+        const notif = notifications.value.find(n => n.id === command.id);
         if (notif) openDetail(notif);
         return;
     }
@@ -487,25 +447,7 @@ function formatNotificationType(type: string) {
 async function openDetail(notification: NotificationVO) {
     detailNotification.value = notification;
     detailPopoverVisible.value = true;
-    if (!notification.isRead) {
-        try {
-            await ApiNotification.markRead(notification.id);
-            notification.isRead = true;
-            if (unreadCount.value > 0) unreadCount.value--;
-            // 同步更新下拉列表中的状态
-            const idx = notifications.value.findIndex(
-                (n) => n.id === notification.id,
-            );
-            if (idx !== -1) {
-                notifications.value[idx] = {
-                    ...notifications.value[idx],
-                    isRead: true,
-                };
-            }
-        } catch {
-            // 标记已读失败不影响详情查看
-        }
-    }
+    await markNotificationAsRead(notification);
 }
 
 /** 从全部通知弹窗中点击单条，打开详情 */
@@ -526,11 +468,8 @@ function openAllNotifications() {
 async function loadAllNotifications(page: number) {
     allNotificationsLoading.value = true;
     try {
-        const res = await ApiNotification.listMyNotifications(
-            page,
-            allNotificationsPageSize,
-        );
-        allNotifications.value = (res as any)?.data?.data?.records ?? [];
+        const res = await ApiNotification.listMyNotifications(page, allNotificationsPageSize, filter === "unread");
+        allNotifications.value = sortNotifications((res as any)?.data?.data?.records ?? []);
         allNotificationsTotal.value = (res as any)?.data?.data?.total ?? 0;
     } catch {
         allNotifications.value = [];
@@ -579,9 +518,7 @@ function handleAllPageChange(page: number) {
     text-decoration: none;
     transition: opacity 0.2s;
 
-    &:hover {
-        opacity: 0.85;
-    }
+    &:hover { opacity: 0.85; }
 }
 
 .logo-seal {
@@ -619,7 +556,7 @@ function handleAllPageChange(page: number) {
         }
 
         &.active::after {
-            content: "";
+            content: '';
             position: absolute;
             bottom: -18px;
             left: 0;
@@ -653,18 +590,10 @@ function handleAllPageChange(page: number) {
     cursor: pointer;
     transition: border-color 0.2s;
 
-    &:hover {
-        border-color: var(--jade-light);
-    }
+    &:hover { border-color: var(--jade-light); }
 
-    .search-icon {
-        font-size: 13px;
-        flex-shrink: 0;
-    }
-    .search-placeholder {
-        color: var(--ink-muted);
-        font-size: 13px;
-    }
+    .search-icon { font-size: 13px; flex-shrink: 0; }
+    .search-placeholder { color: var(--ink-muted); font-size: 13px; }
 }
 
 .top-bell {
@@ -764,9 +693,7 @@ function handleAllPageChange(page: number) {
     transition: transform 0.2s;
     overflow: hidden;
 
-    &:hover {
-        transform: scale(1.06);
-    }
+    &:hover { transform: scale(1.06); }
 
     .avatar-img {
         width: 100%;
@@ -918,17 +845,9 @@ function handleAllPageChange(page: number) {
 }
 
 @media (max-width: 900px) {
-    .topbar-inner {
-        padding: 12px 20px;
-        gap: 16px;
-    }
-    .search-box {
-        display: none;
-    }
-    .top-nav {
-        gap: 14px;
-        font-size: 13px;
-    }
+    .topbar-inner { padding: 12px 20px; gap: 16px; }
+    .search-box { display: none; }
+    .top-nav { gap: 14px; font-size: 13px; }
 }
 </style>
 
