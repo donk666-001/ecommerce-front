@@ -41,6 +41,13 @@
             </el-form>
 
             <div class="login-tip">请使用分配的客服工号和密码登录</div>
+
+            <div class="back-to-user-login">
+                <span>普通用户？</span>
+                <button class="link-btn" @click="goToUserLogin">
+                    返回用户登录
+                </button>
+            </div>
         </div>
     </div>
 </template>
@@ -137,6 +144,10 @@ async function submitLogin() {
     } finally {
         loading.value = false;
     }
+}
+
+function goToUserLogin() {
+    router.push("/login");
 }
 </script>
 
@@ -249,5 +260,27 @@ h2 {
     font-size: 12px;
     color: var(--ink-muted);
     margin-top: 14px;
+}
+
+.back-to-user-login {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--ink-muted);
+
+    .link-btn {
+        background: none;
+        border: none;
+        color: var(--cinnabar);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 0;
+        margin-left: 4px;
+        text-decoration: underline;
+
+        &:hover {
+            color: #9c3325;
+        }
+    }
 }
 </style>
