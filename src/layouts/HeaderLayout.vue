@@ -1019,6 +1019,120 @@ function handleAllPageChange(page: number) {
     border-top: 1px solid var(--line-soft);
 }
 
+/* 用户下拉菜单样式 */
+:deep(.user-menu) {
+    min-width: 280px;
+    padding: 0;
+}
+
+.user-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--paper), var(--jade-soft));
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.user-menu-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--jade));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(92, 131, 116, 0.2);
+}
+
+.user-menu-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-menu-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-menu-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-menu-subtitle {
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+:deep(.user-menu-item) {
+    padding: 0;
+    margin: 0;
+}
+
+.user-menu-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.user-menu-icon {
+    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cream);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.user-menu-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-menu-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.user-menu-desc {
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+.user-menu-card.logout .user-menu-icon {
+    background: rgba(179, 60, 44, 0.1);
+    color: var(--cinnabar);
+}
+
+.user-menu-card.logout .user-menu-label {
+    color: var(--cinnabar);
+}
+
+:deep(.user-menu-item:hover) .user-menu-card {
+    background: var(--cream);
+}
+
 @media (max-width: 900px) {
     .topbar-inner {
         padding: 12px 20px;
