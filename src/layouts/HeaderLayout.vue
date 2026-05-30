@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <header class="topbar">
         <div class="topbar-inner">
             <!-- Logo -->
@@ -331,24 +331,44 @@ const route = useRoute();
 const userStore = useUserStore();
 
 const displayInitial = computed(() => {
-    const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+    const name =
+        userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
     return name ? name.charAt(0) : "我";
+});
+
+/** 用户菜单显示名称 */
+const userMenuName = computed(() => {
+    return (
+        userStore.G_LoginInfo.nickName ||
+        userStore.G_LoginInfo.account ||
+        "用户"
+    );
+});
+
+/** 用户菜单副标题（角色信息） */
+const userMenuSubtitle = computed(() => {
+    const roleMap: Record<number, string> = {
+        1: "管理员",
+        2: "认证专家",
+        3: "普通用户",
+    };
+    return roleMap[userStore.G_UserInfo.role_id] || "用户";
 });
 
 /** 当前登录用户是否为认证专家（role_id === 2） */
 const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
 
 const { connect, disconnect } = useExpertPresenceSocket();
-const {
-    connect: connectNotifications,
-    disconnect: disconnectNotifications,
-} = useNotificationSocket();
+const { connect: connectNotifications, disconnect: disconnectNotifications } =
+    useNotificationSocket();
 
 const notifications = ref<NotificationVO[]>([]);
 
 /** 未读通知数量（独立从服务端加载，保证准确性） */
 const unreadCount = ref(0);
-const unreadCountLabel = computed(() => unreadCount.value > 99 ? "99+" : String(unreadCount.value));
+const unreadCountLabel = computed(() =>
+    unreadCount.value > 99 ? "99+" : String(unreadCount.value),
+);
 
 /** 通知总数（用于判断是否显示"查看更多"入口） */
 const totalNotificationCount = ref(0);
@@ -363,9 +383,11 @@ const detailNotification = ref<NotificationVO | null>(null);
 // 气泡弹窗打开时监听 document 点击以关闭
 watch(detailPopoverVisible, (visible) => {
     if (visible) {
-        nextTick(() => document.addEventListener('click', closePopoverOnClickOutside));
+        nextTick(() =>
+            document.addEventListener("click", closePopoverOnClickOutside),
+        );
     } else {
-        document.removeEventListener('click', closePopoverOnClickOutside);
+        document.removeEventListener("click", closePopoverOnClickOutside);
     }
 });
 
@@ -373,7 +395,11 @@ watch(detailPopoverVisible, (visible) => {
 function closePopoverOnClickOutside(e: MouseEvent) {
     const target = e.target as HTMLElement;
     // 点击气泡内部、下拉菜单、铃铛时不关闭
-    if (target.closest('.el-popover') || target.closest('.el-dropdown-menu') || target.closest('.top-bell')) {
+    if (
+        target.closest(".el-popover") ||
+        target.closest(".el-dropdown-menu") ||
+        target.closest(".top-bell")
+    ) {
         return;
     }
     detailPopoverVisible.value = false;
@@ -395,7 +421,10 @@ onMounted(() => {
     if (userStore.G_LoginInfo.isLogin && userStore.G_LoginInfo.id) {
         loadNotifications();
         loadUnreadCount();
-        connectNotifications(userStore.G_LoginInfo.id, handleRealtimeNotification);
+        connectNotifications(
+            userStore.G_LoginInfo.id,
+            handleRealtimeNotification,
+        );
     }
 });
 
@@ -414,11 +443,14 @@ watch(
         if (expert && id) connect();
         else if (!expert) disconnect();
     },
-    { immediate: true }
+    { immediate: true },
 );
 
 watch(
-    () => ({ login: userStore.G_LoginInfo.isLogin, id: userStore.G_LoginInfo.id }),
+    () => ({
+        login: userStore.G_LoginInfo.isLogin,
+        id: userStore.G_LoginInfo.id,
+    }),
     ({ login, id }) => {
         if (login && id) {
             loadNotifications();
@@ -431,7 +463,7 @@ watch(
             disconnectNotifications();
         }
     },
-    { immediate: true }
+    { immediate: true },
 );
 
 function goHome() {
@@ -444,12 +476,12 @@ function goToLogin() {
 
 async function handleCommand(command: string) {
     if (command === "settings") {
-        router.push("/settings");
+        await router.push("/settings");
     } else if (command === "logout") {
         if (isExpertView.value) disconnect(); // 主动登出时断开连接
         await userStore.logout(); // 本地状态已同步清除，几乎立即返回
         ElMessage.success("已退出登录");
-        router.push("/login"); // 直接跳登录页，不再绕道首页
+        await router.push("/login"); // 直接跳登录页，不再绕道首页
     }
 }
 
@@ -479,8 +511,8 @@ function handleRealtimeNotification(notification: NotificationVO) {
     // 追加到下拉列表头部，保持最多 3 条
     notifications.value = [
         notification,
-        ...notifications.value.filter(item => item.id !== notification.id),
-    ]).slice(0, 3);
+        ...notifications.value.filter((item) => item.id !== notification.id),
+    ].slice(0, 3);
     totalNotificationCount.value++;
     unreadCount.value++;
     ElMessage.info(notification.body || notification.title);
@@ -493,11 +525,15 @@ async function handleNotificationVisible(visible: boolean) {
     }
 }
 
-async function handleNotificationCommand(command: string | { type: string; id?: number }) {
+async function handleNotificationCommand(
+    command: string | { type: string; id?: number },
+) {
     if (command === "readAll") {
         await ApiNotification.markAllRead();
         notifications.value = sortNotifications(
-            notifications.value.map(item => ({ ...item, isRead: true } as NotificationVO))
+            notifications.value.map(
+                (item) => ({ ...item, isRead: true }) as NotificationVO,
+            ),
         );
         unreadCount.value = 0;
         return;
@@ -506,9 +542,13 @@ async function handleNotificationCommand(command: string | { type: string; id?: 
         openAllNotifications();
         return;
     }
-    if (typeof command === "object" && command.type === "detail" && command.id != null) {
-        const notif = notifications.value.find(n => n.id === command.id);
-        if (notif) openDetail(notif);
+    if (
+        typeof command === "object" &&
+        command.type === "detail" &&
+        command.id != null
+    ) {
+        const notif = notifications.value.find((n) => n.id === command.id);
+        if (notif) await openDetail(notif);
         return;
     }
 }
@@ -539,6 +579,28 @@ function formatNotificationType(type: string) {
     return map[type] || "系统通知";
 }
 
+/** 对通知列表按时间倒序排序（最新的在前） */
+function sortNotifications(list: NotificationVO[]): NotificationVO[] {
+    return [...list].sort((a, b) => {
+        return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    });
+}
+
+/** 标记单个通知为已读 */
+async function markNotificationAsRead(notification: NotificationVO) {
+    if (notification.isRead) return;
+    try {
+        await ApiNotification.markRead(notification.id);
+        // 更新本地状态
+        notification.isRead = true;
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
+    } catch (error) {
+        console.error("标记通知已读失败:", error);
+    }
+}
+
 /** 打开通知详情气泡弹窗，同时标记该通知已读 */
 async function openDetail(notification: NotificationVO) {
     detailNotification.value = notification;
@@ -564,8 +626,13 @@ function openAllNotifications() {
 async function loadAllNotifications(page: number) {
     allNotificationsLoading.value = true;
     try {
-        const res = await ApiNotification.listMyNotifications(page, allNotificationsPageSize, filter === "unread");
-        allNotifications.value = sortNotifications((res as any)?.data?.data?.records ?? []);
+        const res = await ApiNotification.listMyNotifications(
+            page,
+            allNotificationsPageSize,
+        );
+        allNotifications.value = sortNotifications(
+            (res as any)?.data?.data?.records ?? [],
+        );
         allNotificationsTotal.value = (res as any)?.data?.data?.total ?? 0;
     } catch {
         allNotifications.value = [];

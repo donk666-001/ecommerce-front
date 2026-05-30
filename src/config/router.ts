@@ -8,7 +8,7 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach(async (to, from) => {
+router.beforeEach(async (to): Promise<string | undefined> => {
     const userStore = useUserStore();
 
     // 首次进入且非登录页时，通过 refreshToken 初始化登录态
@@ -29,7 +29,7 @@ router.beforeEach(async (to, from) => {
             return "/";
         }
         // 管理员已登录，允许访问
-        return;
+        return undefined;
     }
 
     // 已登录访问 /login → 根据角色跳转
@@ -44,6 +44,9 @@ router.beforeEach(async (to, from) => {
     if (to.path !== "/login" && !isLogin) {
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
     }
+
+    // 其他情况，允许继续导航
+    return undefined;
 });
 
 export default router;
