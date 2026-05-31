@@ -202,6 +202,7 @@
                         class="btn btn-outline btn-sm refresh-btn"
                         @click="refreshOrders"
                         :disabled="orderLoading"
+                        title="点击同步最新订单状态（如管理员发货后）"
                     >
                         <svg
                             viewBox="0 0 24 24"
@@ -215,7 +216,9 @@
                                 d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
                             />
                         </svg>
-                        <span>{{ orderLoading ? "刷新中..." : "刷新" }}</span>
+                        <span>{{
+                            orderLoading ? "同步中..." : "同步状态"
+                        }}</span>
                     </button>
                 </div>
                 <div v-if="filteredOrders.length === 0" class="empty-tip">
@@ -1924,7 +1927,7 @@ async function loadOrders(status?: number) {
 
 /** 手动刷新订单列表 */
 async function refreshOrders() {
-    showToast("正在刷新订单状态...");
+    showToast("正在同步最新订单状态...");
     await loadOrders();
     showToast("订单状态已更新");
 }

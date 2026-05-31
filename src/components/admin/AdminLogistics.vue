@@ -149,15 +149,24 @@
                         <td>{{ formatDate(item.createdAt) }}</td>
                         <td>
                             <div class="action-buttons">
-                                <!-- 待发货订单显示“发货”按钮 -->
+                                <!-- 待发货订单显示"发货"按钮 -->
                                 <button
-                                    v-if="!item.trackingNo"
+                                    v-if="
+                                        !item.trackingNo ||
+                                        item.trackingNo.trim() === '' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'PENDING' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'NULL' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'UNDEFINED'
+                                    "
                                     class="btn-link primary"
                                     @click="openShipModal(item)"
                                 >
                                     发货
                                 </button>
-                                <!-- 已发货订单显示“查看详情”和“更新轨迹”按钮 -->
+                                <!-- 已发货订单显示"查看详情"和"更新轨迹"按钮 -->
                                 <template v-else>
                                     <button
                                         class="btn-link"
@@ -238,14 +247,27 @@
                             </button>
                         </div>
                         <div class="modal-body">
-                            <div class="form-group">
-                                <label>订单ID</label>
-                                <input
-                                    :value="currentLogistics?.orderId"
-                                    type="text"
-                                    disabled
-                                    class="input-disabled"
-                                />
+                            <!-- 订单信息展示区 -->
+                            <div class="order-info-banner">
+                                <div class="info-item">
+                                    <span class="label">订单ID：</span>
+                                    <span class="value">{{
+                                        currentLogistics?.orderId
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="info-item"
+                                    v-if="
+                                        currentLogistics?.trackingNo &&
+                                        currentLogistics.trackingNo.toUpperCase() !==
+                                            'PENDING'
+                                    "
+                                >
+                                    <span class="label">物流单号：</span>
+                                    <span class="value">{{
+                                        currentLogistics.trackingNo
+                                    }}</span>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -753,10 +775,16 @@ async function handleShip() {
             shipData.remark = shipForm.remark.trim();
         }
 
+        console.log("========== 开始发货 ==========");
+        console.log("订单ID:", currentLogistics.value.orderId);
+        console.log("发货数据:", shipData);
+
         const response = await ApiLogistics.shipOrder(
             currentLogistics.value.orderId,
             shipData,
         );
+
+        console.log("✅ 发货响应:", response.data);
 
         if (response.data.code === 200) {
             shipMessage.value = "发货成功";
@@ -768,15 +796,17 @@ async function handleShip() {
                 loadLogisticsList(); // 重新加载
             }, 1000);
         } else {
+            console.log("❌ 发货失败:", response.data.message);
             shipMessage.value = response.data.message || "发货失败";
             shipMessageType.value = "error";
         }
     } catch (error) {
-        console.error("发货失败:", error);
+        console.error("❌ 发货异常:", error);
         shipMessage.value = "发货失败，请重试";
         shipMessageType.value = "error";
     } finally {
         shipping.value = false;
+        console.log("========== 发货结束 ==========\n");
     }
 }
 
@@ -1219,6 +1249,39 @@ onMounted(() => {
 
 .modal-body {
     padding: 24px;
+}
+
+/* 订单信息展示区 */
+.order-info-banner {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-left: 4px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.order-info-banner .info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.order-info-banner .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.order-info-banner .label {
+    font-size: 14px;
+    color: #0369a1;
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.order-info-banner .value {
+    font-size: 14px;
+    color: #0c4a6e;
+    font-family: "Courier New", monospace;
+    font-weight: 500;
 }
 
 .form-group {
