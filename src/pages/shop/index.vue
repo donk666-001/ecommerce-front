@@ -266,7 +266,7 @@
                                     </button>
                                     <button
                                         class="btn btn-cinnabar"
-                                        @click="openPay"
+                                        @click="payOrder(o.no)"
                                     >
                                         立即支付
                                     </button>
@@ -274,7 +274,7 @@
                                 <template v-else-if="o.status === 'topay'">
                                     <button
                                         class="btn btn-outline"
-                                        @click="refundOrder(o.no)"
+                                        @click="openRefundModal(o.no)"
                                     >
                                         申请退款
                                     </button>
@@ -294,7 +294,7 @@
                                 <template v-else-if="o.status === 'shipped'">
                                     <button
                                         class="btn btn-outline"
-                                        @click="refundOrder(o.no)"
+                                        @click="openRefundModal(o.no)"
                                     >
                                         申请退款
                                     </button>
@@ -789,13 +789,147 @@
             </div>
         </div>
 
+        <!-- Refund Application Modal -->
+        <div
+            class="modal-mask"
+            :class="{ show: showRefundModal }"
+            @click.self="showRefundModal = false"
+        >
+            <div class="modal" style="max-width: 560px">
+                <div class="modal-header">
+                    <h3>申请退款</h3>
+                    <button
+                        class="modal-close"
+                        @click="showRefundModal = false"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="refund-order-info">
+                        <div class="info-row">
+                            <span class="label">订单编号：</span>
+                            <span class="value">{{ refundForm.orderNo }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">订单金额：</span>
+                            <span class="value highlight"
+                                >¥{{ refundForm.orderAmount.toFixed(2) }}</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="refund-form">
+                        <div class="form-group">
+                            <label class="form-label required">退款类型</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input
+                                        v-model.number="refundForm.refundType"
+                                        type="radio"
+                                        :value="1"
+                                    />
+                                    <span>仅退款</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input
+                                        v-model.number="refundForm.refundType"
+                                        type="radio"
+                                        :value="2"
+                                    />
+                                    <span>退货退款</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required">退款金额</label>
+                            <div class="input-with-prefix">
+                                <span class="prefix">¥</span>
+                                <input
+                                    v-model.number="refundForm.refundAmount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    :max="refundForm.orderAmount"
+                                    placeholder="请输入退款金额"
+                                />
+                            </div>
+                            <div class="form-hint">
+                                最多可退 ¥{{
+                                    refundForm.orderAmount.toFixed(2)
+                                }}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required">退款原因</label>
+                            <select
+                                v-model="refundForm.reason"
+                                class="form-select"
+                            >
+                                <option value="" disabled>
+                                    请选择退款原因
+                                </option>
+                                <option value="商品质量问题">
+                                    商品质量问题
+                                </option>
+                                <option value="商品与描述不符">
+                                    商品与描述不符
+                                </option>
+                                <option value="发错货/漏发">发错货/漏发</option>
+                                <option value="不喜欢/不想要">
+                                    不喜欢/不想要
+                                </option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">补充说明（可选）</label>
+                            <textarea
+                                v-model="refundForm.description"
+                                rows="3"
+                                placeholder="请详细描述问题，有助于加快审核进度..."
+                                class="form-textarea"
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        class="btn btn-outline"
+                        @click="showRefundModal = false"
+                        :disabled="refundSubmitting"
+                    >
+                        取消
+                    </button>
+                    <button
+                        class="btn btn-cinnabar"
+                        @click="submitRefund"
+                        :disabled="refundSubmitting"
+                    >
+                        {{ refundSubmitting ? "提交中..." : "提交申请" }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast -->
         <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import {
+    ref,
+    computed,
+    nextTick,
+    onMounted,
+    onUnmounted,
+    watch,
+    reactive,
+} from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import {
     ApiProduct,
@@ -804,6 +938,9 @@ import {
     type CartItemVO,
     type CartSummaryVO,
 } from "@/network/product";
+import { ApiOrder, type OrderVO } from "@/network/order";
+import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
+import { ApiLogistics } from "@/network";
 
 interface Product {
     id: string;
@@ -827,13 +964,22 @@ interface LogisticsStep {
     text: string;
     state: string;
 }
+/** 前端订单展示数据结构（由后端 OrderVO 转换而来） */
 interface Order {
-    no: string;
-    time: string;
-    status: "unpaid" | "topay" | "shipped" | "done";
-    items: { id: string; qty: number }[];
-    amount: number;
-    logistics?: { from: string; to: string; steps: LogisticsStep[] };
+    id: number; // 订单ID
+    no: string; // 订单号
+    time: string; // 创建时间
+    status:
+        | "unpaid"
+        | "topay"
+        | "shipped"
+        | "done"
+        | "cancelled"
+        | "refunding"
+        | "refunded"; // 订单状态
+    items: { id: string; qty: number; name: string; price: number }[]; // 订单项
+    amount: number; // 订单总金额
+    logistics?: { from: string; to: string; steps: LogisticsStep[] }; // 物流信息（可选）
 }
 interface Agent {
     id: string;
@@ -922,79 +1068,9 @@ const cartItems = ref<CartItemVO[]>([]);
 const cartLoading = ref(false);
 const cartSummary = ref<CartSummaryVO | null>(null); // 购物车汇总信息
 
-const orders = ref<Order[]>([
-    {
-        no: "YYG20260526001",
-        time: "2026-05-26 10:32",
-        status: "unpaid",
-        items: [
-            { id: "p2", qty: 1 },
-            { id: "p9", qty: 1 },
-        ],
-        amount: 116,
-    },
-    {
-        no: "YYG20260525012",
-        time: "2026-05-25 18:14",
-        status: "topay",
-        items: [
-            { id: "p7", qty: 2 },
-            { id: "p10", qty: 1 },
-        ],
-        amount: 108,
-    },
-    {
-        no: "YYG20260523008",
-        time: "2026-05-23 09:45",
-        status: "shipped",
-        items: [
-            { id: "p4", qty: 1 },
-            { id: "p6", qty: 1 },
-        ],
-        amount: 173,
-        logistics: {
-            from: "杭州 · 颐养阁仓库",
-            to: "上海 · 黄浦区",
-            steps: [
-                {
-                    time: "2026-05-26 08:12",
-                    text: "【上海中转】快件已到达【上海转运中心】",
-                    state: "active",
-                },
-                {
-                    time: "2026-05-25 22:38",
-                    text: "【杭州中转】快件离开【杭州中转中心】发往【上海】",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-25 14:20",
-                    text: "【杭州集散】快件已到达【杭州中转中心】",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-23 16:05",
-                    text: "【已揽件】顺丰速运 已揽收",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-23 11:30",
-                    text: "【商家发货】颐养阁官方店铺已发货",
-                    state: "done",
-                },
-            ],
-        },
-    },
-    {
-        no: "YYG20260518003",
-        time: "2026-05-18 20:01",
-        status: "done",
-        items: [
-            { id: "p1", qty: 2 },
-            { id: "p3", qty: 1 },
-        ],
-        amount: 134,
-    },
-]);
+// 订单列表（从后端获取）
+const orders = ref<Order[]>([]);
+const orderLoading = ref(false);
 
 const orderFilter = ref("all");
 const currentAgent = ref("cs1");
@@ -1039,6 +1115,19 @@ const confirmTitle = ref("");
 const confirmMsg = ref("");
 const confirmIcon = ref("");
 const confirmCallback = ref<(() => void) | null>(null);
+
+// Refund modal states
+const showRefundModal = ref(false);
+const refundForm = reactive({
+    orderId: 0,
+    orderNo: "",
+    orderAmount: 0,
+    refundType: 1, // 1=仅退款, 2=退货退款
+    refundAmount: 0,
+    reason: "",
+    description: "",
+});
+const refundSubmitting = ref(false);
 
 // Toast
 const toastMsg = ref("");
@@ -1163,6 +1252,9 @@ function orderStatusText(status: string): string {
         topay: "待发货",
         shipped: "运输中",
         done: "已完成",
+        cancelled: "已取消",
+        refunding: "退款中",
+        refunded: "已退款",
     };
     return map[status] || status;
 }
@@ -1173,6 +1265,9 @@ function orderStatusClass(status: string): string {
         topay: "status-ship",
         shipped: "status-shipped",
         done: "status-done",
+        cancelled: "status-cancelled",
+        refunding: "status-refunding",
+        refunded: "status-refunded",
     };
     return map[status] || "";
 }
@@ -1275,66 +1370,195 @@ function openPay() {
     showPayModal.value = true;
 }
 
-function mockPaySuccess() {
-    const total = cartTotal.value;
-    const no =
-        "YYG" +
-        new Date().toISOString().slice(0, 10).replace(/-/g, "") +
-        String(Math.floor(Math.random() * 900) + 100);
-    orders.value.unshift({
-        no,
-        time: new Date().toISOString().slice(0, 16).replace("T", " "),
-        status: "topay",
-        items: cartItems.value.map((c) => ({
-            id: `p${c.productId}`,
-            qty: c.quantity,
-        })),
-        amount: total,
-    });
-    // 清空购物车
-    cartItems.value = [];
-    cartSummary.value = null; // 清空汇总信息
-    showPayModal.value = false;
-    showToast("支付成功，订单已生成");
-    setTimeout(() => {
-        activeTab.value = "order";
-    }, 600);
+/** 模拟支付成功（实际应调用后端创建订单接口） */
+async function mockPaySuccess() {
+    if (cartItems.value.length === 0) {
+        showToast("购物车为空");
+        return;
+    }
+
+    try {
+        // 获取选中的购物车项 ID 列表
+        const cartIds = cartItems.value.map((item) => item.id);
+
+        // TODO: 这里需要用户填写收货信息，暂时使用默认值
+        // 实际应该弹出表单让用户输入收货地址、姓名、电话
+        const orderData = {
+            cartIds,
+            receiverName: "张三", // 应该从用户资料或表单中获取
+            receiverPhone: "13800138000", // 应该从用户资料或表单中获取
+            receiverAddress: "北京市朝阳区xxx街道xxx号", // 应该从用户资料或表单中获取
+            remark: "请尽快发货",
+        };
+
+        // 调用后端创建订单接口
+        const response = await ApiOrder.createOrder(orderData);
+        const apiResponse = response.data;
+
+        if (apiResponse && apiResponse.data) {
+            console.log("订单创建成功:", apiResponse.data);
+            showToast("支付成功，订单已生成");
+
+            // 清空购物车
+            cartItems.value = [];
+            cartSummary.value = null;
+
+            showPayModal.value = false;
+
+            // 重新加载订单列表并切换到订单页
+            await loadOrders();
+            setTimeout(() => {
+                activeTab.value = "order";
+            }, 600);
+        }
+    } catch (error) {
+        console.error("创建订单失败:", error);
+        showToast("创建订单失败，请重试");
+    }
 }
 
 // ── Order actions ─────────────────────────────────────────────────────────────
-function cancelOrder(no: string) {
-    showConfirm("取消订单", "确认取消该订单？取消后不可恢复。", "🗑️", () => {
-        orders.value = orders.value.filter((o) => o.no !== no);
-        showToast("订单已取消");
-    });
-}
+/** 取消订单 */
+async function cancelOrder(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
 
-function refundOrder(_no: string) {
-    showToast("已提交退款申请，客服将在 24h 内处理");
-}
-function remindShip(_no: string) {
-    showToast("已提醒卖家发货");
-}
-function extendReceipt(_no: string) {
-    showToast("收货时间已延长 7 天");
-}
-function reviewOrder(_no: string) {
-    showToast("评价功能开发中，敬请期待");
-}
-
-function confirmReceipt(no: string) {
     showConfirm(
-        "确认收货",
-        "确认已收到商品？确认后款项将打给卖家，请谨慎操作。",
-        "📦",
-        () => {
-            const o = orders.value.find((x) => x.no === no);
-            if (o) o.status = "done";
-            showToast("已确认收货，欢迎再次光临～");
+        "取消订单",
+        "确认取消该订单？取消后不可恢复。",
+        "🗑️",
+        async () => {
+            try {
+                await ApiOrder.cancelOrder(order.id, "用户主动取消");
+                showToast("订单已取消");
+                // 重新加载订单列表
+                await loadOrders();
+            } catch (error) {
+                console.error("取消订单失败:", error);
+                showToast("取消订单失败，请重试");
+            }
         },
     );
 }
 
+/** 支付订单（对待支付订单进行支付） */
+async function payOrder(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
+
+    showConfirm(
+        "确认支付",
+        `确认支付订单 ${no}，金额 ¥${order.amount.toFixed(2)}？`,
+        "💳",
+        async () => {
+            try {
+                // 调用后端模拟支付接口
+                await ApiOrder.simulatePay(order.id);
+                showToast("支付成功！");
+                // 重新加载订单列表以更新状态
+                await loadOrders();
+            } catch (error) {
+                console.error("支付失败:", error);
+                showToast("支付失败，请重试");
+            }
+        },
+    );
+}
+
+/** 申请退款 - 打开模态框 */
+function openRefundModal(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
+
+    refundForm.orderId = order.id;
+    refundForm.orderNo = order.no;
+    refundForm.orderAmount = order.amount;
+    refundForm.refundType = 1; // 默认仅退款
+    refundForm.refundAmount = order.amount; // 默认全额退款
+    refundForm.reason = "";
+    refundForm.description = "";
+    showRefundModal.value = true;
+}
+
+/** 提交退款申请 */
+async function submitRefund() {
+    // 表单验证
+    if (!refundForm.reason.trim()) {
+        showToast("请填写退款原因");
+        return;
+    }
+    if (refundForm.refundAmount <= 0) {
+        showToast("退款金额必须大于0");
+        return;
+    }
+    if (refundForm.refundAmount > refundForm.orderAmount) {
+        showToast("退款金额不能超过订单金额");
+        return;
+    }
+
+    refundSubmitting.value = true;
+    try {
+        const trimmedDescription = refundForm.description.trim();
+        const refundData: ApplyRefundDTO = {
+            refundType: refundForm.refundType,
+            refundAmount: refundForm.refundAmount,
+            reason: refundForm.reason.trim(),
+            ...(trimmedDescription && { description: trimmedDescription }),
+        };
+
+        await ApiRefund.applyRefund(refundForm.orderId, refundData);
+        showToast("退款申请已提交，客服将在 24h 内处理");
+        showRefundModal.value = false;
+        // 重新加载订单列表以更新状态
+        await loadOrders();
+    } catch (error) {
+        console.error("申请退款失败:", error);
+        showToast("申请退款失败，请重试");
+    } finally {
+        refundSubmitting.value = false;
+    }
+}
+
+/** 提醒发货 */
+function remindShip(_no: string) {
+    showToast("已提醒卖家发货");
+}
+
+/** 延长收货 */
+function extendReceipt(_no: string) {
+    showToast("收货时间已延长 7 天");
+}
+
+/** 评价订单 */
+function reviewOrder(_no: string) {
+    showToast("评价功能开发中，敬请期待");
+}
+
+/** 确认收货 */
+async function confirmReceipt(no: string) {
+    const order = orders.value.find((x) => x.no === no);
+    if (!order) return;
+
+    showConfirm(
+        "确认收货",
+        "确认已收到商品？确认后款项将打给卖家，请谨慎操作。",
+        "📦",
+        async () => {
+            try {
+                // 使用物流 API 的确认收货接口
+                await ApiLogistics.confirmReceipt(order.id);
+                showToast("已确认收货，欢迎再次光临～");
+                // 重新加载订单列表
+                await loadOrders();
+            } catch (error) {
+                console.error("确认收货失败:", error);
+                showToast("确认收货失败，请重试");
+            }
+        },
+    );
+}
+
+/** 再次购买 */
 function reBuy(no: string) {
     const o = orders.value.find((x) => x.no === no);
     if (!o) return;
@@ -1346,9 +1570,49 @@ function reBuy(no: string) {
     showToast("商品已加入购物车");
 }
 
-function openLogistics(no: string) {
-    selectedOrderNo.value = no;
-    showLogisticsModal.value = true;
+/** 查看物流 */
+async function openLogistics(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
+
+    try {
+        // 调用后端接口获取物流信息
+        const response = await ApiLogistics.getOrderLogistics(order.id);
+        const apiResponse = response.data;
+
+        if (apiResponse && apiResponse.data) {
+            const logistics = apiResponse.data;
+            console.log("物流信息:", logistics);
+
+            // TODO: 这里应该显示物流模态框，展示物流轨迹
+            // 暂时使用 alert 显示简化信息
+            const statusMap: Record<number, string> = {
+                0: "待发货",
+                1: "已发货",
+                2: "运输中",
+                3: "已签收",
+            };
+
+            let message = `物流公司：${logistics.logisticsCompany}\n`;
+            message += `物流单号：${logistics.trackingNo}\n`;
+            message += `当前状态：${statusMap[logistics.status] || "未知"}\n`;
+            message += `当前位置：${logistics.currentLocation || "未知"}\n\n`;
+
+            if (logistics.details && logistics.details.length > 0) {
+                message += "物流轨迹：\n";
+                logistics.details.forEach((detail) => {
+                    message += `${detail.time} - ${detail.location}\n${detail.description}\n\n`;
+                });
+            }
+
+            alert(message);
+        } else {
+            showToast("暂无物流信息");
+        }
+    } catch (error) {
+        console.error("查询物流失败:", error);
+        showToast("查询物流失败，请重试");
+    }
 }
 
 function toggleMore(idx: number) {
@@ -1492,6 +1756,64 @@ async function loadCategories() {
     }
 }
 
+/** 将后端 OrderVO 转换为前端 Order */
+function convertOrderVO(vo: OrderVO): Order {
+    // 后端状态映射到前端状态
+    const statusMap: Record<number, Order["status"]> = {
+        0: "unpaid", // 待付款
+        1: "topay", // 已付款（待发货）
+        2: "shipped", // 已发货
+        3: "done", // 已完成
+        4: "cancelled", // 已取消
+        5: "refunding", // 退款中
+        6: "refunded", // 已退款
+    };
+
+    return {
+        id: vo.id,
+        no: vo.orderNo,
+        time: vo.createdAt,
+        status: statusMap[vo.status] || "unpaid",
+        items: vo.items.map((item) => ({
+            id: `p${item.productId}`,
+            qty: item.quantity,
+            name: item.productName,
+            price: item.price,
+        })),
+        amount: vo.payAmount || vo.totalAmount,
+        // 物流信息暂时不处理，后续可以根据需要添加
+    };
+}
+
+/** 加载订单列表 */
+async function loadOrders(status?: number) {
+    orderLoading.value = true;
+    try {
+        const queryParams: Parameters<typeof ApiOrder.listOrders>[0] = {
+            page: 1,
+            size: 100, // 一次性加载所有订单
+            ...(status !== undefined && { status }),
+        };
+
+        const response = await ApiOrder.listOrders(queryParams);
+
+        console.log("订单列表响应:", response);
+        const apiResponse = response.data;
+        if (apiResponse && apiResponse.data && apiResponse.data.records) {
+            console.log("订单记录数:", apiResponse.data.records.length);
+            orders.value = apiResponse.data.records.map(convertOrderVO);
+            console.log("转换后的订单数:", orders.value.length);
+        } else {
+            console.warn("订单数据格式异常:", response.data);
+        }
+    } catch (error) {
+        console.error("加载订单失败:", error);
+        showToast("加载订单失败，请稍后重试");
+    } finally {
+        orderLoading.value = false;
+    }
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 function handleGlobalClick() {
     openMoreIdx.value = -1;
@@ -1514,9 +1836,9 @@ watch(activeTab, (newTab, oldTab) => {
             break;
 
         case "order":
-            // 订单页可以重新加载订单列表（如果需要的话）
-            console.log("切换到订单页");
-            // TODO: 如果有订单列表接口，在这里调用
+            // 切换到订单页时，重新从后端获取最新订单列表
+            console.log("切换到订单页，重新加载订单数据");
+            loadOrders();
             break;
 
         case "service":
@@ -1533,6 +1855,8 @@ onMounted(() => {
     loadCategories();
     // 加载购物车数据
     loadCartList();
+    // 加载订单数据
+    loadOrders();
 });
 
 onUnmounted(() => {
@@ -2713,6 +3037,129 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+// Refund modal
+.refund-order-info {
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    .label {
+        color: var(--ink-muted);
+    }
+    .value {
+        color: var(--ink);
+        font-weight: 500;
+        &.highlight {
+            color: var(--cinnabar);
+            font-weight: 700;
+            font-size: 18px;
+        }
+    }
+}
+
+.refund-form {
+    .form-group {
+        margin-bottom: 18px;
+    }
+    .form-label {
+        display: block;
+        font-size: 14px;
+        color: var(--ink);
+        font-weight: 600;
+        margin-bottom: 8px;
+        &.required::after {
+            content: " *";
+            color: var(--cinnabar);
+        }
+    }
+    .radio-group {
+        display: flex;
+        gap: 20px;
+    }
+    .radio-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--ink);
+        input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--jade);
+        }
+    }
+    .input-with-prefix {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+        &:focus-within {
+            border-color: var(--jade);
+        }
+        .prefix {
+            padding: 0 12px;
+            background: var(--paper-warm);
+            color: var(--ink-muted);
+            font-weight: 600;
+            font-size: 14px;
+            border-right: 1px solid var(--line);
+        }
+        input {
+            flex: 1;
+            border: none;
+            padding: 10px 12px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+        }
+    }
+    .form-hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--ink-muted);
+    }
+    .form-select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+        background: white;
+        cursor: pointer;
+        &:focus {
+            border-color: var(--jade);
+        }
+    }
+    .form-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        resize: vertical;
+        transition: border-color 0.2s;
+        &:focus {
+            border-color: var(--jade);
+        }
+    }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────

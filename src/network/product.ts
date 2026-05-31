@@ -1,11 +1,5 @@
+import type { ApiResponse, PageResult } from "./common";
 import { GAxios } from "@/plugins";
-
-/** 统一API响应结构 */
-export interface ApiResponse<T = any> {
-    code: number;
-    message: string;
-    data: T;
-}
 
 /** 商品视图对象 */
 export interface ProductVO {
@@ -45,18 +39,6 @@ export interface ProductQueryParams {
     categoryId?: number;
     status?: number;
     keyword?: string;
-} /** 分页响应数据 */
-export interface PageResult<T> {
-    records: T[];
-    total: number;
-    size: number;
-    current: number;
-    orders: Array<{ column: string; asc: boolean }>;
-    optimizeCountSql: boolean;
-    searchCount: boolean;
-    optimizeJoinOfCountSql: boolean;
-    maxLimit: number;
-    countId: string;
 }
 
 /** 创建/更新商品请求参数 */

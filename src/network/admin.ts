@@ -13,15 +13,6 @@ export interface UserAdminVO {
     createdAt: string;
 }
 
-/** 分页响应 */
-export interface PageResult<T> {
-    records: T[];
-    total: number;
-    size: number;
-    current: number;
-    pages: number;
-}
-
 export const ApiAdmin = {
     /** 用户统计：平台总用户数 + 今日新增 */
     getUserStats: () =>

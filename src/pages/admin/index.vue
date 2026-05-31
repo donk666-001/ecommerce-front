@@ -52,6 +52,23 @@
                         pendingCount
                     }}</span>
                 </button>
+                <button
+                    class="nav-item"
+                    :class="{ active: activeTab === 'refunds' }"
+                    @click="activeTab = 'refunds'"
+                >
+                    <svg
+                        class="nav-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                    >
+                        <path d="M3 3v18h18" />
+                        <path d="m19 9-5 5-4-4-3 3" />
+                    </svg>
+                    <span>退款审核</span>
+                </button>
 
                 <div class="nav-section">系统</div>
                 <button
@@ -201,6 +218,7 @@
                     v-show="activeTab === 'review'"
                     @pending-count="pendingCount = $event"
                 />
+                <AdminRefund v-show="activeTab === 'refunds'" />
                 <AdminPermissions v-show="activeTab === 'permissions'" />
                 <AdminAgents v-show="activeTab === 'agents'" />
             </main>
@@ -337,6 +355,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard.vue";
 import AdminReview from "@/components/admin/AdminReview.vue";
 import AdminPermissions from "@/components/admin/AdminPermissions.vue";
 import AdminAgents from "@/components/admin/AdminAgents.vue";
+import AdminRefund from "@/components/admin/AdminRefund.vue";
 
 const router = useRouter();
 const userStore = useUserStore();
