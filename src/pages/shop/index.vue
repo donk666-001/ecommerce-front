@@ -806,6 +806,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 
 interface Product {
@@ -1445,7 +1446,25 @@ function showToast(msg: string) {
 function handleGlobalClick() {
     openMoreIdx.value = -1;
 }
-onMounted(() => document.addEventListener("click", handleGlobalClick));
+onMounted(() => {
+    document.addEventListener("click", handleGlobalClick);
+    const route = useRoute();
+
+    // 支持客服界面通过 ?open=pN 直接弹开商品详情
+    const openId = route.query.open as string | undefined;
+    if (openId) {
+        const p = products.find((x) => x.id === openId);
+        if (p) openProduct(p);
+    }
+
+    // 支持客服界面通过 ?order=订单号 切换到订单页并弹开物流详情
+    const orderNo = route.query.order as string | undefined;
+    if (orderNo) {
+        activeTab.value = "order";
+        const o = orders.value.find((x) => x.no === orderNo);
+        if (o?.logistics) openLogistics(orderNo);
+    }
+});
 onUnmounted(() => {
     document.removeEventListener("click", handleGlobalClick);
     if (toastTimer) clearTimeout(toastTimer);
