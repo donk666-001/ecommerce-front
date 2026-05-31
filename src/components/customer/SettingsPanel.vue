@@ -13,7 +13,9 @@
                         <div class="setting-label">工号 / 姓名</div>
                         <div class="setting-desc">由管理员分配，不可修改</div>
                     </div>
-                    <div class="setting-value serif">{{ agentId }} · {{ agentName }}</div>
+                    <div class="setting-value serif">
+                        {{ agentId }} · {{ agentName }}
+                    </div>
                 </div>
                 <div class="setting-row">
                     <div>
@@ -29,7 +31,9 @@
         <div class="panel-card">
             <div class="panel-card-head">
                 <h3>自动欢迎语</h3>
-                <button class="head-btn" @click="saveWelcomeMessage">保存</button>
+                <button class="head-btn" @click="saveWelcomeMessage">
+                    保存
+                </button>
             </div>
             <div class="panel-card-body">
                 <textarea
@@ -45,7 +49,9 @@
         <div class="panel-card">
             <div class="panel-card-head">
                 <h3>常用语库</h3>
-                <button class="head-btn accent" @click="openAddDialog">+ 新增</button>
+                <button class="head-btn accent" @click="openAddDialog">
+                    + 新增
+                </button>
             </div>
             <div class="panel-card-body">
                 <div v-if="quickReplies.length === 0" class="empty-tip">
@@ -58,7 +64,13 @@
                         class="reply-item"
                     >
                         <span class="reply-text">{{ reply }}</span>
-                        <button class="reply-del" @click="removeReply(index)" title="删除">×</button>
+                        <button
+                            class="reply-del"
+                            @click="removeReply(index)"
+                            title="删除"
+                        >
+                            ×
+                        </button>
                     </div>
                 </div>
             </div>
@@ -68,14 +80,20 @@
     <!-- 新增常用语弹窗 -->
     <Teleport to="body">
         <Transition name="dialog-fade">
-            <div v-if="showAddDialog" class="dialog-mask" @click.self="cancelAdd">
+            <div
+                v-if="showAddDialog"
+                class="dialog-mask"
+                @click.self="cancelAdd"
+            >
                 <div class="dialog-box">
                     <div class="dialog-header">
                         <div class="dialog-header-left">
                             <span class="dialog-accent"></span>
                             <span class="dialog-title">新增常用语</span>
                         </div>
-                        <button class="dialog-close" @click="cancelAdd">✕</button>
+                        <button class="dialog-close" @click="cancelAdd">
+                            ✕
+                        </button>
                     </div>
                     <div class="dialog-body">
                         <label class="dialog-label">常用语内容</label>
@@ -89,13 +107,21 @@
                             @keydown.ctrl.enter="confirmAdd"
                         ></textarea>
                         <div class="dialog-footer-meta">
-                            <span class="char-count">{{ newReplyText.length }} / 120</span>
+                            <span class="char-count"
+                                >{{ newReplyText.length }} / 120</span
+                            >
                             <span class="hint-tip">Ctrl + Enter 快速确定</span>
                         </div>
                     </div>
                     <div class="dialog-footer">
-                        <button class="dialog-cancel" @click="cancelAdd">取消</button>
-                        <button class="dialog-confirm" :disabled="!newReplyText.trim()" @click="confirmAdd">
+                        <button class="dialog-cancel" @click="cancelAdd">
+                            取消
+                        </button>
+                        <button
+                            class="dialog-confirm"
+                            :disabled="!newReplyText.trim()"
+                            @click="confirmAdd"
+                        >
                             确定添加
                         </button>
                     </div>
@@ -113,8 +139,12 @@ import { ElMessage } from "element-plus";
 
 const userStore = useUserStore();
 
-const agentId = computed(() => (userStore.G_LoginInfo.account || "CS001").trim());
-const agentName = computed(() => (userStore.G_LoginInfo.nickName || "小翠").trim() || "小翠");
+const agentId = computed(() =>
+    (userStore.G_LoginInfo.account || "CS001").trim(),
+);
+const agentName = computed(
+    () => (userStore.G_LoginInfo.nickName || "小翠").trim() || "小翠",
+);
 
 const welcomeMessage = ref("您好，这边是颐养阁售前客服小翠，很高兴为您服务～");
 const { quickReplies } = useQuickReplies();
@@ -271,7 +301,6 @@ function removeReply(index: number) {
         font-family: "STKaiti", serif;
     }
 }
-
 
 .setting-textarea {
     width: 100%;
@@ -452,7 +481,9 @@ function removeReply(index: number) {
     color: var(--ink);
     box-sizing: border-box;
     line-height: 1.6;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
 
     &:focus {
         border-color: var(--jade);
@@ -536,7 +567,9 @@ function removeReply(index: number) {
     transition: opacity 0.22s ease;
 
     .dialog-box {
-        transition: transform 0.22s ease, opacity 0.22s ease;
+        transition:
+            transform 0.22s ease,
+            opacity 0.22s ease;
     }
 }
 

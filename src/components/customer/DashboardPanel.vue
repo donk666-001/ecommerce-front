@@ -7,7 +7,8 @@
             <div class="stat-card jade">
                 <div class="stat-label">接待中</div>
                 <div class="stat-value">
-                    {{ chatCount }}<span class="stat-denom">/{{ stats.maxSessions }}</span>
+                    {{ chatCount
+                    }}<span class="stat-denom">/{{ stats.maxSessions }}</span>
                 </div>
                 <div class="stat-foot">当前同时接待 / 上限</div>
             </div>
@@ -35,7 +36,10 @@
                 <span class="refresh-hint">每 30 秒自动更新</span>
             </div>
             <div class="panel-card-body">
-                <div v-if="colleaguesLoading && colleagues.length === 0" class="loading-state">
+                <div
+                    v-if="colleaguesLoading && colleagues.length === 0"
+                    class="loading-state"
+                >
                     加载中...
                 </div>
                 <table v-else class="queue-table">
@@ -51,7 +55,10 @@
                         <tr v-for="c in displayColleagues" :key="c.name">
                             <td>{{ c.name }}</td>
                             <td>
-                                <span class="status-led" :class="`led-${c.status}`"></span>
+                                <span
+                                    class="status-led"
+                                    :class="`led-${c.status}`"
+                                ></span>
                                 {{ getStatusText(c.status) }}
                             </td>
                             <td>{{ c.currentLoad }} / {{ c.maxLoad }}</td>
@@ -66,7 +73,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { ApiCustomer, type CustomerStats, type AgentColleague } from "@/network/customer";
+import {
+    ApiCustomer,
+    type CustomerStats,
+    type AgentColleague,
+} from "@/network/customer";
 
 const props = defineProps<{
     chatCount: number;
@@ -77,8 +88,10 @@ const props = defineProps<{
 
 // 识别"自己"那行：名字匹配 OR mock 数据里的（我）标记
 function isSelf(c: AgentColleague): boolean {
-    return c.name.includes("（我）") ||
-        (!!props.agentName && c.name.includes(props.agentName));
+    return (
+        c.name.includes("（我）") ||
+        (!!props.agentName && c.name.includes(props.agentName))
+    );
 }
 
 const POLL_INTERVAL = 30_000;
@@ -129,7 +142,11 @@ async function loadColleagues() {
 }
 
 function getStatusText(status: string): string {
-    const map: Record<string, string> = { online: "接待中", break: "小休", off: "下班" };
+    const map: Record<string, string> = {
+        online: "接待中",
+        break: "小休",
+        off: "下班",
+    };
     return map[status] || status;
 }
 
@@ -182,7 +199,9 @@ onUnmounted(() => clearInterval(pollTimer));
     position: relative;
     overflow: hidden;
     cursor: default;
-    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease;
 
     &:hover {
         transform: translateY(-5px);
@@ -198,10 +217,18 @@ onUnmounted(() => clearInterval(pollTimer));
         width: 4px;
     }
 
-    &.jade::before  { background: var(--jade); }
-    &.gold::before  { background: var(--gold); }
-    &.cinnabar::before { background: var(--cinnabar); }
-    &.ink::before   { background: var(--ink-light); }
+    &.jade::before {
+        background: var(--jade);
+    }
+    &.gold::before {
+        background: var(--gold);
+    }
+    &.cinnabar::before {
+        background: var(--cinnabar);
+    }
+    &.ink::before {
+        background: var(--ink-light);
+    }
 }
 
 .stat-label {
@@ -272,7 +299,9 @@ onUnmounted(() => clearInterval(pollTimer));
     border-collapse: collapse;
     font-size: 17px;
 
-    thead { background: var(--cream); }
+    thead {
+        background: var(--cream);
+    }
 
     th {
         text-align: left;
@@ -288,7 +317,9 @@ onUnmounted(() => clearInterval(pollTimer));
         vertical-align: middle;
     }
 
-    tr:hover td { background: rgba(250, 246, 238, 0.5); }
+    tr:hover td {
+        background: rgba(250, 246, 238, 0.5);
+    }
 }
 
 .status-led {
@@ -304,7 +335,11 @@ onUnmounted(() => clearInterval(pollTimer));
         box-shadow: 0 0 6px rgba(46, 174, 111, 0.6);
     }
 
-    &.led-break { background: #999; }
-    &.led-off   { background: #555; }
+    &.led-break {
+        background: #999;
+    }
+    &.led-off {
+        background: #555;
+    }
 }
 </style>

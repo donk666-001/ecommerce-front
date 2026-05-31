@@ -81,7 +81,9 @@
                     @click.stop="toggleAccountMenu"
                 >
                     <div class="account-info">
-                        <div class="agent-avatar">{{ agentName.slice(-1) }}</div>
+                        <div class="agent-avatar">
+                            {{ agentName.slice(-1) }}
+                        </div>
                         <div class="account-meta">
                             <div class="account-name">{{ agentName }}</div>
                             <div class="account-role">{{ agentId }}</div>
@@ -100,7 +102,10 @@
             <!-- 内容面板 -->
             <div class="content">
                 <!-- 工作台面板 -->
-                <div v-show="currentPanel === 'dashboard'" class="panel panel-scroll">
+                <div
+                    v-show="currentPanel === 'dashboard'"
+                    class="panel panel-scroll"
+                >
                     <DashboardPanel
                         :chat-count="chatCount"
                         :queue-count="queueCount"
@@ -122,7 +127,10 @@
                 </div>
 
                 <!-- 排队队列面板 -->
-                <div v-show="currentPanel === 'queue'" class="panel panel-scroll">
+                <div
+                    v-show="currentPanel === 'queue'"
+                    class="panel panel-scroll"
+                >
                     <QueuePanel
                         @switch-to-chat="handleSwitchToChat"
                         @count-update="queueCount = $event"
@@ -130,17 +138,26 @@
                 </div>
 
                 <!-- 历史会话面板 -->
-                <div v-show="currentPanel === 'history'" class="panel panel-scroll">
+                <div
+                    v-show="currentPanel === 'history'"
+                    class="panel panel-scroll"
+                >
                     <HistoryPanel ref="historyPanelRef" />
                 </div>
 
                 <!-- 商品订单速查面板 -->
-                <div v-show="currentPanel === 'tools'" class="panel panel-scroll">
+                <div
+                    v-show="currentPanel === 'tools'"
+                    class="panel panel-scroll"
+                >
                     <ToolsPanel />
                 </div>
 
                 <!-- 个人设置面板 -->
-                <div v-show="currentPanel === 'settings'" class="panel panel-scroll">
+                <div
+                    v-show="currentPanel === 'settings'"
+                    class="panel panel-scroll"
+                >
                     <SettingsPanel />
                 </div>
             </div>
@@ -152,7 +169,11 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/user";
-import { ApiCustomer, type HistorySession, type CustomerSession } from "@/network/customer";
+import {
+    ApiCustomer,
+    type HistorySession,
+    type CustomerSession,
+} from "@/network/customer";
 import { customerWS } from "@/network/customer.ws";
 import { ElMessage } from "element-plus";
 
@@ -352,7 +373,6 @@ onUnmounted(() => {
         border-left-color: var(--cinnabar);
     }
 }
-
 
 .nav-badge {
     margin-left: auto;

@@ -144,7 +144,12 @@ export class ApiCustomer {
                         from: "customer",
                         type: "product",
                         text: "枸杞红枣茶",
-                        meta: { icon: "🍵", desc: "滋阴补血", price: 38, productId: "p1" },
+                        meta: {
+                            icon: "🍵",
+                            desc: "滋阴补血",
+                            price: 38,
+                            productId: "p1",
+                        },
                         time: "10:25",
                     },
                     {
@@ -275,7 +280,9 @@ export class ApiCustomer {
                 source: "商品 · 当归生姜羊肉汤",
                 sourceTag: "product" as const,
                 firstMsg: "请问这个适合什么体质的人喝？",
-                startedAt: new Date(Date.now() - 6 * 60 * 1000 - 20 * 1000).toISOString(),
+                startedAt: new Date(
+                    Date.now() - 6 * 60 * 1000 - 20 * 1000,
+                ).toISOString(),
                 roleType: "presale" as const,
             },
             {
@@ -284,14 +291,18 @@ export class ApiCustomer {
                 source: "订单 · YYG…012",
                 sourceTag: "order" as const,
                 firstMsg: "我的订单什么时候能发货？",
-                startedAt: new Date(Date.now() - 2 * 60 * 1000 - 10 * 1000).toISOString(),
+                startedAt: new Date(
+                    Date.now() - 2 * 60 * 1000 - 10 * 1000,
+                ).toISOString(),
                 roleType: "aftersale" as const,
             },
         ] as QueuedCustomer[];
     }
 
     // 从队列接入客户，返回新建会话
-    static async acceptFromQueue(queueNum: number): Promise<CustomerSession | null> {
+    static async acceptFromQueue(
+        queueNum: number,
+    ): Promise<CustomerSession | null> {
         // TODO: 替换为真实API调用
         // const response = await GAxios.post('/customer/queue/accept', { queueNum })
         // const res = response.data
@@ -395,9 +406,7 @@ export class ApiCustomer {
             if (startDate)
                 result = result.filter((r) => r.endTime >= startDate);
             if (endDate)
-                result = result.filter(
-                    (r) => r.endTime <= endDate + " 23:59",
-                );
+                result = result.filter((r) => r.endTime <= endDate + " 23:59");
         }
 
         return {
@@ -491,9 +500,7 @@ export class ApiCustomer {
                 source: "商品 · 酸枣仁百合茶",
                 sourceTag: "product" as const,
                 firstMsg: "这个可以配合其他药一起吃吗？",
-                startedAt: new Date(
-                    Date.now() - 9 * 60 * 1000,
-                ).toISOString(),
+                startedAt: new Date(Date.now() - 9 * 60 * 1000).toISOString(),
                 fromAgent: "暮雨",
                 history: [
                     {

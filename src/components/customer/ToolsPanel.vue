@@ -164,7 +164,13 @@ const productLoading = ref(false);
 const productPage = ref(1);
 const productPageSize = ref(10);
 const products = ref<
-    Array<{ id: string; name: string; icon: string; price: number; desc: string }>
+    Array<{
+        id: string;
+        name: string;
+        icon: string;
+        price: number;
+        desc: string;
+    }>
 >([]);
 
 const paginatedProducts = computed(() => {
@@ -184,7 +190,6 @@ async function handleProductSearch() {
         productLoading.value = false;
     }
 }
-
 
 // ── 订单查询 ──
 const orderKeyword = ref("");
@@ -211,7 +216,9 @@ async function handleOrderSearch() {
     orderLoading.value = true;
     orderPage.value = 1;
     try {
-        orders.value = (await ApiCustomer.searchOrders(orderKeyword.value)) as any;
+        orders.value = (await ApiCustomer.searchOrders(
+            orderKeyword.value,
+        )) as any;
     } catch (error) {
         console.error("查询订单失败:", error);
         ElMessage.error("查询订单失败");
@@ -238,8 +245,12 @@ function getStatusClass(status: string): string {
     return map[status] || "";
 }
 
-watch(productKeyword, (val) => { if (!val) handleProductSearch(); });
-watch(orderKeyword,   (val) => { if (!val) handleOrderSearch(); });
+watch(productKeyword, (val) => {
+    if (!val) handleProductSearch();
+});
+watch(orderKeyword, (val) => {
+    if (!val) handleOrderSearch();
+});
 
 onMounted(() => {
     handleProductSearch();
@@ -384,7 +395,6 @@ onMounted(() => {
     font-weight: 600;
     margin-top: 6px;
 }
-
 
 .order-table {
     width: 100%;

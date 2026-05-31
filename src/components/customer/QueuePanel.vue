@@ -33,7 +33,9 @@
                             v-for="(item, index) in paginatedList"
                             :key="item.queueNum"
                         >
-                            <td class="queue-num">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+                            <td class="queue-num">
+                                {{ (currentPage - 1) * pageSize + index + 1 }}
+                            </td>
                             <td>{{ item.custName }}</td>
                             <td>
                                 <a class="source-link">{{ item.source }}</a>
@@ -78,7 +80,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { ApiCustomer, type QueuedCustomer, type CustomerSession } from "@/network/customer";
+import {
+    ApiCustomer,
+    type QueuedCustomer,
+    type CustomerSession,
+} from "@/network/customer";
 import { ElMessage } from "element-plus";
 
 const emit = defineEmits<{

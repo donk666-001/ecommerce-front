@@ -90,8 +90,13 @@
                                 v-if="m.type === 'product' && m.meta"
                                 class="card-msg"
                                 :class="{ 'card-link': m.meta.productId }"
-                                :title="m.meta.productId ? '点击查看商品详情' : ''"
-                                @click="m.meta.productId && openShopProduct(m.meta.productId)"
+                                :title="
+                                    m.meta.productId ? '点击查看商品详情' : ''
+                                "
+                                @click="
+                                    m.meta.productId &&
+                                    openShopProduct(m.meta.productId)
+                                "
                             >
                                 <div class="ic">{{ m.meta.icon }}</div>
                                 <div class="body">
@@ -99,25 +104,44 @@
                                     <div class="s">{{ m.meta.desc }}</div>
                                     <div class="p">¥{{ m.meta.price }}</div>
                                 </div>
-                                <span v-if="m.meta.productId" class="card-goto">↗</span>
+                                <span v-if="m.meta.productId" class="card-goto"
+                                    >↗</span
+                                >
                             </div>
                             <div
                                 v-else-if="m.type === 'order' && m.meta"
                                 class="card-msg"
                                 :class="{ 'card-link': m.meta.orderId }"
-                                :title="m.meta.orderId ? '点击查看订单详情' : ''"
-                                @click="m.meta.orderId && openShopOrder(m.meta.orderId)"
+                                :title="
+                                    m.meta.orderId ? '点击查看订单详情' : ''
+                                "
+                                @click="
+                                    m.meta.orderId &&
+                                    openShopOrder(m.meta.orderId)
+                                "
                             >
                                 <div class="ic">📦</div>
                                 <div class="body">
-                                    <div class="t">{{ m.meta.orderId || m.text }}</div>
-                                    <div class="s">{{ m.meta.desc ? `${m.meta.desc} · ${m.meta.status}` : m.meta.status }}</div>
+                                    <div class="t">
+                                        {{ m.meta.orderId || m.text }}
+                                    </div>
+                                    <div class="s">
+                                        {{
+                                            m.meta.desc
+                                                ? `${m.meta.desc} · ${m.meta.status}`
+                                                : m.meta.status
+                                        }}
+                                    </div>
                                     <div class="p">¥{{ m.meta.amount }}</div>
                                 </div>
-                                <span v-if="m.meta.orderId" class="card-goto">↗</span>
+                                <span v-if="m.meta.orderId" class="card-goto"
+                                    >↗</span
+                                >
                             </div>
                             <div
-                                v-else-if="m.type === 'image' && m.meta?.imageUrl"
+                                v-else-if="
+                                    m.type === 'image' && m.meta?.imageUrl
+                                "
                                 class="img-msg"
                             >
                                 <img
@@ -134,9 +158,15 @@
             </div>
             <div class="chat-input-area">
                 <div class="chat-toolbar">
-                    <button class="tool-btn" @click="openProductPicker">发商品</button>
-                    <button class="tool-btn" @click="openOrderPicker">发订单</button>
-                    <button class="tool-btn" @click="openImagePicker">图片</button>
+                    <button class="tool-btn" @click="openProductPicker">
+                        发商品
+                    </button>
+                    <button class="tool-btn" @click="openOrderPicker">
+                        发订单
+                    </button>
+                    <button class="tool-btn" @click="openImagePicker">
+                        图片
+                    </button>
                     <input
                         ref="imageInputRef"
                         type="file"
@@ -147,16 +177,23 @@
                     <button class="tool-btn" @click.stop="toggleEmojiPicker">
                         表情
                     </button>
-                    <button class="tool-btn" @click="toggleQuickReplies">常用语</button>
+                    <button class="tool-btn" @click="toggleQuickReplies">
+                        常用语
+                    </button>
 
                     <!-- 表情弹窗 -->
-                    <div v-show="showEmojiPicker" class="emoji-picker" @click.stop>
+                    <div
+                        v-show="showEmojiPicker"
+                        class="emoji-picker"
+                        @click.stop
+                    >
                         <span
                             v-for="e in emojiList"
                             :key="e"
                             class="emoji-item"
                             @click="insertEmoji(e)"
-                        >{{ e }}</span>
+                            >{{ e }}</span
+                        >
                     </div>
 
                     <!-- 常用语列表 -->
@@ -166,7 +203,8 @@
                             :key="idx"
                             class="quick-reply-chip"
                             @click="useReply(q)"
-                        >{{ q }}</span>
+                            >{{ q }}</span
+                        >
                     </div>
                 </div>
                 <textarea
@@ -181,20 +219,28 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <!-- 发商品弹窗 -->
     <Teleport to="body">
         <Transition name="mask-fade">
-            <div v-if="showProductPicker" class="picker-mask" @click.self="showProductPicker = false">
+            <div
+                v-if="showProductPicker"
+                class="picker-mask"
+                @click.self="showProductPicker = false"
+            >
                 <div class="picker-dialog">
                     <div class="picker-header">
                         <div class="picker-header-left">
                             <span class="picker-accent"></span>
                             <span class="picker-title">发送商品</span>
                         </div>
-                        <button class="picker-close" @click="showProductPicker = false">✕</button>
+                        <button
+                            class="picker-close"
+                            @click="showProductPicker = false"
+                        >
+                            ✕
+                        </button>
                     </div>
                     <div class="picker-search">
                         <input
@@ -205,8 +251,15 @@
                         />
                     </div>
                     <div class="picker-body">
-                        <div v-if="productLoading" class="picker-empty">搜索中…</div>
-                        <div v-else-if="productList.length === 0" class="picker-empty">暂无商品</div>
+                        <div v-if="productLoading" class="picker-empty">
+                            搜索中…
+                        </div>
+                        <div
+                            v-else-if="productList.length === 0"
+                            class="picker-empty"
+                        >
+                            暂无商品
+                        </div>
                         <div v-else class="picker-product-list">
                             <div
                                 v-for="p in productList"
@@ -232,21 +285,40 @@
     <!-- 发订单弹窗 -->
     <Teleport to="body">
         <Transition name="mask-fade">
-            <div v-if="showOrderPicker" class="picker-mask" @click.self="showOrderPicker = false">
+            <div
+                v-if="showOrderPicker"
+                class="picker-mask"
+                @click.self="showOrderPicker = false"
+            >
                 <div class="picker-dialog">
                     <div class="picker-header">
                         <div class="picker-header-left">
                             <span class="picker-accent"></span>
                             <span class="picker-title">
                                 发送订单
-                                <span class="picker-subtitle">· {{ currentSession?.custName }} 的订单</span>
+                                <span class="picker-subtitle"
+                                    >·
+                                    {{ currentSession?.custName }} 的订单</span
+                                >
                             </span>
                         </div>
-                        <button class="picker-close" @click="showOrderPicker = false">✕</button>
+                        <button
+                            class="picker-close"
+                            @click="showOrderPicker = false"
+                        >
+                            ✕
+                        </button>
                     </div>
                     <div class="picker-body">
-                        <div v-if="orderLoading" class="picker-empty">加载中…</div>
-                        <div v-else-if="orderList.length === 0" class="picker-empty">该客户暂无订单</div>
+                        <div v-if="orderLoading" class="picker-empty">
+                            加载中…
+                        </div>
+                        <div
+                            v-else-if="orderList.length === 0"
+                            class="picker-empty"
+                        >
+                            该客户暂无订单
+                        </div>
                         <div v-else class="picker-order-list">
                             <div
                                 v-for="o in orderList"
@@ -257,11 +329,20 @@
                                 <div class="poi-icon">📦</div>
                                 <div class="poi-info">
                                     <div class="poi-id">{{ o.id }}</div>
-                                    <div class="poi-name">{{ o.productName }} · {{ o.date }}</div>
+                                    <div class="poi-name">
+                                        {{ o.productName }} · {{ o.date }}
+                                    </div>
                                 </div>
                                 <div class="poi-right">
-                                    <div class="poi-amount">¥{{ o.amount }}</div>
-                                    <div class="poi-status" :class="`poi-${getOrderStatusClass(o.status)}`">{{ o.status }}</div>
+                                    <div class="poi-amount">
+                                        ¥{{ o.amount }}
+                                    </div>
+                                    <div
+                                        class="poi-status"
+                                        :class="`poi-${getOrderStatusClass(o.status)}`"
+                                    >
+                                        {{ o.status }}
+                                    </div>
                                 </div>
                                 <button class="ppi-send">发送</button>
                             </div>
@@ -341,20 +422,73 @@ const loading = ref(false);
 // 发商品
 const showProductPicker = ref(false);
 const productKeyword = ref("");
-const productList = ref<Array<{ id: string; name: string; icon: string; price: number; desc: string }>>([]);
+const productList = ref<
+    Array<{
+        id: string;
+        name: string;
+        icon: string;
+        price: number;
+        desc: string;
+    }>
+>([]);
 const productLoading = ref(false);
 
 // 发订单
 const showOrderPicker = ref(false);
-const orderList = ref<Array<{ id: string; productName: string; custName: string; amount: number; status: string; date: string }>>([]);
+const orderList = ref<
+    Array<{
+        id: string;
+        productName: string;
+        custName: string;
+        amount: number;
+        status: string;
+        date: string;
+    }>
+>([]);
 const orderLoading = ref(false);
 
 // 表情
 const emojiList = [
-    "😊","😂","🥺","😍","😭","😅","😉","🤔","😎","🥳",
-    "😆","😋","😜","😇","🤩","😢","😡","😤","🤗","😴",
-    "👍","👎","👏","🙌","🙏","💪","🤝","❤️","💕","💔",
-    "🎉","✨","🌸","🍀","⭐","🔥","💯","🎊","🌺","🎁",
+    "😊",
+    "😂",
+    "🥺",
+    "😍",
+    "😭",
+    "😅",
+    "😉",
+    "🤔",
+    "😎",
+    "🥳",
+    "😆",
+    "😋",
+    "😜",
+    "😇",
+    "🤩",
+    "😢",
+    "😡",
+    "😤",
+    "🤗",
+    "😴",
+    "👍",
+    "👎",
+    "👏",
+    "🙌",
+    "🙏",
+    "💪",
+    "🤝",
+    "❤️",
+    "💕",
+    "💔",
+    "🎉",
+    "✨",
+    "🌸",
+    "🍀",
+    "⭐",
+    "🔥",
+    "💯",
+    "🎊",
+    "🌺",
+    "🎁",
 ];
 
 // 客服回复后等待客户消息的起始时间（客户5分钟无回复自动结束）
@@ -431,7 +565,7 @@ function getAvatar(m: CustomerMessage): string {
 
 function getMeta(m: CustomerMessage): string {
     return m.from === "me"
-        ? (props.agentName || "我")
+        ? props.agentName || "我"
         : currentSession.value?.custName || "客户";
 }
 
@@ -603,7 +737,9 @@ watch(currentSessionId, () => {
     }, 100);
 });
 
-const closePopups = () => { showEmojiPicker.value = false; };
+const closePopups = () => {
+    showEmojiPicker.value = false;
+};
 
 onMounted(async () => {
     await loadSessions();
@@ -627,7 +763,10 @@ function scrollToBottom() {
 
 // ── 发商品 ──
 async function openProductPicker() {
-    if (!currentSession.value) { ElMessage.warning("请先选择一个会话"); return; }
+    if (!currentSession.value) {
+        ElMessage.warning("请先选择一个会话");
+        return;
+    }
     showProductPicker.value = true;
     productKeyword.value = "";
     await searchProducts();
@@ -636,21 +775,34 @@ async function openProductPicker() {
 async function searchProducts() {
     productLoading.value = true;
     try {
-        productList.value = await ApiCustomer.searchProducts(productKeyword.value);
+        productList.value = await ApiCustomer.searchProducts(
+            productKeyword.value,
+        );
     } finally {
         productLoading.value = false;
     }
 }
 
-async function sendProduct(p: typeof productList.value[0]) {
+async function sendProduct(p: (typeof productList.value)[0]) {
     if (!currentSession.value) return;
     const now = new Date();
-    const time = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
-    const ok = await ApiCustomer.sendMessage(currentSession.value.id, `[商品] ${p.name}`);
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const ok = await ApiCustomer.sendMessage(
+        currentSession.value.id,
+        `[商品] ${p.name}`,
+    );
     if (ok) {
         currentSession.value.messages.push({
-            from: "me", text: p.name, time, type: "product",
-            meta: { icon: p.icon, desc: p.desc, price: p.price, productId: p.id },
+            from: "me",
+            text: p.name,
+            time,
+            type: "product",
+            meta: {
+                icon: p.icon,
+                desc: p.desc,
+                price: p.price,
+                productId: p.id,
+            },
         });
         currentSession.value.lastMsg = `[商品] ${p.name}`;
         markWaitingForCustomer(currentSession.value.id);
@@ -661,7 +813,10 @@ async function sendProduct(p: typeof productList.value[0]) {
 
 // ── 发订单 ──
 async function openOrderPicker() {
-    if (!currentSession.value) { ElMessage.warning("请先选择一个会话"); return; }
+    if (!currentSession.value) {
+        ElMessage.warning("请先选择一个会话");
+        return;
+    }
     showOrderPicker.value = true;
     orderLoading.value = true;
     try {
@@ -672,15 +827,26 @@ async function openOrderPicker() {
     }
 }
 
-async function sendOrder(o: typeof orderList.value[0]) {
+async function sendOrder(o: (typeof orderList.value)[0]) {
     if (!currentSession.value) return;
     const now = new Date();
-    const time = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
-    const ok = await ApiCustomer.sendMessage(currentSession.value.id, `[订单] ${o.id}`);
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const ok = await ApiCustomer.sendMessage(
+        currentSession.value.id,
+        `[订单] ${o.id}`,
+    );
     if (ok) {
         currentSession.value.messages.push({
-            from: "me", text: o.id, time, type: "order",
-            meta: { orderId: o.id, desc: o.productName, status: o.status, amount: o.amount },
+            from: "me",
+            text: o.id,
+            time,
+            type: "order",
+            meta: {
+                orderId: o.id,
+                desc: o.productName,
+                status: o.status,
+                amount: o.amount,
+            },
         });
         currentSession.value.lastMsg = `[订单] ${o.id}`;
         markWaitingForCustomer(currentSession.value.id);
@@ -690,7 +856,12 @@ async function sendOrder(o: typeof orderList.value[0]) {
 }
 
 function getOrderStatusClass(status: string) {
-    const map: Record<string,string> = { 待付款:"pending", 已发货:"shipped", 运输中:"transit", 已签收:"delivered" };
+    const map: Record<string, string> = {
+        待付款: "pending",
+        已发货: "shipped",
+        运输中: "transit",
+        已签收: "delivered",
+    };
     return map[status] || "";
 }
 
@@ -1071,7 +1242,9 @@ defineExpose({ loadSessions, selectSession, injectSession });
 
     &.card-link {
         cursor: pointer;
-        transition: border-color 0.15s, box-shadow 0.15s;
+        transition:
+            border-color 0.15s,
+            box-shadow 0.15s;
 
         &:hover {
             border-color: var(--jade);
@@ -1207,7 +1380,6 @@ defineExpose({ loadSessions, selectSession, injectSession });
         background: #9c3325;
     }
 }
-
 
 /* 结束接待确认弹窗 */
 .end-mask {
@@ -1393,7 +1565,7 @@ defineExpose({ loadSessions, selectSession, injectSession });
     width: 28px;
     height: 28px;
     border: none;
-    background: rgba(0,0,0,0.06);
+    background: rgba(0, 0, 0, 0.06);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1431,7 +1603,9 @@ defineExpose({ loadSessions, selectSession, injectSession });
         border-color: var(--jade);
     }
 
-    &::placeholder { color: var(--ink-muted); }
+    &::placeholder {
+        color: var(--ink-muted);
+    }
 }
 
 .picker-body {
@@ -1464,7 +1638,9 @@ defineExpose({ loadSessions, selectSession, injectSession });
     &:hover {
         background: var(--jade-soft);
 
-        .ppi-send { opacity: 1; }
+        .ppi-send {
+            opacity: 1;
+        }
     }
 }
 
@@ -1534,12 +1710,16 @@ defineExpose({ loadSessions, selectSession, injectSession });
     border-bottom: 1px solid var(--line);
     transition: background 0.14s;
 
-    &:last-child { border-bottom: none; }
+    &:last-child {
+        border-bottom: none;
+    }
 
     &:hover {
         background: var(--jade-soft);
 
-        .ppi-send { opacity: 1; }
+        .ppi-send {
+            opacity: 1;
+        }
     }
 }
 
@@ -1588,10 +1768,22 @@ defineExpose({ loadSessions, selectSession, injectSession });
     border-radius: 3px;
     display: inline-block;
 
-    &.poi-pending  { background: #fff3e0; color: #ef6c00; }
-    &.poi-shipped  { background: #e3f2fd; color: #1565c0; }
-    &.poi-transit  { background: var(--gold-soft); color: var(--gold); }
-    &.poi-delivered { background: var(--jade-soft); color: var(--jade); }
+    &.poi-pending {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+    &.poi-shipped {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    &.poi-transit {
+        background: var(--gold-soft);
+        color: var(--gold);
+    }
+    &.poi-delivered {
+        background: var(--jade-soft);
+        color: var(--jade);
+    }
 }
 
 .img-msg {
