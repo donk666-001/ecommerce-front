@@ -24,13 +24,16 @@ export interface CustomerMessage {
     from: "sys" | "customer" | "me";
     text: string;
     time: string;
-    type?: "product" | "order";
+    type?: "product" | "order" | "image";
     meta?: {
         icon?: string;
         desc?: string;
         price?: number;
         status?: string;
         amount?: number;
+        imageUrl?: string;
+        orderId?: string;
+        productId?: string;
     };
 }
 
@@ -41,20 +44,33 @@ export interface QueuedCustomer {
     source: string;
     sourceTag: "product" | "order";
     firstMsg: string;
-    waitTime: string;
+    startedAt: string;
     roleType: "presale" | "aftersale";
 }
 
 // 历史会话类型
 export interface HistorySession {
-    sessionId: string;
+    id: string;
+    custId: string;
     custName: string;
+    agentId: string;
     agentName: string;
-    startTime: string;
-    duration: string;
     msgCount: number;
-    rating: string;
-    endReason: "manual" | "transfer" | "timeout";
+    startTime: string;
+    endTime: string;
+    endReason: "manual" | "timeout";
+}
+
+// 转接排队客户类型
+export interface TransferredCustomer {
+    queueNum: number;
+    custName: string;
+    source: string;
+    sourceTag: "product" | "order" | "general";
+    firstMsg: string;
+    startedAt: string;
+    fromAgent: string;
+    history: CustomerMessage[];
 }
 
 // 客服统计数据
@@ -128,7 +144,7 @@ export class ApiCustomer {
                         from: "customer",
                         type: "product",
                         text: "枸杞红枣茶",
-                        meta: { icon: "🍵", desc: "滋阴补血", price: 38 },
+                        meta: { icon: "🍵", desc: "滋阴补血", price: 38, productId: "p1" },
                         time: "10:25",
                     },
                     {
@@ -259,7 +275,7 @@ export class ApiCustomer {
                 source: "商品 · 当归生姜羊肉汤",
                 sourceTag: "product" as const,
                 firstMsg: "请问这个适合什么体质的人喝？",
-                waitTime: "2:15",
+                startedAt: new Date(Date.now() - 6 * 60 * 1000 - 20 * 1000).toISOString(),
                 roleType: "presale" as const,
             },
             {
@@ -268,89 +284,125 @@ export class ApiCustomer {
                 source: "订单 · YYG…012",
                 sourceTag: "order" as const,
                 firstMsg: "我的订单什么时候能发货？",
-                waitTime: "1:30",
+                startedAt: new Date(Date.now() - 2 * 60 * 1000 - 10 * 1000).toISOString(),
                 roleType: "aftersale" as const,
             },
         ] as QueuedCustomer[];
     }
 
-    // 从队列接入客户
-    static async acceptFromQueue(queueNum: number) {
+    // 从队列接入客户，返回新建会话
+    static async acceptFromQueue(queueNum: number): Promise<CustomerSession | null> {
         // TODO: 替换为真实API调用
-        // const response = await GAxios.post('/customer/queue/accept', {
-        //     queueNum,
-        // })
+        // const response = await GAxios.post('/customer/queue/accept', { queueNum })
         // const res = response.data
-        // return res.code === 200
+        // if (res.code === 200) return res.data as CustomerSession
+        // return null
 
-        // 模拟成功
+        const queue = await this.getQueueList();
+        const item = queue.find((q) => q.queueNum === queueNum);
+        if (!item) return null;
+
+        const now = new Date();
+        const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
         console.log(`从队列接入客户 #${queueNum}`);
-        return true;
+        return {
+            id: `session_${queueNum}_${Date.now()}`,
+            custId: `cust_queue_${queueNum}`,
+            custName: item.custName,
+            avatar: item.custName[0],
+            source: item.source,
+            sourceTag: item.sourceTag,
+            startedAt: new Date().toISOString(),
+            unread: 1,
+            lastMsg: item.firstMsg,
+            custTags: [],
+            custCity: "",
+            custReg: "",
+            custSpent: "¥0",
+            custOrderCount: 0,
+            custCart: [],
+            cartTotal: 0,
+            messages: [
+                { from: "sys" as const, text: `会话开始 · ${time}`, time: "" },
+                { from: "customer" as const, text: item.firstMsg, time },
+            ],
+        };
     }
 
     // 获取历史会话
     static async getHistorySessions(
         page: number,
         pageSize: number,
-        _filters?: {
-            custName?: string;
+        filters?: {
+            keyword?: string;
             startDate?: string;
             endDate?: string;
-            agentId?: string;
         },
     ) {
         // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/history', {
-        //     params: {
-        //         page,
-        //         pageSize,
-        //         ...filters,
-        //     },
-        // })
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data
-        // } else {
-        //     return { records: [], total: 0 }
-        // }
 
-        // 模拟数据
         const mockData: HistorySession[] = [
             {
-                sessionId: "h1",
+                id: "h1",
+                custId: "C001",
                 custName: "清风明月",
+                agentId: "CS001",
                 agentName: "小翠",
-                startTime: "2026-05-29 10:24",
-                duration: "15:32",
                 msgCount: 28,
-                rating: "满意",
+                startTime: "2026-05-29 10:24",
+                endTime: "2026-05-29 10:39",
                 endReason: "manual" as const,
             },
             {
-                sessionId: "h2",
+                id: "h2",
+                custId: "C002",
                 custName: "云栖之客",
+                agentId: "CS002",
                 agentName: "阿岚",
-                startTime: "2026-05-29 14:15",
-                duration: "8:45",
                 msgCount: 12,
-                rating: "满意",
+                startTime: "2026-05-29 14:15",
+                endTime: "2026-05-29 14:23",
                 endReason: "manual" as const,
             },
             {
-                sessionId: "h3",
+                id: "h3",
+                custId: "C003",
                 custName: "山水之间",
+                agentId: "CS001",
                 agentName: "小翠",
-                startTime: "2026-05-28 09:30",
-                duration: "22:10",
                 msgCount: 45,
-                rating: "非常满意",
-                endReason: "manual" as const,
+                startTime: "2026-05-28 09:30",
+                endTime: "2026-05-28 09:52",
+                endReason: "timeout" as const,
             },
         ];
 
+        let result = [...mockData];
+
+        if (filters) {
+            const { keyword, startDate, endDate } = filters;
+            if (keyword) {
+                const kw = keyword.toLowerCase();
+                result = result.filter(
+                    (r) =>
+                        r.custId.toLowerCase().includes(kw) ||
+                        r.custName.toLowerCase().includes(kw) ||
+                        r.agentId.toLowerCase().includes(kw) ||
+                        r.agentName.toLowerCase().includes(kw),
+                );
+            }
+            if (startDate)
+                result = result.filter((r) => r.endTime >= startDate);
+            if (endDate)
+                result = result.filter(
+                    (r) => r.endTime <= endDate + " 23:59",
+                );
+        }
+
         return {
-            records: mockData.slice((page - 1) * pageSize, page * pageSize),
-            total: mockData.length,
+            records: result.slice((page - 1) * pageSize, page * pageSize),
+            total: result.length,
         };
     }
 
@@ -430,6 +482,91 @@ export class ApiCustomer {
         return true;
     }
 
+    // 获取他人转接排队列表
+    static async getTransferQueue(): Promise<TransferredCustomer[]> {
+        return [
+            {
+                queueNum: 101,
+                custName: "梅花三弄",
+                source: "商品 · 酸枣仁百合茶",
+                sourceTag: "product" as const,
+                firstMsg: "这个可以配合其他药一起吃吗？",
+                startedAt: new Date(
+                    Date.now() - 9 * 60 * 1000,
+                ).toISOString(),
+                fromAgent: "暮雨",
+                history: [
+                    {
+                        from: "sys" as const,
+                        text: "会话开始 · 10:40",
+                        time: "",
+                    },
+                    {
+                        from: "customer" as const,
+                        text: "你好，这款酸枣仁百合茶可以配合其他药一起吃吗？",
+                        time: "10:40",
+                    },
+                    {
+                        from: "me" as const,
+                        text: "您好，我是客服暮雨，请问您目前在服用哪些药物呢？",
+                        time: "10:41",
+                    },
+                    {
+                        from: "customer" as const,
+                        text: "我在吃阿司匹林，不知道有没有影响",
+                        time: "10:42",
+                    },
+                ],
+            },
+        ];
+    }
+
+    // 接受转接客户，返回带历史记录的会话
+    static async acceptTransfer(
+        queueNum: number,
+    ): Promise<CustomerSession | null> {
+        const transfers = await this.getTransferQueue();
+        const transfer = transfers.find((t) => t.queueNum === queueNum);
+        if (!transfer) return null;
+
+        const lastCustomerMsg = [...transfer.history]
+            .reverse()
+            .find((m) => m.from === "customer");
+
+        return {
+            id: `transfer_${queueNum}_${Date.now()}`,
+            custId: `cust_transfer_${queueNum}`,
+            custName: transfer.custName,
+            avatar: transfer.custName[0],
+            source: transfer.source,
+            sourceTag: transfer.sourceTag,
+            startedAt: transfer.startedAt,
+            unread: transfer.history.filter((m) => m.from === "customer")
+                .length,
+            lastMsg: lastCustomerMsg?.text || transfer.firstMsg,
+            custTags: [],
+            custCity: "",
+            custReg: "",
+            custSpent: "¥0",
+            custOrderCount: 0,
+            custCart: [],
+            cartTotal: 0,
+            messages: [
+                {
+                    from: "sys" as const,
+                    text: `由 ${transfer.fromAgent} 转接 · 以下为历史记录`,
+                    time: "",
+                },
+                ...transfer.history,
+                {
+                    from: "sys" as const,
+                    text: "—— 历史记录结束，以下由您接待 ——",
+                    time: "",
+                },
+            ],
+        };
+    }
+
     // 搜索商品
     static async searchProducts(keyword: string) {
         // TODO: 替换为真实API调用
@@ -497,6 +634,7 @@ export class ApiCustomer {
             {
                 id: "YYG20260525008",
                 custName: "云栖之客",
+                productName: "四物汤药膳包",
                 amount: 128,
                 status: "运输中",
                 date: "2026-05-25",
@@ -504,6 +642,7 @@ export class ApiCustomer {
             {
                 id: "YYG20260524012",
                 custName: "清风明月",
+                productName: "枸杞红枣茶",
                 amount: 86,
                 status: "已签收",
                 date: "2026-05-24",
@@ -511,6 +650,7 @@ export class ApiCustomer {
             {
                 id: "YYG20260523005",
                 custName: "山水之间",
+                productName: "当归生姜羊肉汤",
                 amount: 256,
                 status: "已发货",
                 date: "2026-05-23",
@@ -518,8 +658,12 @@ export class ApiCustomer {
         ];
 
         if (!keyword) return allOrders;
+        const kw = keyword.toLowerCase();
         return allOrders.filter(
-            (o) => o.id.includes(keyword) || o.custName.includes(keyword),
+            (o) =>
+                o.id.toLowerCase().includes(kw) ||
+                o.productName.toLowerCase().includes(kw) ||
+                o.custName.toLowerCase().includes(kw),
         );
     }
 }

@@ -1,25 +1,23 @@
-<template>
+﻿<template>
     <div class="tools-panel">
         <div class="section-title font-serif">商品 / 订单速查</div>
 
         <!-- 搜索标签切换 -->
-        <div class="panel-card">
-            <div class="search-tabs">
-                <button
-                    class="tab-btn"
-                    :class="{ active: searchType === 'product' }"
-                    @click="searchType = 'product'"
-                >
-                    🛒 商品搜索
-                </button>
-                <button
-                    class="tab-btn"
-                    :class="{ active: searchType === 'order' }"
-                    @click="searchType = 'order'"
-                >
-                    📦 订单查询
-                </button>
-            </div>
+        <div class="panel-card tab-card">
+            <button
+                class="tab-btn"
+                :class="{ active: searchType === 'product' }"
+                @click="searchType = 'product'"
+            >
+                商品搜索
+            </button>
+            <button
+                class="tab-btn"
+                :class="{ active: searchType === 'order' }"
+                @click="searchType = 'order'"
+            >
+                订单查询
+            </button>
         </div>
 
         <!-- 商品搜索 -->
@@ -27,7 +25,7 @@
             <div class="search-bar">
                 <el-input
                     v-model="productKeyword"
-                    placeholder="输入商品名称关键词"
+                    placeholder="输入商品名称"
                     clearable
                     style="flex: 1"
                     @clear="handleProductSearch"
@@ -40,33 +38,39 @@
             </div>
             <div class="panel-card-body">
                 <div v-if="productLoading" class="loading-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">🔍</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        搜索中...
-                    </div>
+                    <div class="state-text">搜索中...</div>
                 </div>
                 <div v-else-if="products.length === 0" class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">📭</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        暂无搜索结果
-                    </div>
+                    <div class="state-text">暂无搜索结果</div>
                 </div>
                 <div v-else class="product-grid">
                     <div
-                        v-for="item in products"
+                        v-for="item in paginatedProducts"
                         :key="item.id"
                         class="product-card"
+                        title="点击查看商品详情"
+                        @click="openShopProduct(item.id)"
                     >
-                        <div class="product-icon">{{ item.icon }}</div>
                         <div class="product-info">
-                            <div class="product-name">{{ item.name }}</div>
+                            <div class="product-name">
+                                {{ item.name }}
+                                <span class="goto-icon">↗</span>
+                            </div>
                             <div class="product-desc">{{ item.desc }}</div>
                             <div class="product-price">¥{{ item.price }}</div>
                         </div>
-                        <button class="btn-send" @click="sendProduct(item)">
-                            发送
-                        </button>
                     </div>
+                </div>
+                <div v-if="products.length > 0" class="pagination">
+                    <el-pagination
+                        v-model:current-page="productPage"
+                        v-model:page-size="productPageSize"
+                        :total="products.length"
+                        :page-sizes="[10, 20]"
+                        layout="total, sizes, prev, pager, next"
+                        @size-change="productPage = 1"
+                        @current-change="() => {}"
+                    />
                 </div>
             </div>
         </div>
@@ -76,7 +80,7 @@
             <div class="search-bar">
                 <el-input
                     v-model="orderKeyword"
-                    placeholder="输入订单号或客户姓名"
+                    placeholder="输入订单编号或商品名称"
                     clearable
                     style="flex: 1"
                     @clear="handleOrderSearch"
@@ -89,31 +93,35 @@
             </div>
             <div class="panel-card-body">
                 <div v-if="orderLoading" class="loading-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">🔍</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        查询中...
-                    </div>
+                    <div class="state-text">查询中...</div>
                 </div>
                 <div v-else-if="orders.length === 0" class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">📭</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        暂无搜索结果
-                    </div>
+                    <div class="state-text">暂无搜索结果</div>
                 </div>
                 <table v-else class="order-table">
                     <thead>
                         <tr>
                             <th>订单号</th>
+                            <th>商品名称</th>
                             <th>客户</th>
                             <th>金额</th>
                             <th>状态</th>
                             <th>下单日期</th>
-                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in orders" :key="item.id">
-                            <td class="order-id">{{ item.id }}</td>
+                        <tr
+                            v-for="item in paginatedOrders"
+                            :key="item.id"
+                            class="order-row"
+                            title="点击查看订单详情"
+                            @click="openShopOrder(item.id)"
+                        >
+                            <td class="order-id">
+                                {{ item.id }}
+                                <span class="row-goto">↗</span>
+                            </td>
+                            <td>{{ item.productName }}</td>
                             <td>{{ item.custName }}</td>
                             <td>¥{{ item.amount }}</td>
                             <td>
@@ -125,47 +133,50 @@
                                 </span>
                             </td>
                             <td>{{ item.date }}</td>
-                            <td>
-                                <button
-                                    class="btn-send"
-                                    @click="sendOrder(item)"
-                                >
-                                    发送
-                                </button>
-                            </td>
                         </tr>
                     </tbody>
                 </table>
+                <div v-if="orders.length > 0" class="pagination">
+                    <el-pagination
+                        v-model:current-page="orderPage"
+                        v-model:page-size="orderPageSize"
+                        :total="orders.length"
+                        :page-sizes="[10, 20]"
+                        layout="total, sizes, prev, pager, next"
+                        @size-change="orderPage = 1"
+                        @current-change="() => {}"
+                    />
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { ApiCustomer } from "@/network/customer";
-import { ElMessage } from "element-plus";
 
 const searchType = ref<"product" | "order">("product");
 
-// 商品搜索
+// ── 商品搜索 ──
 const productKeyword = ref("");
 const productLoading = ref(false);
+const productPage = ref(1);
+const productPageSize = ref(10);
 const products = ref<
-    Array<{
-        id: string;
-        name: string;
-        icon: string;
-        price: number;
-        desc: string;
-    }>
+    Array<{ id: string; name: string; icon: string; price: number; desc: string }>
 >([]);
+
+const paginatedProducts = computed(() => {
+    const start = (productPage.value - 1) * productPageSize.value;
+    return products.value.slice(start, start + productPageSize.value);
+});
 
 async function handleProductSearch() {
     productLoading.value = true;
+    productPage.value = 1;
     try {
-        const data = await ApiCustomer.searchProducts(productKeyword.value);
-        products.value = data;
+        products.value = await ApiCustomer.searchProducts(productKeyword.value);
     } catch (error) {
         console.error("搜索商品失败:", error);
         ElMessage.error("搜索商品失败");
@@ -174,18 +185,16 @@ async function handleProductSearch() {
     }
 }
 
-function sendProduct(product: any) {
-    // TODO: 实现发送商品到当前会话
-    ElMessage.success(`已发送商品: ${product.name}`);
-    console.log("发送商品:", product);
-}
 
-// 订单查询
+// ── 订单查询 ──
 const orderKeyword = ref("");
 const orderLoading = ref(false);
+const orderPage = ref(1);
+const orderPageSize = ref(10);
 const orders = ref<
     Array<{
         id: string;
+        productName: string;
         custName: string;
         amount: number;
         status: string;
@@ -193,11 +202,16 @@ const orders = ref<
     }>
 >([]);
 
+const paginatedOrders = computed(() => {
+    const start = (orderPage.value - 1) * orderPageSize.value;
+    return orders.value.slice(start, start + orderPageSize.value);
+});
+
 async function handleOrderSearch() {
     orderLoading.value = true;
+    orderPage.value = 1;
     try {
-        const data = await ApiCustomer.searchOrders(orderKeyword.value);
-        orders.value = data;
+        orders.value = (await ApiCustomer.searchOrders(orderKeyword.value)) as any;
     } catch (error) {
         console.error("查询订单失败:", error);
         ElMessage.error("查询订单失败");
@@ -206,10 +220,12 @@ async function handleOrderSearch() {
     }
 }
 
-function sendOrder(order: any) {
-    // TODO: 实现发送订单到当前会话
-    ElMessage.success(`已发送订单: ${order.id}`);
-    console.log("发送订单:", order);
+function openShopProduct(productId: string) {
+    window.open(`/shop?open=${productId}`, "_blank");
+}
+
+function openShopOrder(orderId: string) {
+    window.open(`/shop?order=${orderId}`, "_blank");
 }
 
 function getStatusClass(status: string): string {
@@ -221,12 +237,20 @@ function getStatusClass(status: string): string {
     };
     return map[status] || "";
 }
+
+watch(productKeyword, (val) => { if (!val) handleProductSearch(); });
+watch(orderKeyword,   (val) => { if (!val) handleOrderSearch(); });
+
+onMounted(() => {
+    handleProductSearch();
+    handleOrderSearch();
+});
 </script>
 
 <style scoped lang="scss">
 .section-title {
     font-family: "STKaiti", serif;
-    font-size: 19px;
+    font-size: 22px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -249,14 +273,10 @@ function getStatusClass(status: string): string {
     border: 1px solid rgba(232, 223, 208, 0.5);
 }
 
-.panel-card-body {
-    padding: 14px 18px;
-}
-
-.search-tabs {
+.tab-card {
     display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--line);
+    margin-bottom: 14px;
+    overflow: hidden;
 }
 
 .tab-btn {
@@ -265,7 +285,7 @@ function getStatusClass(status: string): string {
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    font-size: 14px;
+    font-size: 17px;
     font-family: inherit;
     cursor: pointer;
     transition: all 0.2s;
@@ -288,12 +308,22 @@ function getStatusClass(status: string): string {
     padding: 14px 18px;
     display: flex;
     gap: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.panel-card-body {
+    padding: 14px 18px;
 }
 
 .loading-state,
 .empty-state {
     text-align: center;
     padding: 40px;
+}
+
+.state-text {
+    font-size: 17px;
+    color: var(--ink-muted);
 }
 
 .product-grid {
@@ -303,30 +333,29 @@ function getStatusClass(status: string): string {
 }
 
 .product-card {
-    display: flex;
-    gap: 12px;
-    padding: 12px;
+    padding: 14px;
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--paper-warm);
+    cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
         border-color: var(--jade);
         box-shadow: var(--shadow);
+
+        .goto-icon {
+            opacity: 1;
+        }
     }
 }
 
-.product-icon {
-    width: 56px;
-    height: 56px;
-    background: var(--cream);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    flex-shrink: 0;
+.goto-icon {
+    font-size: 14px;
+    color: var(--jade);
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: 4px;
 }
 
 .product-info {
@@ -335,13 +364,13 @@ function getStatusClass(status: string): string {
 }
 
 .product-name {
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
     margin-bottom: 4px;
 }
 
 .product-desc {
-    font-size: 12px;
+    font-size: 15px;
     color: var(--ink-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -349,34 +378,18 @@ function getStatusClass(status: string): string {
 }
 
 .product-price {
-    font-size: 16px;
+    font-size: 18px;
     color: var(--cinnabar);
     font-family: "STKaiti", serif;
     font-weight: 600;
     margin-top: 6px;
 }
 
-.btn-send {
-    align-self: center;
-    padding: 6px 14px;
-    background: var(--jade);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.15s;
-
-    &:hover {
-        background: #4a9e7a;
-    }
-}
 
 .order-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 17px;
 
     thead {
         background: var(--cream);
@@ -385,13 +398,13 @@ function getStatusClass(status: string): string {
     th {
         text-align: left;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 16px;
         color: var(--ink-muted);
         padding: 12px 16px;
     }
 
     td {
-        padding: 14px 16px;
+        padding: 13px 16px;
         border-top: 1px solid var(--line);
         vertical-align: middle;
     }
@@ -401,18 +414,43 @@ function getStatusClass(status: string): string {
     }
 }
 
+.order-row {
+    cursor: pointer;
+
+    &:hover td {
+        background: var(--jade-soft);
+    }
+
+    &:hover .row-goto {
+        opacity: 1;
+    }
+}
+
 .order-id {
     font-family: monospace;
-    font-size: 12px;
+    font-size: 15px;
     color: var(--ink-muted);
+}
+
+.row-goto {
+    font-size: 13px;
+    color: var(--jade);
+    opacity: 0;
+    margin-left: 4px;
+    transition: opacity 0.15s;
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .status-tag {
     display: inline-block;
-    padding: 2px 8px;
-    font-size: 11px;
+    padding: 3px 9px;
+    font-size: 15px;
     border-radius: 3px;
-    font-family: "STKaiti", serif;
 
     &.status-pending {
         background: #fff3e0;

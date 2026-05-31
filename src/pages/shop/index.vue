@@ -104,7 +104,7 @@
                         🤖 本购物车已与「AI 管家」板块联通，由 AI
                         推荐加入的商品会在名称后标注「AI 推荐」徽章
                     </div>
-                    <div v-if="cartItems.length === 0" class="empty-tip">
+                    <div v-if="cart.length === 0" class="empty-tip">
                         <span class="ic">🛒</span>购物车空空如也<br />
                         <button
                             class="yy-btn"
@@ -116,19 +116,24 @@
                     </div>
                     <div v-else class="cart-list">
                         <div
-                            v-for="item in cartItems"
+                            v-for="item in cart"
                             :key="item.id"
                             class="cart-item"
                         >
                             <div class="cart-thumb">
-                                {{ getProductIcon(item.productId) }}
+                                {{ getProduct(item.id).icon }}
                             </div>
                             <div class="cart-item-info">
                                 <div class="cart-item-name">
-                                    {{ item.productName }}
+                                    {{ getProduct(item.id).name }}
+                                    <span
+                                        v-if="item.fromAi"
+                                        class="cart-from-ai"
+                                        >AI 推荐</span
+                                    >
                                 </div>
                                 <div class="cart-item-meta">
-                                    单价 ¥{{ item.price.toFixed(2) }}
+                                    单价 ¥{{ getProduct(item.id).price }}
                                 </div>
                             </div>
                             <div class="qty-ctrl">
@@ -138,7 +143,7 @@
                                 >
                                     −
                                 </button>
-                                <span class="qty-num">{{ item.quantity }}</span>
+                                <span class="qty-num">{{ item.qty }}</span>
                                 <button
                                     class="qty-btn"
                                     @click="changeQty(item.id, 1)"
@@ -147,7 +152,11 @@
                                 </button>
                             </div>
                             <div class="cart-item-price">
-                                ¥{{ (item.price * item.quantity).toFixed(2) }}
+                                ¥{{
+                                    (
+                                        getProduct(item.id).price * item.qty
+                                    ).toFixed(2)
+                                }}
                             </div>
                             <button
                                 class="cart-rm"
@@ -157,7 +166,7 @@
                             </button>
                         </div>
                     </div>
-                    <div v-if="cartItems.length > 0" class="cart-summary">
+                    <div v-if="cart.length > 0" class="cart-summary">
                         <div>
                             <span class="cart-total-label">合计：</span>
                             <span class="cart-total-num"
@@ -185,40 +194,16 @@
 
             <!-- Panel: Order -->
             <div v-show="activeTab === 'order'" class="panel">
-                <div class="order-header-actions">
-                    <div class="order-status-tabs">
-                        <button
-                            v-for="os in orderStatusDefs"
-                            :key="os.key"
-                            class="order-status-tab"
-                            :class="{ active: orderFilter === os.key }"
-                            @click="orderFilter = os.key"
-                        >
-                            {{ os.label }}
-                            <span class="num">({{ orderCount(os.key) }})</span>
-                        </button>
-                    </div>
+                <div class="order-status-tabs">
                     <button
-                        class="btn btn-outline btn-sm refresh-btn"
-                        @click="refreshOrders"
-                        :disabled="orderLoading"
-                        title="点击同步最新订单状态（如管理员发货后）"
+                        v-for="os in orderStatusDefs"
+                        :key="os.key"
+                        class="order-status-tab"
+                        :class="{ active: orderFilter === os.key }"
+                        @click="orderFilter = os.key"
                     >
-                        <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            style="width: 16px; height: 16px"
-                        >
-                            <path d="M23 4v6h-6M1 20v-6h6" />
-                            <path
-                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
-                            />
-                        </svg>
-                        <span>{{
-                            orderLoading ? "同步中..." : "同步状态"
-                        }}</span>
+                        {{ os.label }}
+                        <span class="num">({{ orderCount(os.key) }})</span>
                     </button>
                 </div>
                 <div v-if="filteredOrders.length === 0" class="empty-tip">
@@ -237,23 +222,11 @@
                                 >
                                 <span class="order-time">{{ o.time }}</span>
                             </div>
-                            <div class="order-status-group">
-                                <span
-                                    class="order-status"
-                                    :class="orderStatusClass(o.status)"
-                                    >{{ orderStatusText(o.status) }}</span
-                                >
-                                <!-- 独立显示退款状态 -->
-                                <span
-                                    v-if="o.refundStatus !== undefined"
-                                    class="refund-status-badge"
-                                    :class="
-                                        getRefundStatusClass(o.refundStatus)
-                                    "
-                                >
-                                    {{ getRefundStatusText(o.refundStatus) }}
-                                </span>
-                            </div>
+                            <span
+                                class="order-status"
+                                :class="orderStatusClass(o.status)"
+                                >{{ orderStatusText(o.status) }}</span
+                            >
                         </div>
                         <div class="order-body">
                             <div class="order-thumb-row">
@@ -302,7 +275,7 @@
                                     </button>
                                     <button
                                         class="btn btn-cinnabar"
-                                        @click="payOrder(o.no)"
+                                        @click="openPay"
                                     >
                                         立即支付
                                     </button>
@@ -310,7 +283,7 @@
                                 <template v-else-if="o.status === 'topay'">
                                     <button
                                         class="btn btn-outline"
-                                        @click="openRefundModal(o.no)"
+                                        @click="refundOrder(o.no)"
                                     >
                                         申请退款
                                     </button>
@@ -328,143 +301,57 @@
                                     </button>
                                 </template>
                                 <template v-else-if="o.status === 'shipped'">
-                                    <!-- 根据退款状态显示不同按钮 -->
-                                    <template
-                                        v-if="o.refundStatus === undefined"
+                                    <button
+                                        class="btn btn-outline"
+                                        @click="refundOrder(o.no)"
                                     >
-                                        <!-- 无退款 -->
+                                        申请退款
+                                    </button>
+                                    <button
+                                        class="btn btn-outline"
+                                        @click="openLogistics(o.no)"
+                                    >
+                                        查看物流
+                                    </button>
+                                    <button
+                                        class="btn btn-jade"
+                                        @click="confirmReceipt(o.no)"
+                                    >
+                                        确认收货
+                                    </button>
+                                    <div class="more-wrap" @click.stop>
                                         <button
                                             class="btn btn-outline"
-                                            @click="openRefundModal(o.no)"
+                                            @click="toggleMore(idx)"
                                         >
-                                            申请退款
+                                            更多 ▾
                                         </button>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="openLogistics(o.no)"
+                                        <div
+                                            class="more-menu"
+                                            :class="{
+                                                show: openMoreIdx === idx,
+                                            }"
                                         >
-                                            查看物流
-                                        </button>
-                                        <button
-                                            class="btn btn-jade"
-                                            @click="confirmReceipt(o.no)"
-                                        >
-                                            确认收货
-                                        </button>
-                                        <div class="more-wrap" @click.stop>
-                                            <button
-                                                class="btn btn-outline"
-                                                @click="toggleMore(idx)"
-                                            >
-                                                更多 ▾
-                                            </button>
                                             <div
-                                                class="more-menu"
-                                                :class="{
-                                                    show: openMoreIdx === idx,
-                                                }"
+                                                class="more-menu-item"
+                                                @click="
+                                                    reBuy(o.no);
+                                                    openMoreIdx = -1;
+                                                "
                                             >
-                                                <div
-                                                    class="more-menu-item"
-                                                    @click="
-                                                        reBuy(o.no);
-                                                        openMoreIdx = -1;
-                                                    "
-                                                >
-                                                    再次拼单
-                                                </div>
-                                                <div
-                                                    class="more-menu-item"
-                                                    @click="
-                                                        extendReceipt(o.no);
-                                                        openMoreIdx = -1;
-                                                    "
-                                                >
-                                                    延长收货
-                                                </div>
+                                                再次拼单
+                                            </div>
+                                            <div
+                                                class="more-menu-item"
+                                                @click="
+                                                    extendReceipt(o.no);
+                                                    openMoreIdx = -1;
+                                                "
+                                            >
+                                                延长收货
                                             </div>
                                         </div>
-                                    </template>
-                                    <template
-                                        v-else-if="
-                                            [0, 1, 2].includes(o.refundStatus)
-                                        "
-                                    >
-                                        <!-- 退款申请中、审核通过、退款中 -->
-                                        <div class="refund-status-tip">
-                                            <span class="tip-icon">⏳</span>
-                                            <span class="tip-text"
-                                                >{{
-                                                    getRefundStatusText(
-                                                        o.refundStatus,
-                                                    )
-                                                }}，客服将在 24h 内处理</span
-                                            >
-                                        </div>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="openLogistics(o.no)"
-                                        >
-                                            查看物流
-                                        </button>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="reBuy(o.no)"
-                                        >
-                                            再次购买
-                                        </button>
-                                    </template>
-                                    <template v-else-if="o.refundStatus === 3">
-                                        <!-- 退款已完成 -->
-                                        <div class="refund-completed-tip">
-                                            <span class="tip-icon">✅</span>
-                                            <span class="tip-text"
-                                                >退款已完成，款项将原路返回</span
-                                            >
-                                        </div>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="reBuy(o.no)"
-                                        >
-                                            再次购买
-                                        </button>
-                                    </template>
-                                    <template v-else-if="o.refundStatus === 4">
-                                        <!-- 退款失败 -->
-                                        <div class="refund-rejected-tip">
-                                            <span class="tip-icon">❌</span>
-                                            <div class="tip-content">
-                                                <span class="tip-text"
-                                                    >退款申请已被拒绝</span
-                                                >
-                                                <span
-                                                    v-if="o.auditRemark"
-                                                    class="tip-reason"
-                                                    >原因：{{
-                                                        o.auditRemark
-                                                    }}</span
-                                                >
-                                            </div>
-                                        </div>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="openRefundModal(o.no)"
-                                        >
-                                            重新申请退款
-                                        </button>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="openLogistics(o.no)"
-                                        >
-                                            查看物流
-                                        </button>
-                                        <button
-                                            class="btn btn-jade"
-                                            @click="confirmReceipt(o.no)"
-                                        >
-                                            确认收货
-                                        </button>
-                                    </template>
+                                    </div>
                                 </template>
                                 <template v-else>
                                     <button
@@ -715,17 +602,19 @@
                 <div class="modal-body">
                     <div class="pay-card">
                         <div
-                            v-for="item in cartItems"
+                            v-for="item in cart"
                             :key="item.id"
                             class="pay-row"
                         >
                             <span
-                                >{{ item.productName }} ×
-                                {{ item.quantity }}</span
+                                >{{ getProduct(item.id).name }} ×
+                                {{ item.qty }}</span
                             >
                             <span
                                 >¥{{
-                                    (item.price * item.quantity).toFixed(2)
+                                    (
+                                        getProduct(item.id).price * item.qty
+                                    ).toFixed(2)
                                 }}</span
                             >
                         </div>
@@ -799,7 +688,7 @@
             <div
                 class="modal"
                 style="max-width: 620px"
-                v-if="currentLogisticsDetail"
+                v-if="selectedOrderLogistics"
             >
                 <div class="modal-header">
                     <h3>物流详情</h3>
@@ -814,78 +703,51 @@
                     <div class="logistics-detail-header">
                         <div class="carrier">
                             <span style="font-size: 24px">🚛</span
-                            ><span>{{
-                                currentLogisticsDetail.logisticsCompany ||
-                                "物流公司"
-                            }}</span>
+                            ><span>顺丰速运</span>
                         </div>
                         <div class="track-no">
-                            运单号：<span>{{
-                                currentLogisticsDetail.trackingNo || "暂无"
-                            }}</span>
-                        </div>
-                        <div class="track-status">
-                            当前状态：<span
-                                :class="
-                                    getLogisticsStatusClass(
-                                        currentLogisticsDetail.status,
-                                    )
-                                "
-                                >{{
-                                    getLogisticsStatusText(
-                                        currentLogisticsDetail.status,
-                                    )
+                            运单号：<span
+                                >SF{{
+                                    selectedOrderNo.replace("YYG", "")
                                 }}</span
                             >
                         </div>
                     </div>
-
-                    <!-- 物流轨迹时间线 -->
-                    <div
-                        class="logistics-detail-steps"
-                        v-if="
-                            currentLogisticsDetail.details &&
-                            currentLogisticsDetail.details.length > 0
-                        "
-                    >
-                        <div
-                            v-for="(
-                                detail, index
-                            ) in currentLogisticsDetail.details"
-                            :key="detail.time"
-                            class="logistics-detail-step"
-                            :class="{ done: index === 0 }"
-                        >
-                            <div class="step-content">
-                                {{ detail.description }}
-                            </div>
-                            <div class="step-location" v-if="detail.location">
-                                {{ detail.location }}
-                            </div>
-                            <span class="step-time">{{
-                                formatLogisticsTime(detail.time)
-                            }}</span>
-                        </div>
-                    </div>
-
-                    <!-- 空状态 -->
-                    <div v-else class="empty-logistics">
-                        <div style="font-size: 48px; margin-bottom: 12px">
+                    <div class="logistics-detail-map">
+                        <div class="log-map-route"></div>
+                        <div class="log-map-done"></div>
+                        <div class="log-map-pin start">
                             📦
+                            <div class="log-map-label">
+                                {{ selectedOrderLogistics.from }}
+                            </div>
                         </div>
-                        <p>暂无物流轨迹信息</p>
-                        <p class="hint">订单尚未发货或物流信息未更新</p>
+                        <div class="log-map-pin current">
+                            🚚
+                            <div class="log-map-label red-label">运输中</div>
+                        </div>
+                        <div class="log-map-pin end">
+                            🏠
+                            <div class="log-map-label">
+                                {{ selectedOrderLogistics.to }}
+                            </div>
+                        </div>
                     </div>
-
-                    <div
-                        class="logistics-detail-foot"
-                        v-if="currentLogisticsDetail.currentLocation"
-                    >
-                        <span>当前位置：</span>
-                        <span
-                            style="color: var(--cinnabar); font-weight: 600"
-                            >{{ currentLogisticsDetail.currentLocation }}</span
+                    <div class="logistics-detail-steps">
+                        <div
+                            v-for="step in selectedOrderLogistics.steps"
+                            :key="step.time"
+                            class="logistics-detail-step"
+                            :class="step.state"
                         >
+                            {{ step.text }}
+                            <span class="step-time">{{ step.time }}</span>
+                        </div>
+                    </div>
+                    <div class="logistics-detail-foot">
+                        <span>{{ selectedOrderLogistics.from }}</span>
+                        <span style="color: var(--line)">━━━━━━</span>
+                        <span>{{ selectedOrderLogistics.to }}</span>
                     </div>
                 </div>
             </div>
@@ -938,158 +800,14 @@
             </div>
         </div>
 
-        <!-- Refund Application Modal -->
-        <div
-            class="modal-mask"
-            :class="{ show: showRefundModal }"
-            @click.self="showRefundModal = false"
-        >
-            <div class="modal" style="max-width: 560px">
-                <div class="modal-header">
-                    <h3>申请退款</h3>
-                    <button
-                        class="modal-close"
-                        @click="showRefundModal = false"
-                    >
-                        ×
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="refund-order-info">
-                        <div class="info-row">
-                            <span class="label">订单编号：</span>
-                            <span class="value">{{ refundForm.orderNo }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">订单金额：</span>
-                            <span class="value highlight"
-                                >¥{{ refundForm.orderAmount.toFixed(2) }}</span
-                            >
-                        </div>
-                    </div>
-
-                    <div class="refund-form">
-                        <div class="form-group">
-                            <label class="form-label required">退款类型</label>
-                            <div class="radio-group">
-                                <label class="radio-item">
-                                    <input
-                                        v-model.number="refundForm.refundType"
-                                        type="radio"
-                                        :value="1"
-                                    />
-                                    <span>仅退款</span>
-                                </label>
-                                <label class="radio-item">
-                                    <input
-                                        v-model.number="refundForm.refundType"
-                                        type="radio"
-                                        :value="2"
-                                    />
-                                    <span>退货退款</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label required">退款金额</label>
-                            <div class="input-with-prefix">
-                                <span class="prefix">¥</span>
-                                <input
-                                    v-model.number="refundForm.refundAmount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    :max="refundForm.orderAmount"
-                                    placeholder="请输入退款金额"
-                                />
-                            </div>
-                            <div class="form-hint">
-                                最多可退 ¥{{
-                                    refundForm.orderAmount.toFixed(2)
-                                }}
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label required">退款原因</label>
-                            <select
-                                v-model="refundForm.reason"
-                                class="form-select"
-                            >
-                                <option value="" disabled>
-                                    请选择退款原因
-                                </option>
-                                <option value="商品质量问题">
-                                    商品质量问题
-                                </option>
-                                <option value="商品与描述不符">
-                                    商品与描述不符
-                                </option>
-                                <option value="发错货/漏发">发错货/漏发</option>
-                                <option value="不喜欢/不想要">
-                                    不喜欢/不想要
-                                </option>
-                                <option value="其他">其他</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">补充说明（可选）</label>
-                            <textarea
-                                v-model="refundForm.description"
-                                rows="3"
-                                placeholder="请详细描述问题，有助于加快审核进度..."
-                                class="form-textarea"
-                            ></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button
-                        class="btn btn-outline"
-                        @click="showRefundModal = false"
-                        :disabled="refundSubmitting"
-                    >
-                        取消
-                    </button>
-                    <button
-                        class="btn btn-cinnabar"
-                        @click="submitRefund"
-                        :disabled="refundSubmitting"
-                    >
-                        {{ refundSubmitting ? "提交中..." : "提交申请" }}
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Toast -->
         <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import {
-    ref,
-    computed,
-    nextTick,
-    onMounted,
-    onUnmounted,
-    watch,
-    reactive,
-} from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
-import {
-    ApiProduct,
-    type ProductVO,
-    type CategoryVO,
-    type CartItemVO,
-    type CartSummaryVO,
-} from "@/network/product";
-import { ApiOrder, type OrderVO } from "@/network/order";
-import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
-import { ApiLogistics } from "@/network";
 
 interface Product {
     id: string;
@@ -1103,22 +821,23 @@ interface Product {
     effect: string;
     desc: string;
 }
+interface CartItem {
+    id: string;
+    qty: number;
+    fromAi: boolean;
+}
 interface LogisticsStep {
     time: string;
     text: string;
     state: string;
 }
-/** 前端订单展示数据结构（由后端 OrderVO 转换而来） */
 interface Order {
-    id: number; // 订单ID
-    no: string; // 订单号
-    time: string; // 创建时间
-    status: "unpaid" | "topay" | "shipped" | "done" | "cancelled"; // 订单状态（不含退款状态）
-    items: { id: string; qty: number; name: string; price: number }[]; // 订单项
-    amount: number; // 订单总金额
-    logistics?: { from: string; to: string; steps: LogisticsStep[] }; // 物流信息（可选）
-    refundStatus?: number; // 退款状态（独立）：0=申请中, 1=审核通过, 2=退款中, 3=已完成, 4=已拒绝
-    auditRemark?: string; // 退款审核备注（退款失败时显示原因）
+    no: string;
+    time: string;
+    status: "unpaid" | "topay" | "shipped" | "done";
+    items: { id: string; qty: number }[];
+    amount: number;
+    logistics?: { from: string; to: string; steps: LogisticsStep[] };
 }
 interface Agent {
     id: string;
@@ -1135,7 +854,153 @@ interface ChatMsg {
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
-// 客服数据（保持静态）
+const products: Product[] = [
+    {
+        id: "p1",
+        name: "枸杞红枣养生茶",
+        cat: "tea",
+        price: 38,
+        sold: 1287,
+        stock: 520,
+        icon: "🍵",
+        tags: ["滋阴", "补气"],
+        effect: "养肝明目、补气养血，气郁质兼阴虚体质宜",
+        desc: "精选宁夏中宁枸杞与新疆若羌灰枣，每日 1 包，沸水冲泡 3 分钟即饮。",
+    },
+    {
+        id: "p2",
+        name: "四物汤药膳包",
+        cat: "food",
+        price: 68,
+        sold: 856,
+        stock: 230,
+        icon: "🍲",
+        tags: ["补血", "女性"],
+        effect: "补血调经，适合女性月经后调理",
+        desc: "当归、川芎、白芍、熟地，经典四物配方，文火慢炖 40 分钟。",
+    },
+    {
+        id: "p3",
+        name: "五黑五谷粉",
+        cat: "food",
+        price: 58,
+        sold: 2103,
+        stock: 680,
+        icon: "🥣",
+        tags: ["脾胃", "营养"],
+        effect: "健脾养胃、补肾乌发",
+        desc: "黑米、黑豆、黑芝麻、黑枣、黑桑椹，五种黑色食材精磨。",
+    },
+    {
+        id: "p4",
+        name: "艾草足浴包（30包）",
+        cat: "health",
+        price: 45,
+        sold: 3210,
+        stock: 980,
+        icon: "🌿",
+        tags: ["驱寒", "安神"],
+        effect: "温经散寒、舒缓疲劳，睡前泡脚 15 分钟",
+        desc: "纯艾草、生姜、红花，棉布袋包装，开水冲泡 5 分钟后兑入温水。",
+    },
+    {
+        id: "p5",
+        name: "桂圆红枣枸杞茶",
+        cat: "tea",
+        price: 42,
+        sold: 912,
+        stock: 340,
+        icon: "🍯",
+        tags: ["补血", "安神"],
+        effect: "补血安神，气血不足者宜",
+        desc: "桂圆肉、和田大枣、宁夏枸杞，三味配方。",
+    },
+    {
+        id: "p6",
+        name: "传统艾灸盒",
+        cat: "health",
+        price: 128,
+        sold: 567,
+        stock: 120,
+        icon: "🔥",
+        tags: ["温灸", "穴位"],
+        effect: "温经通络、扶阳固本",
+        desc: "桃木艾灸盒，配 10 根纯艾条，附穴位图。",
+    },
+    {
+        id: "p7",
+        name: "红糖姜茶（暖宫）",
+        cat: "female",
+        price: 35,
+        sold: 4521,
+        stock: 1200,
+        icon: "🫖",
+        tags: ["暖宫", "经期"],
+        effect: "暖宫散寒，缓解痛经",
+        desc: "古法熬制黑糖块 + 老姜粉，经期前 3 天饮用最佳。",
+    },
+    {
+        id: "p8",
+        name: "益母草调理颗粒",
+        cat: "female",
+        price: 55,
+        sold: 1820,
+        stock: 430,
+        icon: "🌸",
+        tags: ["调经", "女性"],
+        effect: "活血调经，适合月经不调",
+        desc: "纯天然益母草提取，独立小包装。",
+    },
+    {
+        id: "p9",
+        name: "宁夏枸杞 250g",
+        cat: "herb",
+        price: 48,
+        sold: 6789,
+        stock: 2100,
+        icon: "🟥",
+        tags: ["滋补", "明目"],
+        effect: "滋肝明目、补肾益精",
+        desc: "中宁特级头茬枸杞，无熏硫无添加。",
+    },
+    {
+        id: "p10",
+        name: "当归片 100g",
+        cat: "herb",
+        price: 38,
+        sold: 2340,
+        stock: 870,
+        icon: "🌾",
+        tags: ["补血", "调经"],
+        effect: "补血活血、调经止痛",
+        desc: "甘肃岷县当归，传统刨片工艺。",
+    },
+    {
+        id: "p11",
+        name: "紫砂养生壶",
+        cat: "tool",
+        price: 198,
+        sold: 432,
+        stock: 65,
+        icon: "🫖",
+        tags: ["茶具"],
+        effect: "宜兴紫砂，泡茶聚香",
+        desc: "宜兴原矿紫砂，全手工拉胚，容量 280ml。",
+    },
+    {
+        id: "p12",
+        name: "砭石刮痧板",
+        cat: "tool",
+        price: 88,
+        sold: 1567,
+        stock: 340,
+        icon: "⚪",
+        tags: ["理疗", "刮痧"],
+        effect: "活血通络，肩颈保健",
+        desc: "泗滨砭石，富含矿物元素。",
+    },
+];
+
 const agents: Agent[] = [
     {
         id: "cs1",
@@ -1174,15 +1039,15 @@ const tabDefs = [
     { key: "service", icon: "💬", label: "客服咨询" },
 ];
 
-// 分类定义（从后端动态获取）
-const catDefs = computed(() => {
-    const dynamicCats = categories.value.map((cat) => ({
-        key: cat.name,
-        label: cat.name,
-    }));
-
-    return [{ key: "all", label: "全部" }, ...dynamicCats];
-});
+const catDefs = [
+    { key: "all", label: "全部" },
+    { key: "food", label: "食疗食材类" },
+    { key: "tea", label: "养生茶饮" },
+    { key: "health", label: "健康调理类" },
+    { key: "female", label: "女性养生专区" },
+    { key: "herb", label: "中药材" },
+    { key: "tool", label: "养生器具" },
+];
 
 const orderStatusDefs = [
     { key: "all", label: "全部" },
@@ -1190,9 +1055,6 @@ const orderStatusDefs = [
     { key: "topay", label: "待发货" },
     { key: "shipped", label: "已发货" },
     { key: "done", label: "已完成" },
-    { key: "refunding", label: "退款中" },
-    { key: "refunded", label: "已退款" },
-    { key: "rejected", label: "退款失败" },
 ];
 
 // ── Reactive state ────────────────────────────────────────────────────────────
@@ -1200,19 +1062,85 @@ const activeTab = ref("shop");
 const currentCat = ref("all");
 const searchKw = ref("");
 
-// 商品列表（从后端获取）
-const products = ref<Product[]>([]);
-const categories = ref<CategoryVO[]>([]);
-const loading = ref(false);
+const cart = ref<CartItem[]>([
+    { id: "p4", qty: 2, fromAi: false },
+    { id: "p1", qty: 1, fromAi: true },
+    { id: "p9", qty: 1, fromAi: false },
+]);
 
-// 购物车（从后端获取）
-const cartItems = ref<CartItemVO[]>([]);
-const cartLoading = ref(false);
-const cartSummary = ref<CartSummaryVO | null>(null); // 购物车汇总信息
-
-// 订单列表（从后端获取）
-const orders = ref<Order[]>([]);
-const orderLoading = ref(false);
+const orders = ref<Order[]>([
+    {
+        no: "YYG20260526001",
+        time: "2026-05-26 10:32",
+        status: "unpaid",
+        items: [
+            { id: "p2", qty: 1 },
+            { id: "p9", qty: 1 },
+        ],
+        amount: 116,
+    },
+    {
+        no: "YYG20260525012",
+        time: "2026-05-25 18:14",
+        status: "topay",
+        items: [
+            { id: "p7", qty: 2 },
+            { id: "p10", qty: 1 },
+        ],
+        amount: 108,
+    },
+    {
+        no: "YYG20260523008",
+        time: "2026-05-23 09:45",
+        status: "shipped",
+        items: [
+            { id: "p4", qty: 1 },
+            { id: "p6", qty: 1 },
+        ],
+        amount: 173,
+        logistics: {
+            from: "杭州 · 颐养阁仓库",
+            to: "上海 · 黄浦区",
+            steps: [
+                {
+                    time: "2026-05-26 08:12",
+                    text: "【上海中转】快件已到达【上海转运中心】",
+                    state: "active",
+                },
+                {
+                    time: "2026-05-25 22:38",
+                    text: "【杭州中转】快件离开【杭州中转中心】发往【上海】",
+                    state: "done",
+                },
+                {
+                    time: "2026-05-25 14:20",
+                    text: "【杭州集散】快件已到达【杭州中转中心】",
+                    state: "done",
+                },
+                {
+                    time: "2026-05-23 16:05",
+                    text: "【已揽件】顺丰速运 已揽收",
+                    state: "done",
+                },
+                {
+                    time: "2026-05-23 11:30",
+                    text: "【商家发货】颐养阁官方店铺已发货",
+                    state: "done",
+                },
+            ],
+        },
+    },
+    {
+        no: "YYG20260518003",
+        time: "2026-05-18 20:01",
+        status: "done",
+        items: [
+            { id: "p1", qty: 2 },
+            { id: "p3", qty: 1 },
+        ],
+        amount: 134,
+    },
+]);
 
 const orderFilter = ref("all");
 const currentAgent = ref("cs1");
@@ -1258,22 +1186,6 @@ const confirmMsg = ref("");
 const confirmIcon = ref("");
 const confirmCallback = ref<(() => void) | null>(null);
 
-// Refund modal states
-const showRefundModal = ref(false);
-const refundForm = reactive({
-    orderId: 0,
-    orderNo: "",
-    orderAmount: 0,
-    refundType: 1, // 1=仅退款, 2=退货退款
-    refundAmount: 0,
-    reason: "",
-    description: "",
-});
-const refundSubmitting = ref(false);
-
-// Logistics detail state
-const currentLogisticsDetail = ref<any>(null);
-
 // Toast
 const toastMsg = ref("");
 const toastVisible = ref(false);
@@ -1284,7 +1196,7 @@ const openMoreIdx = ref(-1);
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const filteredProducts = computed(() =>
-    products.value
+    products
         .filter((p) => currentCat.value === "all" || p.cat === currentCat.value)
         .filter(
             (p) =>
@@ -1294,49 +1206,16 @@ const filteredProducts = computed(() =>
         ),
 );
 
-const cartCount = computed(
-    () =>
-        cartSummary.value?.totalQuantity ??
-        cartItems.value.reduce((s, c) => s + c.quantity, 0),
-);
-const cartTotal = computed(
-    () =>
-        cartSummary.value?.totalPrice ??
-        cartItems.value.reduce((s, c) => s + c.price * c.quantity, 0),
+const cartCount = computed(() => cart.value.reduce((s, c) => s + c.qty, 0));
+const cartTotal = computed(() =>
+    cart.value.reduce((s, c) => s + getProduct(c.id).price * c.qty, 0),
 );
 
-const filteredOrders = computed(() => {
-    const filter = orderFilter.value;
-
-    // 如果是退款相关的筛选，基于 refundStatus 字段
-    if (filter === "refunding") {
-        // 退款中：refundStatus 为 0, 1, 2（申请中、审核通过、退款中）
-        return orders.value.filter(
-            (o) =>
-                o.refundStatus !== undefined &&
-                [0, 1, 2].includes(o.refundStatus),
-        );
-    }
-    if (filter === "refunded") {
-        // 已退款：refundStatus 为 3（退款已完成）
-        return orders.value.filter((o) => o.refundStatus === 3);
-    }
-    if (filter === "rejected") {
-        // 退款失败：refundStatus 为 4（退款被拒绝）
-        return orders.value.filter((o) => o.refundStatus === 4);
-    }
-
-    // 其他情况（全部、未支付、待发货、已发货、已完成、已取消）
-    // 只显示没有退款状态的订单
-    if (filter === "all") {
-        return orders.value.filter((o) => o.refundStatus === undefined);
-    }
-
-    // 基于订单状态筛选，同时排除有退款状态的订单
-    return orders.value.filter(
-        (o) => o.refundStatus === undefined && o.status === filter,
-    );
-});
+const filteredOrders = computed(() =>
+    orders.value.filter(
+        (o) => orderFilter.value === "all" || o.status === orderFilter.value,
+    ),
+);
 
 const currentAgentObj = computed(
     () => agents.find((a) => a.id === currentAgent.value)!,
@@ -1354,90 +1233,13 @@ const selectedOrderLogistics = computed(() => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-/** 将后端 ProductVO 转换为前端 Product */
-function convertProductVO(vo: ProductVO): Product {
-    // 使用后端返回的 categoryName 作为分类
-    const cat = vo.categoryName || "all";
-
-    // 从 tags 字符串中提取标签数组
-    const tags = vo.tags ? vo.tags.split(",") : [];
-
-    // 使用 emoji 映射（根据中文分类名）
-    const iconMap: Record<string, string> = {
-        食疗食材类: "🍲",
-        养生茶饮: "🍵",
-        健康调理类: "🌿",
-        女性养生专区: "🌸",
-        中药材: "🟥",
-        养生器具: "⚪",
-    };
-
-    return {
-        id: `p${vo.id}`,
-        name: vo.name,
-        cat,
-        price: vo.discountPrice,
-        sold: vo.soldCount,
-        stock: vo.stock,
-        icon: iconMap[cat] || "📦",
-        tags,
-        effect: vo.efficacy || "",
-        desc: vo.description || "",
-    };
-}
-
 function getProduct(id: string): Product {
-    const product = products.value.find((p) => p.id === id);
-    if (!product) {
-        console.warn(`商品不存在: ${id}`);
-        // 返回一个默认商品对象，避免渲染错误
-        return {
-            id,
-            name: "未知商品",
-            cat: "all",
-            price: 0,
-            sold: 0,
-            stock: 0,
-            icon: "❓",
-            tags: [],
-            effect: "",
-            desc: "",
-        };
-    }
-    return product;
-}
-
-/** 根据 productId 获取商品图标 */
-function getProductIcon(productId: number): string {
-    const product = products.value.find((p) => p.id === `p${productId}`);
-    return product ? product.icon : "📦";
+    return products.find((p) => p.id === id)!;
 }
 
 function orderCount(key: string): number {
-    if (key === "all") {
-        // 全部：只显示没有退款状态的订单
-        return orders.value.filter((o) => o.refundStatus === undefined).length;
-    }
-
-    // 如果是退款相关的筛选，基于 refundStatus 字段
-    if (key === "refunding") {
-        return orders.value.filter(
-            (o) =>
-                o.refundStatus !== undefined &&
-                [0, 1, 2].includes(o.refundStatus),
-        ).length;
-    }
-    if (key === "refunded") {
-        return orders.value.filter((o) => o.refundStatus === 3).length;
-    }
-    if (key === "rejected") {
-        return orders.value.filter((o) => o.refundStatus === 4).length;
-    }
-
-    // 其他情况基于订单状态统计，同时排除有退款状态的订单
-    return orders.value.filter(
-        (o) => o.refundStatus === undefined && o.status === key,
-    ).length;
+    if (key === "all") return orders.value.length;
+    return orders.value.filter((o) => o.status === key).length;
 }
 
 function orderStatusText(status: string): string {
@@ -1446,7 +1248,6 @@ function orderStatusText(status: string): string {
         topay: "待发货",
         shipped: "运输中",
         done: "已完成",
-        cancelled: "已取消",
     };
     return map[status] || status;
 }
@@ -1457,142 +1258,25 @@ function orderStatusClass(status: string): string {
         topay: "status-ship",
         shipped: "status-shipped",
         done: "status-done",
-        cancelled: "status-cancelled",
     };
     return map[status] || "";
 }
 
-/** 获取退款状态文本 */
-function getRefundStatusText(status?: number): string {
-    if (status === undefined) return "";
-    const map: Record<number, string> = {
-        0: "退款申请中",
-        1: "审核通过",
-        2: "退款中",
-        3: "退款已完成",
-        4: "退款失败",
-    };
-    return map[status] || "未知";
-}
-
-/** 获取退款状态样式类 */
-function getRefundStatusClass(status?: number): string {
-    if (status === undefined) return "";
-    const classMap: Record<number, string> = {
-        0: "status-refunding",
-        1: "status-approved",
-        2: "status-processing",
-        3: "status-refunded",
-        4: "status-rejected",
-    };
-    return classMap[status] || "";
-}
-
-// ── Logistics helpers ────────────────────────────────────────────────────────
-/** 获取物流状态文本 */
-function getLogisticsStatusText(status: number): string {
-    const statusMap: Record<number, string> = {
-        0: "待发货",
-        1: "已发货",
-        2: "运输中",
-        3: "已签收",
-    };
-    return statusMap[status] || "未知";
-}
-
-/** 获取物流状态样式类 */
-function getLogisticsStatusClass(status: number): string {
-    const classMap: Record<number, string> = {
-        0: "status-pending",
-        1: "status-shipped",
-        2: "status-transit",
-        3: "status-signed",
-    };
-    return classMap[status] || "";
-}
-
-/** 格式化物流时间 */
-function formatLogisticsTime(timeStr: string): string {
-    if (!timeStr) return "";
-    try {
-        const date = new Date(timeStr);
-        return date.toLocaleString("zh-CN", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-        });
-    } catch (e) {
-        return timeStr;
-    }
-}
-
 // ── Cart actions ──────────────────────────────────────────────────────────────
-/** 加载购物车列表 */
-async function loadCartList() {
-    cartLoading.value = true;
-    try {
-        const response = await ApiProduct.getCartDetail();
-        const apiResponse = response.data;
-        if (apiResponse && apiResponse.data) {
-            // 后端返回的是 CartSummaryVO 结构
-            cartSummary.value = apiResponse.data;
-            cartItems.value = apiResponse.data.items;
-            console.log("购物车商品数:", cartItems.value.length);
-            console.log("选中商品总数:", apiResponse.data.totalQuantity);
-            console.log("选中商品总金额:", apiResponse.data.totalPrice);
-        }
-    } catch (error) {
-        console.error("加载购物车失败:", error);
-        showToast("加载购物车失败，请重试");
-    } finally {
-        cartLoading.value = false;
-    }
+function addToCart(id: string, qty: number, fromAi: boolean) {
+    const existing = cart.value.find((c) => c.id === id);
+    if (existing) existing.qty += qty;
+    else cart.value.push({ id, qty, fromAi });
+    showToast(fromAi ? "已加入购物车（AI 推荐）" : "已加入购物车");
 }
 
-/** 添加商品到购物车 */
-async function addToCart(productId: number, qty: number) {
-    try {
-        await ApiProduct.addToCart({ productId, quantity: qty });
-        showToast("已加入购物车");
-        // 重新加载购物车列表（获取最新数据）
-        await loadCartList();
-    } catch (error) {
-        console.error("加入购物车失败:", error);
-        showToast("加入购物车失败，请重试");
-    }
+function changeQty(id: string, delta: number) {
+    const item = cart.value.find((c) => c.id === id);
+    if (item) item.qty = Math.max(1, item.qty + delta);
 }
 
-/** 更新购物车项数量 */
-async function changeQty(cartItemId: number, delta: number) {
-    const item = cartItems.value.find((c) => c.id === cartItemId);
-    if (!item) return;
-
-    const newQty = Math.max(1, item.quantity + delta);
-    try {
-        // 使用新的 API 方法名和参数格式
-        await ApiProduct.updateCartItemQuantity(cartItemId, newQty);
-        // 重新加载以获取最新的汇总信息
-        await loadCartList();
-    } catch (error) {
-        console.error("更新购物车失败:", error);
-        showToast("更新购物车失败，请重试");
-    }
-}
-
-/** 从购物车移除 */
-async function removeFromCart(cartItemId: number) {
-    try {
-        await ApiProduct.removeCartItem(cartItemId);
-        showToast("已从购物车移除");
-        // 重新加载以获取最新的汇总信息
-        await loadCartList();
-    } catch (error) {
-        console.error("移除购物车项失败:", error);
-        showToast("移除失败，请重试");
-    }
+function removeFromCart(id: string) {
+    cart.value = cart.value.filter((c) => c.id !== id);
 }
 
 // ── Product detail ────────────────────────────────────────────────────────────
@@ -1604,257 +1288,95 @@ function openProduct(p: Product) {
 
 function addToCartFromDetail() {
     if (!selectedProduct.value) return;
-    // 从 id "p1" 中提取数字 1
-    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
-    addToCart(productId, pdQty.value);
+    addToCart(selectedProduct.value.id, pdQty.value, false);
     showPdModal.value = false;
 }
 
 function buyNow() {
     if (!selectedProduct.value) return;
-    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
-    addToCart(productId, pdQty.value);
+    addToCart(selectedProduct.value.id, pdQty.value, false);
     showPdModal.value = false;
     openPay();
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 function openPay() {
-    if (cartItems.value.length === 0) {
+    if (cart.value.length === 0) {
         showToast("购物车为空");
         return;
     }
     showPayModal.value = true;
 }
 
-/** 模拟支付成功（实际应调用后端创建订单接口） */
-async function mockPaySuccess() {
-    if (cartItems.value.length === 0) {
-        showToast("购物车为空");
-        return;
-    }
-
-    try {
-        // 获取选中的购物车项 ID 列表
-        const cartIds = cartItems.value.map((item) => item.id);
-
-        // TODO: 这里需要用户填写收货信息，暂时使用默认值
-        // 实际应该弹出表单让用户输入收货地址、姓名、电话
-        const orderData = {
-            cartIds,
-            receiverName: "张三", // 应该从用户资料或表单中获取
-            receiverPhone: "13800138000", // 应该从用户资料或表单中获取
-            receiverAddress: "北京市朝阳区xxx街道xxx号", // 应该从用户资料或表单中获取
-            remark: "请尽快发货",
-        };
-
-        // 调用后端创建订单接口
-        const response = await ApiOrder.createOrder(orderData);
-        const apiResponse = response.data;
-
-        if (apiResponse && apiResponse.data) {
-            console.log("订单创建成功:", apiResponse.data);
-            showToast("支付成功，订单已生成");
-
-            // 清空购物车
-            cartItems.value = [];
-            cartSummary.value = null;
-
-            showPayModal.value = false;
-
-            // 重新加载订单列表并切换到订单页
-            await loadOrders();
-            setTimeout(() => {
-                activeTab.value = "order";
-            }, 600);
-        }
-    } catch (error) {
-        console.error("创建订单失败:", error);
-        showToast("创建订单失败，请重试");
-    }
+function mockPaySuccess() {
+    const total = cartTotal.value;
+    const no =
+        "YYG" +
+        new Date().toISOString().slice(0, 10).replace(/-/g, "") +
+        String(Math.floor(Math.random() * 900) + 100);
+    orders.value.unshift({
+        no,
+        time: new Date().toISOString().slice(0, 16).replace("T", " "),
+        status: "topay",
+        items: cart.value.map((c) => ({ id: c.id, qty: c.qty })),
+        amount: total,
+    });
+    cart.value = [];
+    showPayModal.value = false;
+    showToast("支付成功，订单已生成");
+    setTimeout(() => {
+        activeTab.value = "order";
+    }, 600);
 }
 
 // ── Order actions ─────────────────────────────────────────────────────────────
-/** 取消订单 */
-async function cancelOrder(no: string) {
-    const order = orders.value.find((o) => o.no === no);
-    if (!order) return;
-
-    showConfirm(
-        "取消订单",
-        "确认取消该订单？取消后不可恢复。",
-        "🗑️",
-        async () => {
-            try {
-                await ApiOrder.cancelOrder(order.id, "用户主动取消");
-                showToast("订单已取消");
-                // 重新加载订单列表
-                await loadOrders();
-            } catch (error) {
-                console.error("取消订单失败:", error);
-                showToast("取消订单失败，请重试");
-            }
-        },
-    );
+function cancelOrder(no: string) {
+    showConfirm("取消订单", "确认取消该订单？取消后不可恢复。", "🗑️", () => {
+        orders.value = orders.value.filter((o) => o.no !== no);
+        showToast("订单已取消");
+    });
 }
 
-/** 支付订单（对待支付订单进行支付） */
-async function payOrder(no: string) {
-    const order = orders.value.find((o) => o.no === no);
-    if (!order) return;
-
-    showConfirm(
-        "确认支付",
-        `确认支付订单 ${no}，金额 ¥${order.amount.toFixed(2)}？`,
-        "💳",
-        async () => {
-            try {
-                // 调用后端模拟支付接口
-                await ApiOrder.simulatePay(order.id);
-                showToast("支付成功！");
-                // 重新加载订单列表以更新状态
-                await loadOrders();
-            } catch (error) {
-                console.error("支付失败:", error);
-                showToast("支付失败，请重试");
-            }
-        },
-    );
+function refundOrder(_no: string) {
+    showToast("已提交退款申请，客服将在 24h 内处理");
 }
-
-/** 申请退款 - 打开模态框 */
-function openRefundModal(no: string) {
-    const order = orders.value.find((o) => o.no === no);
-    if (!order) return;
-
-    refundForm.orderId = order.id;
-    refundForm.orderNo = order.no;
-    refundForm.orderAmount = order.amount;
-    refundForm.refundType = 1; // 默认仅退款
-    refundForm.refundAmount = order.amount; // 默认全额退款
-    refundForm.reason = "";
-    refundForm.description = "";
-    showRefundModal.value = true;
-}
-
-/** 提交退款申请 */
-async function submitRefund() {
-    // 表单验证
-    if (!refundForm.reason.trim()) {
-        showToast("请填写退款原因");
-        return;
-    }
-    if (refundForm.refundAmount <= 0) {
-        showToast("退款金额必须大于0");
-        return;
-    }
-    if (refundForm.refundAmount > refundForm.orderAmount) {
-        showToast("退款金额不能超过订单金额");
-        return;
-    }
-
-    refundSubmitting.value = true;
-    try {
-        const trimmedDescription = refundForm.description.trim();
-        const refundData: ApplyRefundDTO = {
-            refundType: refundForm.refundType,
-            refundAmount: refundForm.refundAmount,
-            reason: refundForm.reason.trim(),
-            ...(trimmedDescription && { description: trimmedDescription }),
-        };
-
-        await ApiRefund.applyRefund(refundForm.orderId, refundData);
-        showToast("退款申请已提交，客服将在 24h 内处理");
-        showRefundModal.value = false;
-
-        // 重新加载订单列表以获取最新状态
-        await loadOrders();
-    } catch (error) {
-        console.error("申请退款失败:", error);
-        showToast("申请退款失败，请重试");
-    } finally {
-        refundSubmitting.value = false;
-    }
-}
-
-/** 提醒发货 */
 function remindShip(_no: string) {
     showToast("已提醒卖家发货");
 }
-
-/** 延长收货 */
 function extendReceipt(_no: string) {
     showToast("收货时间已延长 7 天");
 }
-
-/** 评价订单 */
 function reviewOrder(_no: string) {
     showToast("评价功能开发中，敬请期待");
 }
 
-/** 确认收货 */
-async function confirmReceipt(no: string) {
-    const order = orders.value.find((x) => x.no === no);
-    if (!order) return;
-
+function confirmReceipt(no: string) {
     showConfirm(
         "确认收货",
         "确认已收到商品？确认后款项将打给卖家，请谨慎操作。",
         "📦",
-        async () => {
-            try {
-                // 使用物流 API 的确认收货接口
-                await ApiLogistics.confirmReceipt(order.id);
-                showToast("已确认收货，欢迎再次光临～");
-                // 重新加载订单列表
-                await loadOrders();
-            } catch (error) {
-                console.error("确认收货失败:", error);
-                showToast("确认收货失败，请重试");
-            }
+        () => {
+            const o = orders.value.find((x) => x.no === no);
+            if (o) o.status = "done";
+            showToast("已确认收货，欢迎再次光临～");
         },
     );
 }
 
-/** 再次购买 */
 function reBuy(no: string) {
     const o = orders.value.find((x) => x.no === no);
     if (!o) return;
     o.items.forEach((it) => {
-        // 从 id "p1" 中提取数字 1
-        const productId = parseInt(it.id.replace("p", ""));
-        addToCart(productId, it.qty);
+        const existing = cart.value.find((c) => c.id === it.id && !c.fromAi);
+        if (existing) existing.qty += it.qty;
+        else cart.value.push({ id: it.id, qty: it.qty, fromAi: false });
     });
     showToast("商品已加入购物车");
 }
 
-/** 查看物流 */
-async function openLogistics(no: string) {
-    const order = orders.value.find((o) => o.no === no);
-    if (!order) return;
-
-    try {
-        // 调用后端接口获取物流信息
-        const response = await ApiLogistics.getOrderLogistics(order.id);
-        const apiResponse = response.data;
-
-        if (apiResponse && apiResponse.data) {
-            const logistics = apiResponse.data;
-            console.log("物流信息:", logistics);
-
-            // 存储物流详情数据
-            currentLogisticsDetail.value = logistics;
-            selectedOrderNo.value = no;
-
-            // 显示物流模态框
-            showLogisticsModal.value = true;
-        } else {
-            showToast("暂无物流信息");
-        }
-    } catch (error) {
-        console.error("查询物流失败:", error);
-        showToast("查询物流失败，请重试");
-    }
+function openLogistics(no: string) {
+    selectedOrderNo.value = no;
+    showLogisticsModal.value = true;
 }
 
 function toggleMore(idx: number) {
@@ -1875,33 +1397,17 @@ async function sendChat() {
         now.getHours().toString().padStart(2, "0") +
         ":" +
         now.getMinutes().toString().padStart(2, "0");
-
-    // 确保聊天历史数组存在
-    const agentId = currentAgent.value;
-    if (!chatHistory.value[agentId]) {
-        chatHistory.value[agentId] = [];
-    }
-
-    chatHistory.value[agentId].push({ from: "me", text, time });
+    chatHistory.value[currentAgent.value].push({ from: "me", text, time });
     chatInput.value = "";
     await nextTick();
     scrollChatToBottom();
     setTimeout(async () => {
-        const replies = presetReplies[agentId] || [];
-        if (!chatHistory.value[agentId]) {
-            chatHistory.value[agentId] = [];
-        }
-        if (replies.length > 0) {
-            const randomIndex = Math.floor(Math.random() * replies.length);
-            const replyText = replies[randomIndex];
-            if (replyText) {
-                chatHistory.value[agentId].push({
-                    from: "agent",
-                    text: replyText,
-                    time,
-                });
-            }
-        }
+        const replies = presetReplies[currentAgent.value];
+        chatHistory.value[currentAgent.value].push({
+            from: "agent",
+            text: replies[Math.floor(Math.random() * replies.length)],
+            time,
+        });
         await nextTick();
         scrollChatToBottom();
     }, 800);
@@ -2649,35 +2155,6 @@ onUnmounted(() => {
         box-shadow: var(--shadow);
     }
 }
-
-.order-header-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.refresh-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px !important;
-    font-size: 13px !important;
-    white-space: nowrap;
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    svg {
-        transition: transform 0.3s ease;
-    }
-
-    &:not(:disabled):hover svg {
-        transform: rotate(180deg);
-    }
-}
 .order-card {
     background: var(--paper);
     border-radius: 14px;
@@ -2712,21 +2189,6 @@ onUnmounted(() => {
     font-weight: 600;
     font-size: 14px;
 }
-.order-status-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.refund-status-badge {
-    font-family: "STKaiti", serif;
-    font-weight: 600;
-    font-size: 12px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background: rgba(212, 175, 55, 0.1);
-    color: var(--gold-dark);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-}
 .status-pay {
     color: var(--cinnabar);
 }
@@ -2738,35 +2200,6 @@ onUnmounted(() => {
 }
 .status-done {
     color: var(--ink-muted);
-}
-.status-cancelled {
-    color: var(--ink-light);
-}
-.status-refunding {
-    color: var(--gold);
-    animation: pulse 2s ease-in-out infinite;
-}
-.status-approved {
-    color: var(--jade);
-}
-.status-processing {
-    color: var(--cinnabar);
-}
-.status-refunded {
-    color: var(--jade);
-}
-.status-rejected {
-    color: var(--cinnabar);
-}
-
-@keyframes pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.6;
-    }
 }
 .order-body {
     padding: 16px 20px;
@@ -2808,79 +2241,6 @@ onUnmounted(() => {
     .btn {
         padding: 7px 16px;
         font-size: 13px;
-    }
-}
-
-.refund-status-tip,
-.refund-completed-tip,
-.refund-rejected-tip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    font-size: 13px;
-
-    .tip-icon {
-        font-size: 16px;
-        flex-shrink: 0;
-    }
-
-    .tip-content {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .tip-text {
-        color: var(--ink);
-        font-weight: 500;
-    }
-
-    .tip-reason {
-        color: var(--cinnabar);
-        font-size: 12px;
-        font-weight: 600;
-    }
-}
-
-.refund-status-tip {
-    background: linear-gradient(
-        135deg,
-        rgba(212, 175, 55, 0.1),
-        rgba(212, 175, 55, 0.05)
-    );
-    border: 1px solid rgba(212, 175, 55, 0.3);
-
-    .tip-text {
-        color: var(--gold-dark);
-    }
-}
-
-.refund-completed-tip {
-    background: linear-gradient(
-        135deg,
-        rgba(93, 173, 126, 0.1),
-        rgba(93, 173, 126, 0.05)
-    );
-    border: 1px solid rgba(93, 173, 126, 0.3);
-
-    .tip-text {
-        color: var(--jade-dark);
-    }
-}
-
-.refund-rejected-tip {
-    background: linear-gradient(
-        135deg,
-        rgba(214, 69, 65, 0.1),
-        rgba(214, 69, 65, 0.05)
-    );
-    border: 1px solid rgba(214, 69, 65, 0.3);
-
-    .tip-text {
-        color: var(--cinnabar);
     }
 }
 
@@ -3511,15 +2871,6 @@ onUnmounted(() => {
             box-shadow: 0 0 0 5px rgba(179, 60, 44, 0.12);
         }
     }
-    .step-content {
-        margin-bottom: 4px;
-        line-height: 1.6;
-    }
-    .step-location {
-        font-size: 13px;
-        color: var(--ink-muted);
-        margin-bottom: 4px;
-    }
     .step-time {
         color: var(--ink-muted);
         font-size: 12px;
@@ -3536,172 +2887,6 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-}
-
-// Empty logistics state
-.empty-logistics {
-    text-align: center;
-    padding: 48px 24px;
-    color: var(--ink-muted);
-    p {
-        margin: 8px 0;
-        font-size: 14px;
-    }
-    .hint {
-        font-size: 12px;
-        opacity: 0.7;
-    }
-}
-
-// Logistics status styles
-.track-status {
-    margin-top: 8px;
-    font-size: 14px;
-    span {
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 12px;
-        display: inline-block;
-        &.status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        &.status-shipped {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        &.status-transit {
-            background: #e0e7ff;
-            color: #3730a3;
-        }
-        &.status-signed {
-            background: #d1fae5;
-            color: #065f46;
-        }
-    }
-}
-
-// Refund modal
-.refund-order-info {
-    background: var(--paper-warm);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 20px;
-}
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 14px;
-    .label {
-        color: var(--ink-muted);
-    }
-    .value {
-        color: var(--ink);
-        font-weight: 500;
-        &.highlight {
-            color: var(--cinnabar);
-            font-weight: 700;
-            font-size: 18px;
-        }
-    }
-}
-
-.refund-form {
-    .form-group {
-        margin-bottom: 18px;
-    }
-    .form-label {
-        display: block;
-        font-size: 14px;
-        color: var(--ink);
-        font-weight: 600;
-        margin-bottom: 8px;
-        &.required::after {
-            content: " *";
-            color: var(--cinnabar);
-        }
-    }
-    .radio-group {
-        display: flex;
-        gap: 20px;
-    }
-    .radio-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        color: var(--ink);
-        input[type="radio"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: var(--jade);
-        }
-    }
-    .input-with-prefix {
-        display: flex;
-        align-items: center;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        overflow: hidden;
-        transition: border-color 0.2s;
-        &:focus-within {
-            border-color: var(--jade);
-        }
-        .prefix {
-            padding: 0 12px;
-            background: var(--paper-warm);
-            color: var(--ink-muted);
-            font-weight: 600;
-            font-size: 14px;
-            border-right: 1px solid var(--line);
-        }
-        input {
-            flex: 1;
-            border: none;
-            padding: 10px 12px;
-            font-size: 14px;
-            outline: none;
-            font-family: inherit;
-        }
-    }
-    .form-hint {
-        margin-top: 6px;
-        font-size: 12px;
-        color: var(--ink-muted);
-    }
-    .form-select {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        font-size: 14px;
-        font-family: inherit;
-        outline: none;
-        transition: border-color 0.2s;
-        background: white;
-        cursor: pointer;
-        &:focus {
-            border-color: var(--jade);
-        }
-    }
-    .form-textarea {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        font-size: 14px;
-        font-family: inherit;
-        outline: none;
-        resize: vertical;
-        transition: border-color 0.2s;
-        &:focus {
-            border-color: var(--jade);
-        }
-    }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
