@@ -69,6 +69,25 @@
                     </svg>
                     <span>退款审核</span>
                 </button>
+                <button
+                    class="nav-item"
+                    :class="{ active: activeTab === 'logistics' }"
+                    @click="activeTab = 'logistics'"
+                >
+                    <svg
+                        class="nav-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                    >
+                        <rect x="1" y="3" width="15" height="13" rx="2" />
+                        <path d="M16 8h4l3 3v5h-7V8z" />
+                        <circle cx="5.5" cy="18.5" r="2.5" />
+                        <circle cx="18.5" cy="18.5" r="2.5" />
+                    </svg>
+                    <span>物流管理</span>
+                </button>
 
                 <div class="nav-section">系统</div>
                 <button
@@ -219,6 +238,7 @@
                     @pending-count="pendingCount = $event"
                 />
                 <AdminRefund v-show="activeTab === 'refunds'" />
+                <AdminLogistics v-show="activeTab === 'logistics'" />
                 <AdminPermissions v-show="activeTab === 'permissions'" />
                 <AdminAgents v-show="activeTab === 'agents'" />
             </main>
@@ -356,6 +376,7 @@ import AdminReview from "@/components/admin/AdminReview.vue";
 import AdminPermissions from "@/components/admin/AdminPermissions.vue";
 import AdminAgents from "@/components/admin/AdminAgents.vue";
 import AdminRefund from "@/components/admin/AdminRefund.vue";
+import AdminLogistics from "@/components/admin/AdminLogistics.vue";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -630,7 +651,7 @@ async function handleLogout() {
     gap: 10px;
     font-family: inherit;
     font-size: 14px;
-    color: var(--ink-light, #4a565a);
+    color: #4a565a;
     cursor: pointer;
     border-radius: 9px;
     transition:
@@ -1043,7 +1064,7 @@ async function handleLogout() {
     border: 1px solid rgba(216, 202, 183, 0.9);
     border-radius: 11px;
     background: #fffef9;
-    color: var(--ink-light, #4a565a);
+    color: #4a565a;
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;

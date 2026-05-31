@@ -185,16 +185,37 @@
 
             <!-- Panel: Order -->
             <div v-show="activeTab === 'order'" class="panel">
-                <div class="order-status-tabs">
+                <div class="order-header-actions">
+                    <div class="order-status-tabs">
+                        <button
+                            v-for="os in orderStatusDefs"
+                            :key="os.key"
+                            class="order-status-tab"
+                            :class="{ active: orderFilter === os.key }"
+                            @click="orderFilter = os.key"
+                        >
+                            {{ os.label }}
+                            <span class="num">({{ orderCount(os.key) }})</span>
+                        </button>
+                    </div>
                     <button
-                        v-for="os in orderStatusDefs"
-                        :key="os.key"
-                        class="order-status-tab"
-                        :class="{ active: orderFilter === os.key }"
-                        @click="orderFilter = os.key"
+                        class="btn btn-outline btn-sm refresh-btn"
+                        @click="refreshOrders"
+                        :disabled="orderLoading"
                     >
-                        {{ os.label }}
-                        <span class="num">({{ orderCount(os.key) }})</span>
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            style="width: 16px; height: 16px"
+                        >
+                            <path d="M23 4v6h-6M1 20v-6h6" />
+                            <path
+                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                            />
+                        </svg>
+                        <span>{{ orderLoading ? "刷新中..." : "刷新" }}</span>
                     </button>
                 </div>
                 <div v-if="filteredOrders.length === 0" class="empty-tip">
@@ -343,6 +364,35 @@
                                             </div>
                                         </div>
                                     </div>
+                                </template>
+                                <template v-else-if="o.status === 'refunding'">
+                                    <div class="refund-status-tip">
+                                        <span class="tip-icon">⏳</span>
+                                        <span class="tip-text"
+                                            >退款审核中，客服将在 24h
+                                            内处理</span
+                                        >
+                                    </div>
+                                    <button
+                                        class="btn btn-outline"
+                                        @click="reBuy(o.no)"
+                                    >
+                                        再次购买
+                                    </button>
+                                </template>
+                                <template v-else-if="o.status === 'refunded'">
+                                    <div class="refund-completed-tip">
+                                        <span class="tip-icon">✅</span>
+                                        <span class="tip-text"
+                                            >退款已完成，款项将原路返回</span
+                                        >
+                                    </div>
+                                    <button
+                                        class="btn btn-outline"
+                                        @click="reBuy(o.no)"
+                                    >
+                                        再次购买
+                                    </button>
                                 </template>
                                 <template v-else>
                                     <button
@@ -677,7 +727,7 @@
             <div
                 class="modal"
                 style="max-width: 620px"
-                v-if="selectedOrderLogistics"
+                v-if="currentLogisticsDetail"
             >
                 <div class="modal-header">
                     <h3>物流详情</h3>
@@ -692,51 +742,78 @@
                     <div class="logistics-detail-header">
                         <div class="carrier">
                             <span style="font-size: 24px">🚛</span
-                            ><span>顺丰速运</span>
+                            ><span>{{
+                                currentLogisticsDetail.logisticsCompany ||
+                                "物流公司"
+                            }}</span>
                         </div>
                         <div class="track-no">
-                            运单号：<span
-                                >SF{{
-                                    selectedOrderNo.replace("YYG", "")
+                            运单号：<span>{{
+                                currentLogisticsDetail.trackingNo || "暂无"
+                            }}</span>
+                        </div>
+                        <div class="track-status">
+                            当前状态：<span
+                                :class="
+                                    getLogisticsStatusClass(
+                                        currentLogisticsDetail.status,
+                                    )
+                                "
+                                >{{
+                                    getLogisticsStatusText(
+                                        currentLogisticsDetail.status,
+                                    )
                                 }}</span
                             >
                         </div>
                     </div>
-                    <div class="logistics-detail-map">
-                        <div class="log-map-route"></div>
-                        <div class="log-map-done"></div>
-                        <div class="log-map-pin start">
-                            📦
-                            <div class="log-map-label">
-                                {{ selectedOrderLogistics.from }}
-                            </div>
-                        </div>
-                        <div class="log-map-pin current">
-                            🚚
-                            <div class="log-map-label red-label">运输中</div>
-                        </div>
-                        <div class="log-map-pin end">
-                            🏠
-                            <div class="log-map-label">
-                                {{ selectedOrderLogistics.to }}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="logistics-detail-steps">
+
+                    <!-- 物流轨迹时间线 -->
+                    <div
+                        class="logistics-detail-steps"
+                        v-if="
+                            currentLogisticsDetail.details &&
+                            currentLogisticsDetail.details.length > 0
+                        "
+                    >
                         <div
-                            v-for="step in selectedOrderLogistics.steps"
-                            :key="step.time"
+                            v-for="(
+                                detail, index
+                            ) in currentLogisticsDetail.details"
+                            :key="detail.time"
                             class="logistics-detail-step"
-                            :class="step.state"
+                            :class="{ done: index === 0 }"
                         >
-                            {{ step.text }}
-                            <span class="step-time">{{ step.time }}</span>
+                            <div class="step-content">
+                                {{ detail.description }}
+                            </div>
+                            <div class="step-location" v-if="detail.location">
+                                {{ detail.location }}
+                            </div>
+                            <span class="step-time">{{
+                                formatLogisticsTime(detail.time)
+                            }}</span>
                         </div>
                     </div>
-                    <div class="logistics-detail-foot">
-                        <span>{{ selectedOrderLogistics.from }}</span>
-                        <span style="color: var(--line)">━━━━━━</span>
-                        <span>{{ selectedOrderLogistics.to }}</span>
+
+                    <!-- 空状态 -->
+                    <div v-else class="empty-logistics">
+                        <div style="font-size: 48px; margin-bottom: 12px">
+                            📦
+                        </div>
+                        <p>暂无物流轨迹信息</p>
+                        <p class="hint">订单尚未发货或物流信息未更新</p>
+                    </div>
+
+                    <div
+                        class="logistics-detail-foot"
+                        v-if="currentLogisticsDetail.currentLocation"
+                    >
+                        <span>当前位置：</span>
+                        <span
+                            style="color: var(--cinnabar); font-weight: 600"
+                            >{{ currentLogisticsDetail.currentLocation }}</span
+                        >
                     </div>
                 </div>
             </div>
@@ -954,11 +1031,6 @@ interface Product {
     effect: string;
     desc: string;
 }
-interface CartItem {
-    id: string;
-    qty: number;
-    fromAi: boolean;
-}
 interface LogisticsStep {
     time: string;
     text: string;
@@ -1051,6 +1123,8 @@ const orderStatusDefs = [
     { key: "topay", label: "待发货" },
     { key: "shipped", label: "已发货" },
     { key: "done", label: "已完成" },
+    { key: "refunding", label: "退款中" },
+    { key: "refunded", label: "已退款" },
 ];
 
 // ── Reactive state ────────────────────────────────────────────────────────────
@@ -1128,6 +1202,9 @@ const refundForm = reactive({
     description: "",
 });
 const refundSubmitting = ref(false);
+
+// Logistics detail state
+const currentLogisticsDetail = ref<any>(null);
 
 // Toast
 const toastMsg = ref("");
@@ -1270,6 +1347,47 @@ function orderStatusClass(status: string): string {
         refunded: "status-refunded",
     };
     return map[status] || "";
+}
+
+// ── Logistics helpers ────────────────────────────────────────────────────────
+/** 获取物流状态文本 */
+function getLogisticsStatusText(status: number): string {
+    const statusMap: Record<number, string> = {
+        0: "待发货",
+        1: "已发货",
+        2: "运输中",
+        3: "已签收",
+    };
+    return statusMap[status] || "未知";
+}
+
+/** 获取物流状态样式类 */
+function getLogisticsStatusClass(status: number): string {
+    const classMap: Record<number, string> = {
+        0: "status-pending",
+        1: "status-shipped",
+        2: "status-transit",
+        3: "status-signed",
+    };
+    return classMap[status] || "";
+}
+
+/** 格式化物流时间 */
+function formatLogisticsTime(timeStr: string): string {
+    if (!timeStr) return "";
+    try {
+        const date = new Date(timeStr);
+        return date.toLocaleString("zh-CN", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        });
+    } catch (e) {
+        return timeStr;
+    }
 }
 
 // ── Cart actions ──────────────────────────────────────────────────────────────
@@ -1509,7 +1627,8 @@ async function submitRefund() {
         await ApiRefund.applyRefund(refundForm.orderId, refundData);
         showToast("退款申请已提交，客服将在 24h 内处理");
         showRefundModal.value = false;
-        // 重新加载订单列表以更新状态
+
+        // 重新加载订单列表以获取最新状态
         await loadOrders();
     } catch (error) {
         console.error("申请退款失败:", error);
@@ -1584,28 +1703,12 @@ async function openLogistics(no: string) {
             const logistics = apiResponse.data;
             console.log("物流信息:", logistics);
 
-            // TODO: 这里应该显示物流模态框，展示物流轨迹
-            // 暂时使用 alert 显示简化信息
-            const statusMap: Record<number, string> = {
-                0: "待发货",
-                1: "已发货",
-                2: "运输中",
-                3: "已签收",
-            };
+            // 存储物流详情数据
+            currentLogisticsDetail.value = logistics;
+            selectedOrderNo.value = no;
 
-            let message = `物流公司：${logistics.logisticsCompany}\n`;
-            message += `物流单号：${logistics.trackingNo}\n`;
-            message += `当前状态：${statusMap[logistics.status] || "未知"}\n`;
-            message += `当前位置：${logistics.currentLocation || "未知"}\n\n`;
-
-            if (logistics.details && logistics.details.length > 0) {
-                message += "物流轨迹：\n";
-                logistics.details.forEach((detail) => {
-                    message += `${detail.time} - ${detail.location}\n${detail.description}\n\n`;
-                });
-            }
-
-            alert(message);
+            // 显示物流模态框
+            showLogisticsModal.value = true;
         } else {
             showToast("暂无物流信息");
         }
@@ -1799,12 +1902,17 @@ async function loadOrders(status?: number) {
 
         console.log("订单列表响应:", response);
         const apiResponse = response.data;
+
+        // 先清空旧数据，确保完全从后端同步
+        orders.value = [];
+
         if (apiResponse && apiResponse.data && apiResponse.data.records) {
             console.log("订单记录数:", apiResponse.data.records.length);
             orders.value = apiResponse.data.records.map(convertOrderVO);
             console.log("转换后的订单数:", orders.value.length);
         } else {
             console.warn("订单数据格式异常:", response.data);
+            showToast("暂无订单数据");
         }
     } catch (error) {
         console.error("加载订单失败:", error);
@@ -1812,6 +1920,13 @@ async function loadOrders(status?: number) {
     } finally {
         orderLoading.value = false;
     }
+}
+
+/** 手动刷新订单列表 */
+async function refreshOrders() {
+    showToast("正在刷新订单状态...");
+    await loadOrders();
+    showToast("订单状态已更新");
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -2305,6 +2420,35 @@ onUnmounted(() => {
         box-shadow: var(--shadow);
     }
 }
+
+.order-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    svg {
+        transition: transform 0.3s ease;
+    }
+
+    &:not(:disabled):hover svg {
+        transform: rotate(180deg);
+    }
+}
 .order-card {
     background: var(--paper);
     border-radius: 14px;
@@ -2351,6 +2495,26 @@ onUnmounted(() => {
 .status-done {
     color: var(--ink-muted);
 }
+.status-cancelled {
+    color: var(--ink-light);
+}
+.status-refunding {
+    color: var(--gold);
+    animation: pulse 2s ease-in-out infinite;
+}
+.status-refunded {
+    color: var(--jade);
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
 .order-body {
     padding: 16px 20px;
     display: flex;
@@ -2391,6 +2555,52 @@ onUnmounted(() => {
     .btn {
         padding: 7px 16px;
         font-size: 13px;
+    }
+}
+
+.refund-status-tip,
+.refund-completed-tip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+
+    .tip-icon {
+        font-size: 16px;
+    }
+
+    .tip-text {
+        color: var(--ink);
+        font-weight: 500;
+    }
+}
+
+.refund-status-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(212, 175, 55, 0.1),
+        rgba(212, 175, 55, 0.05)
+    );
+    border: 1px solid rgba(212, 175, 55, 0.3);
+
+    .tip-text {
+        color: var(--gold-dark);
+    }
+}
+
+.refund-completed-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(93, 173, 126, 0.1),
+        rgba(93, 173, 126, 0.05)
+    );
+    border: 1px solid rgba(93, 173, 126, 0.3);
+
+    .tip-text {
+        color: var(--jade-dark);
     }
 }
 
@@ -3021,6 +3231,15 @@ onUnmounted(() => {
             box-shadow: 0 0 0 5px rgba(179, 60, 44, 0.12);
         }
     }
+    .step-content {
+        margin-bottom: 4px;
+        line-height: 1.6;
+    }
+    .step-location {
+        font-size: 13px;
+        color: var(--ink-muted);
+        margin-bottom: 4px;
+    }
     .step-time {
         color: var(--ink-muted);
         font-size: 12px;
@@ -3037,6 +3256,49 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+// Empty logistics state
+.empty-logistics {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--ink-muted);
+    p {
+        margin: 8px 0;
+        font-size: 14px;
+    }
+    .hint {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+}
+
+// Logistics status styles
+.track-status {
+    margin-top: 8px;
+    font-size: 14px;
+    span {
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 12px;
+        display: inline-block;
+        &.status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        &.status-shipped {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        &.status-transit {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+        &.status-signed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    }
 }
 
 // Refund modal
