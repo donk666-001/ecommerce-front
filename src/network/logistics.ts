@@ -1,4 +1,4 @@
-import type { ApiResponse } from "./common";
+import type { ApiResponse, PageResult } from "./common";
 import { GAxios } from "@/plugins";
 
 /** 物流轨迹详情视图对象 */
@@ -72,5 +72,18 @@ export const ApiLogistics = {
     getLogisticsByTrackingNo: (trackingNo: string) =>
         GAxios.get<ApiResponse<LogisticsVO>>(
             `/logistics/tracking/${trackingNo}`,
+        ),
+
+    /** 分页查询物流列表（管理员） */
+    listLogistics: (params?: {
+        status?: number;
+        trackingNo?: string;
+        logisticsCompany?: string;
+        page?: number;
+        size?: number;
+    }) =>
+        GAxios.get<ApiResponse<PageResult<LogisticsVO>>>(
+            "/logistics/admin/list",
+            { params },
         ),
 };
