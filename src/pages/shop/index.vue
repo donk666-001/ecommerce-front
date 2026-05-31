@@ -237,11 +237,23 @@
                                 >
                                 <span class="order-time">{{ o.time }}</span>
                             </div>
-                            <span
-                                class="order-status"
-                                :class="orderStatusClass(o.status)"
-                                >{{ orderStatusText(o.status) }}</span
-                            >
+                            <div class="order-status-group">
+                                <span
+                                    class="order-status"
+                                    :class="orderStatusClass(o.status)"
+                                    >{{ orderStatusText(o.status) }}</span
+                                >
+                                <!-- 独立显示退款状态 -->
+                                <span
+                                    v-if="o.refundStatus !== undefined"
+                                    class="refund-status-badge"
+                                    :class="
+                                        getRefundStatusClass(o.refundStatus)
+                                    "
+                                >
+                                    {{ getRefundStatusText(o.refundStatus) }}
+                                </span>
+                            </div>
                         </div>
                         <div class="order-body">
                             <div class="order-thumb-row">
@@ -316,86 +328,143 @@
                                     </button>
                                 </template>
                                 <template v-else-if="o.status === 'shipped'">
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="openRefundModal(o.no)"
+                                    <!-- 根据退款状态显示不同按钮 -->
+                                    <template
+                                        v-if="o.refundStatus === undefined"
                                     >
-                                        申请退款
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="openLogistics(o.no)"
-                                    >
-                                        查看物流
-                                    </button>
-                                    <button
-                                        class="btn btn-jade"
-                                        @click="confirmReceipt(o.no)"
-                                    >
-                                        确认收货
-                                    </button>
-                                    <div class="more-wrap" @click.stop>
+                                        <!-- 无退款 -->
                                         <button
                                             class="btn btn-outline"
-                                            @click="toggleMore(idx)"
+                                            @click="openRefundModal(o.no)"
                                         >
-                                            更多 ▾
+                                            申请退款
                                         </button>
-                                        <div
-                                            class="more-menu"
-                                            :class="{
-                                                show: openMoreIdx === idx,
-                                            }"
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="openLogistics(o.no)"
                                         >
-                                            <div
-                                                class="more-menu-item"
-                                                @click="
-                                                    reBuy(o.no);
-                                                    openMoreIdx = -1;
-                                                "
+                                            查看物流
+                                        </button>
+                                        <button
+                                            class="btn btn-jade"
+                                            @click="confirmReceipt(o.no)"
+                                        >
+                                            确认收货
+                                        </button>
+                                        <div class="more-wrap" @click.stop>
+                                            <button
+                                                class="btn btn-outline"
+                                                @click="toggleMore(idx)"
                                             >
-                                                再次拼单
-                                            </div>
+                                                更多 ▾
+                                            </button>
                                             <div
-                                                class="more-menu-item"
-                                                @click="
-                                                    extendReceipt(o.no);
-                                                    openMoreIdx = -1;
-                                                "
+                                                class="more-menu"
+                                                :class="{
+                                                    show: openMoreIdx === idx,
+                                                }"
                                             >
-                                                延长收货
+                                                <div
+                                                    class="more-menu-item"
+                                                    @click="
+                                                        reBuy(o.no);
+                                                        openMoreIdx = -1;
+                                                    "
+                                                >
+                                                    再次拼单
+                                                </div>
+                                                <div
+                                                    class="more-menu-item"
+                                                    @click="
+                                                        extendReceipt(o.no);
+                                                        openMoreIdx = -1;
+                                                    "
+                                                >
+                                                    延长收货
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </template>
-                                <template v-else-if="o.status === 'refunding'">
-                                    <div class="refund-status-tip">
-                                        <span class="tip-icon">⏳</span>
-                                        <span class="tip-text"
-                                            >退款审核中，客服将在 24h
-                                            内处理</span
-                                        >
-                                    </div>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reBuy(o.no)"
+                                    </template>
+                                    <template
+                                        v-else-if="
+                                            [0, 1, 2].includes(o.refundStatus)
+                                        "
                                     >
-                                        再次购买
-                                    </button>
-                                </template>
-                                <template v-else-if="o.status === 'refunded'">
-                                    <div class="refund-completed-tip">
-                                        <span class="tip-icon">✅</span>
-                                        <span class="tip-text"
-                                            >退款已完成，款项将原路返回</span
+                                        <!-- 退款申请中、审核通过、退款中 -->
+                                        <div class="refund-status-tip">
+                                            <span class="tip-icon">⏳</span>
+                                            <span class="tip-text"
+                                                >{{
+                                                    getRefundStatusText(
+                                                        o.refundStatus,
+                                                    )
+                                                }}，客服将在 24h 内处理</span
+                                            >
+                                        </div>
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="openLogistics(o.no)"
                                         >
-                                    </div>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reBuy(o.no)"
-                                    >
-                                        再次购买
-                                    </button>
+                                            查看物流
+                                        </button>
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="reBuy(o.no)"
+                                        >
+                                            再次购买
+                                        </button>
+                                    </template>
+                                    <template v-else-if="o.refundStatus === 3">
+                                        <!-- 退款已完成 -->
+                                        <div class="refund-completed-tip">
+                                            <span class="tip-icon">✅</span>
+                                            <span class="tip-text"
+                                                >退款已完成，款项将原路返回</span
+                                            >
+                                        </div>
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="reBuy(o.no)"
+                                        >
+                                            再次购买
+                                        </button>
+                                    </template>
+                                    <template v-else-if="o.refundStatus === 4">
+                                        <!-- 退款失败 -->
+                                        <div class="refund-rejected-tip">
+                                            <span class="tip-icon">❌</span>
+                                            <div class="tip-content">
+                                                <span class="tip-text"
+                                                    >退款申请已被拒绝</span
+                                                >
+                                                <span
+                                                    v-if="o.auditRemark"
+                                                    class="tip-reason"
+                                                    >原因：{{
+                                                        o.auditRemark
+                                                    }}</span
+                                                >
+                                            </div>
+                                        </div>
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="openRefundModal(o.no)"
+                                        >
+                                            重新申请退款
+                                        </button>
+                                        <button
+                                            class="btn btn-outline"
+                                            @click="openLogistics(o.no)"
+                                        >
+                                            查看物流
+                                        </button>
+                                        <button
+                                            class="btn btn-jade"
+                                            @click="confirmReceipt(o.no)"
+                                        >
+                                            确认收货
+                                        </button>
+                                    </template>
                                 </template>
                                 <template v-else>
                                     <button
@@ -1044,17 +1113,12 @@ interface Order {
     id: number; // 订单ID
     no: string; // 订单号
     time: string; // 创建时间
-    status:
-        | "unpaid"
-        | "topay"
-        | "shipped"
-        | "done"
-        | "cancelled"
-        | "refunding"
-        | "refunded"; // 订单状态
+    status: "unpaid" | "topay" | "shipped" | "done" | "cancelled"; // 订单状态（不含退款状态）
     items: { id: string; qty: number; name: string; price: number }[]; // 订单项
     amount: number; // 订单总金额
     logistics?: { from: string; to: string; steps: LogisticsStep[] }; // 物流信息（可选）
+    refundStatus?: number; // 退款状态（独立）：0=申请中, 1=审核通过, 2=退款中, 3=已完成, 4=已拒绝
+    auditRemark?: string; // 退款审核备注（退款失败时显示原因）
 }
 interface Agent {
     id: string;
@@ -1128,6 +1192,7 @@ const orderStatusDefs = [
     { key: "done", label: "已完成" },
     { key: "refunding", label: "退款中" },
     { key: "refunded", label: "已退款" },
+    { key: "rejected", label: "退款失败" },
 ];
 
 // ── Reactive state ────────────────────────────────────────────────────────────
@@ -1240,11 +1305,38 @@ const cartTotal = computed(
         cartItems.value.reduce((s, c) => s + c.price * c.quantity, 0),
 );
 
-const filteredOrders = computed(() =>
-    orders.value.filter(
-        (o) => orderFilter.value === "all" || o.status === orderFilter.value,
-    ),
-);
+const filteredOrders = computed(() => {
+    const filter = orderFilter.value;
+
+    // 如果是退款相关的筛选，基于 refundStatus 字段
+    if (filter === "refunding") {
+        // 退款中：refundStatus 为 0, 1, 2（申请中、审核通过、退款中）
+        return orders.value.filter(
+            (o) =>
+                o.refundStatus !== undefined &&
+                [0, 1, 2].includes(o.refundStatus),
+        );
+    }
+    if (filter === "refunded") {
+        // 已退款：refundStatus 为 3（退款已完成）
+        return orders.value.filter((o) => o.refundStatus === 3);
+    }
+    if (filter === "rejected") {
+        // 退款失败：refundStatus 为 4（退款被拒绝）
+        return orders.value.filter((o) => o.refundStatus === 4);
+    }
+
+    // 其他情况（全部、未支付、待发货、已发货、已完成、已取消）
+    // 只显示没有退款状态的订单
+    if (filter === "all") {
+        return orders.value.filter((o) => o.refundStatus === undefined);
+    }
+
+    // 基于订单状态筛选，同时排除有退款状态的订单
+    return orders.value.filter(
+        (o) => o.refundStatus === undefined && o.status === filter,
+    );
+});
 
 const currentAgentObj = computed(
     () => agents.find((a) => a.id === currentAgent.value)!,
@@ -1322,8 +1414,30 @@ function getProductIcon(productId: number): string {
 }
 
 function orderCount(key: string): number {
-    if (key === "all") return orders.value.length;
-    return orders.value.filter((o) => o.status === key).length;
+    if (key === "all") {
+        // 全部：只显示没有退款状态的订单
+        return orders.value.filter((o) => o.refundStatus === undefined).length;
+    }
+
+    // 如果是退款相关的筛选，基于 refundStatus 字段
+    if (key === "refunding") {
+        return orders.value.filter(
+            (o) =>
+                o.refundStatus !== undefined &&
+                [0, 1, 2].includes(o.refundStatus),
+        ).length;
+    }
+    if (key === "refunded") {
+        return orders.value.filter((o) => o.refundStatus === 3).length;
+    }
+    if (key === "rejected") {
+        return orders.value.filter((o) => o.refundStatus === 4).length;
+    }
+
+    // 其他情况基于订单状态统计，同时排除有退款状态的订单
+    return orders.value.filter(
+        (o) => o.refundStatus === undefined && o.status === key,
+    ).length;
 }
 
 function orderStatusText(status: string): string {
@@ -1333,8 +1447,6 @@ function orderStatusText(status: string): string {
         shipped: "运输中",
         done: "已完成",
         cancelled: "已取消",
-        refunding: "退款中",
-        refunded: "已退款",
     };
     return map[status] || status;
 }
@@ -1346,10 +1458,34 @@ function orderStatusClass(status: string): string {
         shipped: "status-shipped",
         done: "status-done",
         cancelled: "status-cancelled",
-        refunding: "status-refunding",
-        refunded: "status-refunded",
     };
     return map[status] || "";
+}
+
+/** 获取退款状态文本 */
+function getRefundStatusText(status?: number): string {
+    if (status === undefined) return "";
+    const map: Record<number, string> = {
+        0: "退款申请中",
+        1: "审核通过",
+        2: "退款中",
+        3: "退款已完成",
+        4: "退款失败",
+    };
+    return map[status] || "未知";
+}
+
+/** 获取退款状态样式类 */
+function getRefundStatusClass(status?: number): string {
+    if (status === undefined) return "";
+    const classMap: Record<number, string> = {
+        0: "status-refunding",
+        1: "status-approved",
+        2: "status-processing",
+        3: "status-refunded",
+        4: "status-rejected",
+    };
+    return classMap[status] || "";
 }
 
 // ── Logistics helpers ────────────────────────────────────────────────────────
@@ -1864,22 +2000,49 @@ async function loadCategories() {
 
 /** 将后端 OrderVO 转换为前端 Order */
 function convertOrderVO(vo: OrderVO): Order {
-    // 后端状态映射到前端状态
+    // 后端订单状态映射到前端订单状态（不包含退款状态）
     const statusMap: Record<number, Order["status"]> = {
         0: "unpaid", // 待付款
         1: "topay", // 已付款（待发货）
         2: "shipped", // 已发货
         3: "done", // 已完成
         4: "cancelled", // 已取消
-        5: "refunding", // 退款中
-        6: "refunded", // 已退款
+        // 注意：5=退款中, 6=已退款 不再映射到订单状态
     };
+
+    // 处理退款状态
+    // 注意：这里需要根据实际情况调整
+    // 如果后端订单接口返回了退款状态，直接使用
+    // 否则需要通过 /refunds 接口查询
+    let refundStatus: number | undefined = undefined;
+    let auditRemark: string | undefined = undefined;
+
+    // 临时方案：根据订单状态推断退款状态
+    // TODO: 应该调用 /refunds 接口获取准确的退款状态
+    if (vo.status === 5) {
+        // 订单状态为退款中，可能是 0/1/2 中的一个
+        refundStatus = 0; // 默认为申请中
+    } else if (vo.status === 6) {
+        // 订单状态为已退款，可能是 3（完成）或 4（失败）
+        // 这里需要根据实际业务逻辑判断
+        refundStatus = 3; // 默认为已完成
+    }
+
+    // 如果后端返回了退款审核备注，直接使用
+    // @ts-ignore - 后端可能会扩展返回此字段
+    if (vo.auditRemark) {
+        auditRemark = vo.auditRemark;
+    }
 
     return {
         id: vo.id,
         no: vo.orderNo,
         time: vo.createdAt,
-        status: statusMap[vo.status] || "unpaid",
+        // 如果订单状态是退款中或已退款，映射为对应的订单基础状态
+        status:
+            vo.status === 5 || vo.status === 6
+                ? "shipped"
+                : statusMap[vo.status] || "unpaid",
         items: vo.items.map((item) => ({
             id: `p${item.productId}`,
             qty: item.quantity,
@@ -1887,6 +2050,8 @@ function convertOrderVO(vo: OrderVO): Order {
             price: item.price,
         })),
         amount: vo.payAmount || vo.totalAmount,
+        refundStatus, // 独立的退款状态
+        auditRemark, // 退款审核备注
         // 物流信息暂时不处理，后续可以根据需要添加
     };
 }
@@ -1911,7 +2076,15 @@ async function loadOrders(status?: number) {
 
         if (apiResponse && apiResponse.data && apiResponse.data.records) {
             console.log("订单记录数:", apiResponse.data.records.length);
-            orders.value = apiResponse.data.records.map(convertOrderVO);
+
+            // 转换订单数据
+            const convertedOrders =
+                apiResponse.data.records.map(convertOrderVO);
+
+            // 对于有退款状态的订单，调用 /refunds 接口获取真实的退款状态
+            await loadRefundInfoForOrders(convertedOrders);
+
+            orders.value = convertedOrders;
             console.log("转换后的订单数:", orders.value.length);
         } else {
             console.warn("订单数据格式异常:", response.data);
@@ -1922,6 +2095,59 @@ async function loadOrders(status?: number) {
         showToast("加载订单失败，请稍后重试");
     } finally {
         orderLoading.value = false;
+    }
+}
+
+/** 为有退款状态的订单加载真实的退款信息 */
+async function loadRefundInfoForOrders(orders: Order[]) {
+    try {
+        // 找出所有有退款状态的订单
+        const ordersWithRefund = orders.filter(
+            (o) => o.refundStatus !== undefined,
+        );
+
+        if (ordersWithRefund.length === 0) return;
+
+        console.log(
+            `发现 ${ordersWithRefund.length} 个有退款状态的订单，查询退款详情...`,
+        );
+
+        // 调用 /refunds 接口获取所有退款记录
+        const refundResponse = await ApiRefund.listMyRefunds({
+            page: 1,
+            size: 100,
+        });
+
+        const refundData = refundResponse.data;
+        if (!refundData || !refundData.data || !refundData.data.records) {
+            console.warn("退款数据格式异常");
+            return;
+        }
+
+        const refunds = refundData.data.records;
+        console.log(`获取到 ${refunds.length} 条退款记录`);
+
+        // 建立 orderId -> refund 的映射
+        const refundMap = new Map<number, any>();
+        refunds.forEach((refund) => {
+            refundMap.set(refund.orderId, refund);
+        });
+
+        // 更新订单的 refundStatus 和 auditRemark
+        ordersWithRefund.forEach((order) => {
+            const refund = refundMap.get(order.id);
+            if (refund) {
+                order.refundStatus = refund.status;
+                order.auditRemark = refund.auditRemark;
+                console.log(
+                    `订单 ${order.no} 的退款状态更新为: ${refund.status} (${getRefundStatusText(refund.status)})`,
+                    refund.auditRemark ? `, 原因: ${refund.auditRemark}` : "",
+                );
+            }
+        });
+    } catch (error) {
+        console.error("加载退款信息失败:", error);
+        // 不显示错误提示，继续使用推断的状态
     }
 }
 
@@ -2486,6 +2712,21 @@ onUnmounted(() => {
     font-weight: 600;
     font-size: 14px;
 }
+.order-status-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.refund-status-badge {
+    font-family: "STKaiti", serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(212, 175, 55, 0.1);
+    color: var(--gold-dark);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
 .status-pay {
     color: var(--cinnabar);
 }
@@ -2505,8 +2746,17 @@ onUnmounted(() => {
     color: var(--gold);
     animation: pulse 2s ease-in-out infinite;
 }
+.status-approved {
+    color: var(--jade);
+}
+.status-processing {
+    color: var(--cinnabar);
+}
 .status-refunded {
     color: var(--jade);
+}
+.status-rejected {
+    color: var(--cinnabar);
 }
 
 @keyframes pulse {
@@ -2562,7 +2812,8 @@ onUnmounted(() => {
 }
 
 .refund-status-tip,
-.refund-completed-tip {
+.refund-completed-tip,
+.refund-rejected-tip {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -2573,11 +2824,24 @@ onUnmounted(() => {
 
     .tip-icon {
         font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .tip-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
     .tip-text {
         color: var(--ink);
         font-weight: 500;
+    }
+
+    .tip-reason {
+        color: var(--cinnabar);
+        font-size: 12px;
+        font-weight: 600;
     }
 }
 
@@ -2604,6 +2868,19 @@ onUnmounted(() => {
 
     .tip-text {
         color: var(--jade-dark);
+    }
+}
+
+.refund-rejected-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(214, 69, 65, 0.1),
+        rgba(214, 69, 65, 0.05)
+    );
+    border: 1px solid rgba(214, 69, 65, 0.3);
+
+    .tip-text {
+        color: var(--cinnabar);
     }
 }
 
