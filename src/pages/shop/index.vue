@@ -90,7 +90,11 @@
                 v-model:current-agent="currentAgent"
                 :chat-history="chatHistory"
                 v-model:chat-input="chatInput"
+                :context-product="serviceContextProduct"
                 @send-chat="sendChat"
+                @send-product-card="sendProductCard"
+                @view-product="viewProductFromService"
+                @dismiss-context-product="serviceContextProduct = null"
             />
         </main>
 
@@ -105,10 +109,7 @@
                 activeTab = 'cart';
             "
             @buy-now="buyNow"
-            @contact-service="
-                showPdModal = false;
-                activeTab = 'service';
-            "
+            @contact-service="handleContactService"
         />
 
         <!-- Payment Modal -->
@@ -199,6 +200,12 @@ import {
 import { ApiOrder, type OrderVO } from "@/network/order";
 import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
 import { ApiLogistics } from "@/network";
+import { useUserStore } from "@/store/user";
+import {
+    bridgeEnterQueue,
+    bridgeCustomerSend,
+    bridgeSessions,
+} from "@/network/chatBridge";
 
 interface Product {
     id: string;
@@ -241,6 +248,13 @@ interface ChatMsg {
     from: "agent" | "me";
     text: string;
     time: string;
+    productCard?: {
+        id: string;
+        name: string;
+        price: number;
+        icon: string;
+        desc: string;
+    };
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
@@ -333,9 +347,22 @@ const chatHistory = ref<Record<string, ChatMsg[]>>({
 const chatInput = ref("");
 const chatBodyRef = ref<HTMLElement | null>(null);
 
+const userStore = useUserStore();
+const custName = computed(
+    () => userStore.G_LoginInfo.nickName || "游客",
+);
+const custId = computed(
+    () => `user_${userStore.G_LoginInfo.account || "anon"}`,
+);
+// 每个 agentId 对应的 bridge session ID
+const bridgeSessionIds = ref<Record<string, string>>({});
+// 已处理过的消息数（用于增量检测 agent 回复）
+const bridgeMsgCounts = ref<Record<string, number>>({});
+
 // Modal states
 const showPdModal = ref(false);
 const selectedProduct = ref<Product | null>(null);
+const serviceContextProduct = ref<Product | null>(null);
 const pdQty = ref(1);
 const showPayModal = ref(false);
 const showLogisticsModal = ref(false);
@@ -862,6 +889,50 @@ function toggleMore(idx: number) {
 }
 
 // ── Customer service ──────────────────────────────────────────────────────────
+function handleContactService() {
+    serviceContextProduct.value = selectedProduct.value;
+    showPdModal.value = false;
+    activeTab.value = "service";
+}
+
+function sendProductCard(product: {
+    id: string;
+    name: string;
+    price: number;
+    icon: string;
+    desc: string;
+}) {
+    const agentId = currentAgent.value;
+    if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    chatHistory.value[agentId].push({
+        from: "me",
+        text: `[商品] ${product.name} ¥${product.price}`,
+        time,
+        productCard: { ...product },
+    });
+    // 同步到桥（以纯文本描述传给客服端）
+    const productMsg = `[商品咨询] ${product.name}（¥${product.price}）`;
+    const existingId = bridgeSessionIds.value[agentId];
+    if (existingId) {
+        bridgeCustomerSend(existingId, productMsg);
+    } else {
+        const session = bridgeEnterQueue(
+            custName.value,
+            custId.value,
+            agentId,
+            productMsg,
+        );
+        bridgeSessionIds.value[agentId] = session.id;
+    }
+}
+
+function viewProductFromService(productId: string) {
+    const product = products.value.find((p) => p.id === productId);
+    if (product) openProduct(product);
+}
+
 async function sendChat() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -871,36 +942,61 @@ async function sendChat() {
         ":" +
         now.getMinutes().toString().padStart(2, "0");
 
-    // 确保聊天历史数组存在
     const agentId = currentAgent.value;
-    if (!chatHistory.value[agentId]) {
-        chatHistory.value[agentId] = [];
-    }
+    if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
 
+    // 立即显示到本地聊天记录
     chatHistory.value[agentId].push({ from: "me", text, time });
     chatInput.value = "";
     await nextTick();
     scrollChatToBottom();
-    setTimeout(async () => {
-        const replies = presetReplies[agentId] || [];
-        if (!chatHistory.value[agentId]) {
-            chatHistory.value[agentId] = [];
-        }
-        if (replies.length > 0) {
-            const randomIndex = Math.floor(Math.random() * replies.length);
-            const replyText = replies[randomIndex];
-            if (replyText) {
-                chatHistory.value[agentId].push({
-                    from: "agent",
-                    text: replyText,
-                    time,
-                });
+
+    // 通过桥发送
+    const existingId = bridgeSessionIds.value[agentId];
+    if (existingId) {
+        bridgeCustomerSend(existingId, text);
+    } else {
+        const session = bridgeEnterQueue(
+            custName.value,
+            custId.value,
+            agentId,
+            text,
+        );
+        bridgeSessionIds.value[agentId] = session.id;
+    }
+}
+
+// 监听桥中客服回复，同步到本地聊天记录
+watch(
+    bridgeSessions,
+    () => {
+        for (const [agentId, sessionId] of Object.entries(
+            bridgeSessionIds.value,
+        )) {
+            const session = bridgeSessions.find((s) => s.id === sessionId);
+            if (!session) continue;
+            const prevCount = bridgeMsgCounts.value[sessionId] ?? 0;
+            const newMsgs = session.messages.slice(prevCount);
+            let added = 0;
+            for (const msg of newMsgs) {
+                if (msg.from === "agent") {
+                    if (!chatHistory.value[agentId])
+                        chatHistory.value[agentId] = [];
+                    chatHistory.value[agentId].push({
+                        from: "agent",
+                        text: msg.text,
+                        time: msg.time,
+                    });
+                }
+                added++;
+            }
+            if (added > 0) {
+                bridgeMsgCounts.value[sessionId] = prevCount + added;
             }
         }
-        await nextTick();
-        scrollChatToBottom();
-    }, 800);
-}
+    },
+    { deep: true },
+);
 
 function scrollChatToBottom() {
     if (chatBodyRef.value)

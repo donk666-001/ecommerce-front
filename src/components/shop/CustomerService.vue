@@ -64,10 +64,54 @@
                                 }}
                                 · {{ m.time }}
                             </div>
-                            <div class="chat-bubble">{{ m.text }}</div>
+                            <div
+                                v-if="m.productCard"
+                                class="product-card-msg"
+                                @click="$emit('viewProduct', m.productCard.id)"
+                            >
+                                <div class="pcm-body">
+                                    <span class="pcm-icon">{{ m.productCard.icon }}</span>
+                                    <div class="pcm-info">
+                                        <div class="pcm-name">{{ m.productCard.name }}</div>
+                                        <div class="pcm-price">¥{{ m.productCard.price }}</div>
+                                    </div>
+                                </div>
+                                <div class="pcm-footer">查看商品详情 ›</div>
+                            </div>
+                            <div v-else class="chat-bubble">{{ m.text }}</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- 商品上下文卡片：从商品页跳入时显示 -->
+                <Transition name="context-card">
+                    <div
+                        v-if="props.contextProduct"
+                        class="context-card"
+                    >
+                        <button
+                            class="context-card-close"
+                            @click.stop="$emit('dismissContextProduct')"
+                        >✕</button>
+                        <div
+                            class="context-card-body"
+                            @click="$emit('viewProduct', props.contextProduct.id)"
+                        >
+                            <span class="context-card-icon">{{ props.contextProduct.icon }}</span>
+                            <div class="context-card-info">
+                                <div class="context-card-name">{{ props.contextProduct.name }}</div>
+                                <div class="context-card-price">¥{{ props.contextProduct.price }}</div>
+                            </div>
+                        </div>
+                        <button
+                            class="context-card-send"
+                            @click="$emit('sendProductCard', props.contextProduct)"
+                        >
+                            发送给客服
+                        </button>
+                    </div>
+                </Transition>
+
                 <div class="chat-input-row">
                     <input
                         :value="chatInput"
@@ -105,6 +149,21 @@ interface ChatMsg {
     from: "agent" | "me";
     text: string;
     time: string;
+    productCard?: {
+        id: string;
+        name: string;
+        price: number;
+        icon: string;
+        desc: string;
+    };
+}
+
+interface ContextProduct {
+    id: string;
+    name: string;
+    price: number;
+    icon: string;
+    desc: string;
 }
 
 interface Props {
@@ -112,6 +171,7 @@ interface Props {
     currentAgent: string;
     chatHistory: Record<string, ChatMsg[]>;
     chatInput: string;
+    contextProduct?: ContextProduct | null;
 }
 
 const props = defineProps<Props>();
@@ -120,6 +180,9 @@ defineEmits<{
     "update:currentAgent": [value: string];
     "update:chatInput": [value: string];
     sendChat: [];
+    sendProductCard: [product: ContextProduct];
+    viewProduct: [productId: string];
+    dismissContextProduct: [];
 }>();
 
 const chatBodyRef = ref<HTMLElement | null>(null);
@@ -267,6 +330,7 @@ function scrollChatToBottom() {
     border: 1px solid rgba(232, 223, 208, 0.4);
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .chat-header {
@@ -403,5 +467,165 @@ function scrollChatToBottom() {
             background: #4a6f60;
         }
     }
+}
+
+/* ── 浮动商品上下文卡片 ── */
+.context-card {
+    position: absolute;
+    right: 16px;
+    bottom: 62px;
+    width: 210px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(60, 50, 30, 0.14);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    z-index: 20;
+}
+
+.context-card-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+
+    &:hover {
+        background: var(--cream);
+        color: var(--ink);
+    }
+}
+
+.context-card-body {
+    padding: 12px 12px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+    padding-right: 28px;
+
+    &:hover {
+        background: var(--cream);
+    }
+}
+
+.context-card-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.context-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.context-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.context-card-price {
+    font-size: 15px;
+    color: var(--cinnabar);
+    font-weight: 700;
+    margin-top: 3px;
+}
+
+.context-card-send {
+    display: block;
+    width: 100%;
+    padding: 9px;
+    background: var(--jade);
+    color: white;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s;
+
+    &:hover {
+        background: #4a6f60;
+    }
+}
+
+/* 浮动卡片进出动画 */
+.context-card-enter-active,
+.context-card-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.context-card-enter-from,
+.context-card-leave-to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+}
+
+/* ── 聊天记录中的商品卡片气泡 ── */
+.product-card-msg {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    width: 190px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:hover {
+        border-color: var(--jade);
+        box-shadow: 0 2px 10px rgba(92, 131, 116, 0.15);
+    }
+}
+
+.pcm-body {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pcm-icon {
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.pcm-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pcm-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pcm-price {
+    font-size: 14px;
+    color: var(--cinnabar);
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.pcm-footer {
+    padding: 5px 10px;
+    background: var(--cream);
+    font-size: 11px;
+    color: var(--jade);
+    border-top: 1px solid var(--line);
 }
 </style>

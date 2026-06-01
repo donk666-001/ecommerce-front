@@ -396,6 +396,7 @@ import {
 import { useQuickReplies } from "@/composables/useQuickReplies";
 import { customerWS } from "@/network/customer.ws";
 import { ElMessage } from "element-plus";
+import { bridgeAgentSend, bridgeEndSession } from "@/network/chatBridge";
 
 interface Session extends CustomerSession {
     // 扩展类型以兼容现有代码
@@ -590,6 +591,9 @@ function endSession(session: Session, reason: "manual" | "timeout") {
     const record = buildHistoryRecord(session, reason);
     emit("session-ended", record);
     waitingForCustomerSince.delete(session.id);
+    if (session.id.startsWith("bridge_")) {
+        bridgeEndSession(session.id);
+    }
     sessions.value = sessions.value.filter((s) => s.id !== session.id);
     if (currentSessionId.value === session.id) {
         currentSessionId.value = sessions.value[0]?.id || "";
@@ -681,12 +685,16 @@ async function sendMessage() {
             markWaitingForCustomer(currentSession.value.id);
             inputText.value = "";
 
-            // 通过WebSocket发送消息
-            customerWS.send({
-                type: "send_message",
-                sessionId: currentSession.value.id,
-                message: { text, time },
-            });
+            // 桥会话直接同步到 bridge，不走 WS 模拟回复
+            if (currentSession.value.id.startsWith("bridge_")) {
+                bridgeAgentSend(currentSession.value.id, text);
+            } else {
+                customerWS.send({
+                    type: "send_message",
+                    sessionId: currentSession.value.id,
+                    message: { text, time },
+                });
+            }
         } else {
             ElMessage.error("发送失败");
         }
