@@ -220,42 +220,43 @@
                 :show-arrow="true"
                 popper-class="notification-detail-popover"
             >
-                <template v-if="detailNotification">
-                    <div
-                        class="popover-detail"
-                        :class="{ unread: !detailNotification.isRead }"
-                    >
-                        <div class="detail-banner">
-                            <span class="detail-badge">{{
-                                formatNotificationType(detailNotification.type)
-                            }}</span>
-                            <span
-                                v-if="!detailNotification.isRead"
-                                class="detail-unread"
-                                >未读</span
-                            >
-                        </div>
-                        <div class="detail-header">
-                            <span class="detail-title">{{
-                                detailNotification.title
-                            }}</span>
-                            <span
-                                class="detail-close"
-                                @click="detailPopoverVisible = false"
-                                >✕</span
-                            >
-                        </div>
-                        <div class="detail-body">
-                            <div class="detail-body-label">通知内容</div>
-                            <div class="detail-body-text">
-                                {{ detailNotification.body || "暂无详细内容" }}
-                            </div>
-                        </div>
-                        <div class="detail-time">
-                            {{ formatDetailTime(detailNotification.createdAt) }}
+                <div v-if="detailNotification" class="popover-detail"
+                    :class="{ unread: !detailNotification.isRead }">
+                    <div class="detail-banner">
+                        <span class="detail-badge">{{
+                            formatNotificationType(detailNotification.type)
+                        }}</span>
+                        <span
+                            v-if="!detailNotification.isRead"
+                            class="detail-unread"
+                            >未读</span
+                        >
+                    </div>
+                    <div class="detail-header">
+                        <span class="detail-title">{{
+                            detailNotification.title
+                        }}</span>
+                        <span
+                            class="detail-close"
+                            @click="detailPopoverVisible = false"
+                            >✕</span
+                        >
+                    </div>
+                    <div class="detail-body">
+                        <div class="detail-body-label">通知内容</div>
+                        <div class="detail-body-text">
+                            {{ detailNotification.body || "暂无详细内容" }}
                         </div>
                     </div>
-                </template>
+                    <div class="detail-time">
+                        {{ formatDetailTime(detailNotification.createdAt) }}
+                    </div>
+                </div>
+                <!-- 当没有通知时显示空状态，避免 Element Plus 报错 -->
+                <div v-else class="popover-empty">
+                    <div class="popover-empty-icon">🔔</div>
+                    <div class="popover-empty-text">暂无通知详情</div>
+                </div>
             </el-popover>
         </div>
     </header>
@@ -1195,6 +1196,27 @@ function handleAllPageChange(page: number) {
     .detail-time {
         font-size: 12px;
         color: var(--ink-muted);
+    }
+
+    /* 空状态样式 */
+    .popover-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        text-align: center;
+
+        .popover-empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .popover-empty-text {
+            font-size: 14px;
+            color: var(--ink-muted);
+        }
     }
 }
 

@@ -11,13 +11,50 @@ export async function tryAutoLogin(): Promise<boolean> {
     try {
         const baseURL = import.meta.env.BASE_URL || "/";
         const apiBase = `${baseURL}/api`;
-        const response = await fetch(`${apiBase}/users/refresh`, {
+        const requestUrl = `${apiBase}/users/refresh`;
+        
+        console.log("[Auto Login] 请求配置:", {
+            baseURL,
+            apiBase,
+            requestUrl,
+            fullUrl: window.location.origin + requestUrl,
+        });
+        
+        const response = await fetch(requestUrl, {
             method: "GET",
             credentials: "include", // 携带 Cookie（双 Cookie：访问令牌 + 刷新令牌）
             headers: {
                 "Content-Type": "application/json",
             },
         });
+
+        // 先检查响应状态，避免解析非 JSON 响应
+        if (!response.ok) {
+            console.warn(
+                `[Auto Login] ⚠️ HTTP 错误: ${response.status} ${response.statusText}`,
+            );
+            // 尝试读取错误信息（可能是 JSON 或文本）
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                try {
+                    const errorResult = await response.json();
+                    console.warn("[Auto Login] 错误详情:", errorResult);
+                } catch {
+                    console.warn("[Auto Login] 无法解析错误响应");
+                }
+            }
+            return false;
+        }
+
+        // 确保响应是 JSON 格式
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            console.warn(
+                "[Auto Login] ⚠️ 响应不是 JSON 格式:",
+                contentType || "unknown",
+            );
+            return false;
+        }
 
         const result = await response.json();
         console.log("[Auto Login] 响应:", result);
