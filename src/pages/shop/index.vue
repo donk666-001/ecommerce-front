@@ -39,761 +39,124 @@
             </div>
 
             <!-- Panel: Shop -->
-            <div v-show="activeTab === 'shop'" class="panel">
-                <div class="cat-bar">
-                    <span class="cat-label">分类：</span>
-                    <button
-                        v-for="c in catDefs"
-                        :key="c.key"
-                        class="cat-chip"
-                        :class="{ active: currentCat === c.key }"
-                        @click="currentCat = c.key"
-                    >
-                        {{ c.label }}
-                    </button>
-                    <div class="cat-search">
-                        <span>🔍</span>
-                        <input
-                            v-model="searchKw"
-                            placeholder="搜索商品名 / 功效"
-                        />
-                    </div>
-                </div>
-                <div v-if="filteredProducts.length === 0" class="empty-tip">
-                    <span class="ic">🔍</span
-                    >{{ loading ? "加载中..." : "未找到符合条件的商品" }}
-                </div>
-                <div v-else class="product-grid">
-                    <div
-                        v-for="p in filteredProducts"
-                        :key="p.id"
-                        class="product-card"
-                        @click="openProduct(p)"
-                    >
-                        <div class="product-image">
-                            <span class="product-icon">{{ p.icon }}</span>
-                            <span v-if="p.sold > 2000" class="product-tag-hot"
-                                >熱賣</span
-                            >
-                        </div>
-                        <div class="product-body">
-                            <div class="product-name">{{ p.name }}</div>
-                            <div class="product-effect">{{ p.effect }}</div>
-                            <div class="product-meta">
-                                <span class="product-price"
-                                    ><span class="price-cny">¥</span
-                                    >{{ p.price }}</span
-                                >
-                                <span class="product-sales"
-                                    >已售 {{ p.sold }}</span
-                                >
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <ProductList
+                v-show="activeTab === 'shop'"
+                :products="products"
+                :categories="categories"
+                v-model:current-cat="currentCat"
+                v-model:search-kw="searchKw"
+                :loading="loading"
+                @open-product="openProduct"
+            />
 
             <!-- Panel: Cart -->
-            <div v-show="activeTab === 'cart'" class="panel">
-                <div class="yy-card">
-                    <div class="yy-card-title">
-                        <div class="dot"></div>
-                        我的购物车
-                    </div>
-                    <div class="ai-sync-note">
-                        🤖 本购物车已与「AI 管家」板块联通，由 AI
-                        推荐加入的商品会在名称后标注「AI 推荐」徽章
-                    </div>
-                    <div v-if="cart.length === 0" class="empty-tip">
-                        <span class="ic">🛒</span>购物车空空如也<br />
-                        <button
-                            class="yy-btn"
-                            style="margin-top: 16px"
-                            @click="activeTab = 'shop'"
-                        >
-                            去逛逛
-                        </button>
-                    </div>
-                    <div v-else class="cart-list">
-                        <div
-                            v-for="item in cart"
-                            :key="item.id"
-                            class="cart-item"
-                        >
-                            <div class="cart-thumb">
-                                {{ getProduct(item.id).icon }}
-                            </div>
-                            <div class="cart-item-info">
-                                <div class="cart-item-name">
-                                    {{ getProduct(item.id).name }}
-                                    <span
-                                        v-if="item.fromAi"
-                                        class="cart-from-ai"
-                                        >AI 推荐</span
-                                    >
-                                </div>
-                                <div class="cart-item-meta">
-                                    单价 ¥{{ getProduct(item.id).price }}
-                                </div>
-                            </div>
-                            <div class="qty-ctrl">
-                                <button
-                                    class="qty-btn"
-                                    @click="changeQty(item.id, -1)"
-                                >
-                                    −
-                                </button>
-                                <span class="qty-num">{{ item.qty }}</span>
-                                <button
-                                    class="qty-btn"
-                                    @click="changeQty(item.id, 1)"
-                                >
-                                    +
-                                </button>
-                            </div>
-                            <div class="cart-item-price">
-                                ¥{{
-                                    (
-                                        getProduct(item.id).price * item.qty
-                                    ).toFixed(2)
-                                }}
-                            </div>
-                            <button
-                                class="cart-rm"
-                                @click="removeFromCart(item.id)"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    </div>
-                    <div v-if="cart.length > 0" class="cart-summary">
-                        <div>
-                            <span class="cart-total-label">合计：</span>
-                            <span class="cart-total-num"
-                                >¥{{ cartTotal.toFixed(2) }}</span
-                            >
-                            <span class="cart-total-hint">不含运费</span>
-                        </div>
-                        <div style="display: flex; gap: 10px">
-                            <button
-                                class="btn btn-outline"
-                                @click="activeTab = 'shop'"
-                            >
-                                继续购物
-                            </button>
-                            <button
-                                class="btn btn-cinnabar btn-lg"
-                                @click="openPay"
-                            >
-                                去结算
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <CartPanel
+                v-show="activeTab === 'cart'"
+                :cart-items="cartItems"
+                :cart-total="cartTotal"
+                :get-product-icon="getProductIcon"
+                @go-to-shop="activeTab = 'shop'"
+                @change-qty="changeQty"
+                @remove-from-cart="removeFromCart"
+                @open-pay="openPay"
+            />
 
             <!-- Panel: Order -->
-            <div v-show="activeTab === 'order'" class="panel">
-                <div class="order-status-tabs">
-                    <button
-                        v-for="os in orderStatusDefs"
-                        :key="os.key"
-                        class="order-status-tab"
-                        :class="{ active: orderFilter === os.key }"
-                        @click="orderFilter = os.key"
-                    >
-                        {{ os.label }}
-                        <span class="num">({{ orderCount(os.key) }})</span>
-                    </button>
-                </div>
-                <div v-if="filteredOrders.length === 0" class="empty-tip">
-                    <span class="ic">📦</span>该分类下暂无订单
-                </div>
-                <div v-else>
-                    <div
-                        v-for="(o, idx) in filteredOrders"
-                        :key="o.no"
-                        class="order-card"
-                    >
-                        <div class="order-head">
-                            <div>
-                                <span class="order-no"
-                                    >订单编号：<strong>{{ o.no }}</strong></span
-                                >
-                                <span class="order-time">{{ o.time }}</span>
-                            </div>
-                            <span
-                                class="order-status"
-                                :class="orderStatusClass(o.status)"
-                                >{{ orderStatusText(o.status) }}</span
-                            >
-                        </div>
-                        <div class="order-body">
-                            <div class="order-thumb-row">
-                                <div
-                                    v-for="it in o.items"
-                                    :key="it.id"
-                                    class="cart-thumb sm"
-                                    :title="
-                                        getProduct(it.id).name + ' ×' + it.qty
-                                    "
-                                >
-                                    {{ getProduct(it.id).icon }}
-                                </div>
-                            </div>
-                            <div class="order-info-block">
-                                {{
-                                    o.items
-                                        .map(
-                                            (it) =>
-                                                getProduct(it.id).name +
-                                                " ×" +
-                                                it.qty,
-                                        )
-                                        .join("，")
-                                }}
-                            </div>
-                        </div>
-                        <div class="order-foot">
-                            <span class="order-amount"
-                                >共
-                                <strong>{{
-                                    o.items.reduce((s, it) => s + it.qty, 0)
-                                }}</strong>
-                                件商品&emsp;合计
-                                <strong
-                                    >¥{{ o.amount.toFixed(2) }}</strong
-                                ></span
-                            >
-                            <div class="order-actions">
-                                <template v-if="o.status === 'unpaid'">
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="cancelOrder(o.no)"
-                                    >
-                                        取消订单
-                                    </button>
-                                    <button
-                                        class="btn btn-cinnabar"
-                                        @click="openPay"
-                                    >
-                                        立即支付
-                                    </button>
-                                </template>
-                                <template v-else-if="o.status === 'topay'">
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="refundOrder(o.no)"
-                                    >
-                                        申请退款
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="remindShip(o.no)"
-                                    >
-                                        提醒发货
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reBuy(o.no)"
-                                    >
-                                        再次购买
-                                    </button>
-                                </template>
-                                <template v-else-if="o.status === 'shipped'">
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="refundOrder(o.no)"
-                                    >
-                                        申请退款
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="openLogistics(o.no)"
-                                    >
-                                        查看物流
-                                    </button>
-                                    <button
-                                        class="btn btn-jade"
-                                        @click="confirmReceipt(o.no)"
-                                    >
-                                        确认收货
-                                    </button>
-                                    <div class="more-wrap" @click.stop>
-                                        <button
-                                            class="btn btn-outline"
-                                            @click="toggleMore(idx)"
-                                        >
-                                            更多 ▾
-                                        </button>
-                                        <div
-                                            class="more-menu"
-                                            :class="{
-                                                show: openMoreIdx === idx,
-                                            }"
-                                        >
-                                            <div
-                                                class="more-menu-item"
-                                                @click="
-                                                    reBuy(o.no);
-                                                    openMoreIdx = -1;
-                                                "
-                                            >
-                                                再次拼单
-                                            </div>
-                                            <div
-                                                class="more-menu-item"
-                                                @click="
-                                                    extendReceipt(o.no);
-                                                    openMoreIdx = -1;
-                                                "
-                                            >
-                                                延长收货
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
-                                <template v-else>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reBuy(o.no)"
-                                    >
-                                        再次购买
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reviewOrder(o.no)"
-                                    >
-                                        评价
-                                    </button>
-                                    <button
-                                        class="btn btn-outline"
-                                        @click="reBuy(o.no)"
-                                    >
-                                        再次拼单
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <OrderList
+                v-show="activeTab === 'order'"
+                :orders="filteredOrders"
+                v-model:order-filter="orderFilter"
+                :order-loading="orderLoading"
+                :open-more-idx="openMoreIdx"
+                :get-product="getProduct"
+                :order-count="orderCount"
+                @refresh-orders="refreshOrders"
+                @cancel-order="cancelOrder"
+                @pay-order="payOrder"
+                @open-refund-modal="openRefundModal"
+                @remind-ship="remindShip"
+                @re-buy="reBuy"
+                @confirm-receipt="confirmReceipt"
+                @open-logistics="openLogistics"
+                @review-order="reviewOrder"
+                @toggle-more="toggleMore"
+                @extend-receipt="extendReceipt"
+            />
 
             <!-- Panel: Service -->
-            <div v-show="activeTab === 'service'" class="panel">
-                <div class="service-layout">
-                    <div class="agent-list">
-                        <div class="agent-list-title">
-                            颐养阁官方店铺 · 客服
-                        </div>
-                        <div
-                            v-for="a in agents"
-                            :key="a.id"
-                            class="agent-item"
-                            :class="{ active: currentAgent === a.id }"
-                            @click="switchAgent(a.id)"
-                        >
-                            <div class="agent-avatar">
-                                {{ a.avatar }}
-                                <div
-                                    class="agent-status-dot"
-                                    :class="a.status"
-                                ></div>
-                            </div>
-                            <div class="agent-info">
-                                <div class="agent-name">{{ a.name }}</div>
-                                <div class="agent-tag">
-                                    {{ a.tag }} ·
-                                    {{
-                                        a.status === "online"
-                                            ? "在线"
-                                            : a.status === "busy"
-                                              ? "忙碌"
-                                              : "离线"
-                                    }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chat-panel">
-                        <div class="chat-header">
-                            <div class="agent-avatar sm">
-                                {{ currentAgentObj.avatar }}
-                            </div>
-                            <div>
-                                <h4>客服 · {{ currentAgentObj.name }}</h4>
-                                <div class="desc">
-                                    {{ currentAgentObj.desc }}
-                                </div>
-                            </div>
-                            <div class="chat-header-tip">
-                                为保护用户体验，同一客服不会同时回复多用户
-                            </div>
-                        </div>
-                        <div class="chat-body" ref="chatBodyRef">
-                            <div
-                                v-for="(m, mi) in currentChatHistory"
-                                :key="mi"
-                                class="chat-msg"
-                                :class="m.from"
-                            >
-                                <div
-                                    v-if="m.from === 'agent'"
-                                    class="agent-avatar xs"
-                                >
-                                    {{ currentAgentObj.avatar }}
-                                </div>
-                                <div v-else class="user-avatar xs">我</div>
-                                <div>
-                                    <div class="chat-meta">
-                                        {{
-                                            m.from === "agent"
-                                                ? currentAgentObj.name
-                                                : "我"
-                                        }}
-                                        · {{ m.time }}
-                                    </div>
-                                    <div class="chat-bubble">{{ m.text }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="chat-input-row">
-                            <input
-                                v-model="chatInput"
-                                placeholder="输入您想咨询的问题，按 Enter 发送..."
-                                @keydown.enter="sendChat"
-                            />
-                            <button class="btn btn-jade" @click="sendChat">
-                                发送
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <CustomerService
+                v-show="activeTab === 'service'"
+                :agents="agents"
+                v-model:current-agent="currentAgent"
+                :chat-history="chatHistory"
+                v-model:chat-input="chatInput"
+                @send-chat="sendChat"
+            />
         </main>
 
         <!-- Product Detail Modal -->
-        <div
-            class="modal-mask"
-            :class="{ show: showPdModal }"
-            @click.self="showPdModal = false"
-        >
-            <div class="modal" v-if="selectedProduct">
-                <div class="modal-header">
-                    <h3>商品详情</h3>
-                    <button class="modal-close" @click="showPdModal = false">
-                        ×
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="pd-grid">
-                        <div class="pd-image">{{ selectedProduct.icon }}</div>
-                        <div class="pd-info">
-                            <h2>{{ selectedProduct.name }}</h2>
-                            <div class="pd-tags">
-                                <span
-                                    v-for="t in selectedProduct.tags"
-                                    :key="t"
-                                    class="pd-tag"
-                                    >{{ t }}</span
-                                >
-                            </div>
-                            <div class="pd-price-box">
-                                <span class="pd-price"
-                                    ><span class="pd-price-cny">¥</span
-                                    >{{ selectedProduct.price }}</span
-                                >
-                                <span class="pd-price-orig"
-                                    >¥{{
-                                        Math.round(selectedProduct.price * 1.3)
-                                    }}</span
-                                >
-                                <span class="pd-badge-limit">限时</span>
-                            </div>
-                            <div class="pd-meta-row">
-                                <span
-                                    >库存
-                                    <strong>{{
-                                        selectedProduct.stock
-                                    }}</strong></span
-                                >
-                                <span
-                                    >已售
-                                    <strong>{{
-                                        selectedProduct.sold
-                                    }}</strong></span
-                                >
-                                <span>配送 <strong>江浙沪次日达</strong></span>
-                            </div>
-                            <div class="pd-section">
-                                <h4>功效</h4>
-                                <p>{{ selectedProduct.effect }}</p>
-                            </div>
-                            <div class="pd-section">
-                                <h4>商品描述</h4>
-                                <p>{{ selectedProduct.desc }}</p>
-                            </div>
-                            <div class="pd-section">
-                                <h4>购买数量</h4>
-                                <div class="qty-ctrl" style="margin-top: 6px">
-                                    <button
-                                        class="qty-btn"
-                                        @click="pdQty = Math.max(1, pdQty - 1)"
-                                    >
-                                        −
-                                    </button>
-                                    <span class="qty-num">{{ pdQty }}</span>
-                                    <button class="qty-btn" @click="pdQty++">
-                                        +
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="pd-actions">
-                                <button
-                                    class="btn btn-outline"
-                                    @click="addToCartFromDetail"
-                                >
-                                    🛒 加入购物车
-                                </button>
-                                <button
-                                    class="btn btn-outline"
-                                    @click="
-                                        showPdModal = false;
-                                        activeTab = 'cart';
-                                    "
-                                >
-                                    去购物车
-                                </button>
-                                <button
-                                    class="btn btn-cinnabar"
-                                    @click="buyNow"
-                                >
-                                    立即购买
-                                </button>
-                                <button
-                                    class="btn btn-outline"
-                                    @click="
-                                        showPdModal = false;
-                                        activeTab = 'service';
-                                    "
-                                >
-                                    💬 联系客服
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <ProductDetailModal
+            v-model="showPdModal"
+            :product="selectedProduct"
+            v-model:quantity="pdQty"
+            @add-to-cart="addToCartFromDetail"
+            @go-to-cart="
+                showPdModal = false;
+                activeTab = 'cart';
+            "
+            @buy-now="buyNow"
+            @contact-service="
+                showPdModal = false;
+                activeTab = 'service';
+            "
+        />
 
         <!-- Payment Modal -->
-        <div
-            class="modal-mask"
-            :class="{ show: showPayModal }"
-            @click.self="showPayModal = false"
-        >
-            <div class="modal" style="max-width: 520px">
-                <div class="modal-header">
-                    <h3>支付订单</h3>
-                    <button class="modal-close" @click="showPayModal = false">
-                        ×
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="pay-card">
-                        <div
-                            v-for="item in cart"
-                            :key="item.id"
-                            class="pay-row"
-                        >
-                            <span
-                                >{{ getProduct(item.id).name }} ×
-                                {{ item.qty }}</span
-                            >
-                            <span
-                                >¥{{
-                                    (
-                                        getProduct(item.id).price * item.qty
-                                    ).toFixed(2)
-                                }}</span
-                            >
-                        </div>
-                        <div class="pay-row">
-                            <span>运费</span>
-                            <span>¥0.00（满 88 免运）</span>
-                        </div>
-                        <div class="pay-row total">
-                            <span>实付金额</span>
-                            <span class="red">¥{{ cartTotal.toFixed(2) }}</span>
-                        </div>
-                    </div>
-                    <div class="pay-method">
-                        <div class="ali-logo">支</div>
-                        <div style="flex: 1">
-                            <div style="font-weight: 600; color: var(--ink)">
-                                支付宝支付
-                            </div>
-                            <div
-                                style="
-                                    font-size: 12px;
-                                    color: var(--ink-muted);
-                                    margin-top: 2px;
-                                "
-                            >
-                                推荐使用 · 安全、便捷
-                            </div>
-                        </div>
-                        <div style="color: var(--jade); font-size: 20px">✓</div>
-                    </div>
-                    <p
-                        style="
-                            text-align: center;
-                            font-size: 13px;
-                            color: var(--ink-muted);
-                        "
-                    >
-                        请使用支付宝 APP 扫码完成支付
-                    </p>
-                    <div class="qr-mock"></div>
-                    <p
-                        style="
-                            text-align: center;
-                            font-size: 12px;
-                            color: var(--ink-muted);
-                        "
-                    >
-                        二维码 5 分钟内有效
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button
-                        class="btn btn-outline"
-                        @click="showPayModal = false"
-                    >
-                        取消
-                    </button>
-                    <button class="btn btn-jade" @click="mockPaySuccess">
-                        模拟支付成功
-                    </button>
-                </div>
-            </div>
-        </div>
+        <PaymentModal
+            v-model="showPayModal"
+            :cart-items="cartItems"
+            :cart-total="cartTotal"
+            @confirm-pay="mockPaySuccess"
+        />
 
         <!-- Logistics Modal -->
-        <div
-            class="modal-mask"
-            :class="{ show: showLogisticsModal }"
-            @click.self="showLogisticsModal = false"
-        >
-            <div
-                class="modal"
-                style="max-width: 620px"
-                v-if="selectedOrderLogistics"
-            >
-                <div class="modal-header">
-                    <h3>物流详情</h3>
-                    <button
-                        class="modal-close"
-                        @click="showLogisticsModal = false"
-                    >
-                        ×
-                    </button>
-                </div>
-                <div class="logistics-detail">
-                    <div class="logistics-detail-header">
-                        <div class="carrier">
-                            <span style="font-size: 24px">🚛</span
-                            ><span>顺丰速运</span>
-                        </div>
-                        <div class="track-no">
-                            运单号：<span
-                                >SF{{
-                                    selectedOrderNo.replace("YYG", "")
-                                }}</span
-                            >
-                        </div>
-                    </div>
-                    <div class="logistics-detail-map">
-                        <div class="log-map-route"></div>
-                        <div class="log-map-done"></div>
-                        <div class="log-map-pin start">
-                            📦
-                            <div class="log-map-label">
-                                {{ selectedOrderLogistics.from }}
-                            </div>
-                        </div>
-                        <div class="log-map-pin current">
-                            🚚
-                            <div class="log-map-label red-label">运输中</div>
-                        </div>
-                        <div class="log-map-pin end">
-                            🏠
-                            <div class="log-map-label">
-                                {{ selectedOrderLogistics.to }}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="logistics-detail-steps">
-                        <div
-                            v-for="step in selectedOrderLogistics.steps"
-                            :key="step.time"
-                            class="logistics-detail-step"
-                            :class="step.state"
-                        >
-                            {{ step.text }}
-                            <span class="step-time">{{ step.time }}</span>
-                        </div>
-                    </div>
-                    <div class="logistics-detail-foot">
-                        <span>{{ selectedOrderLogistics.from }}</span>
-                        <span style="color: var(--line)">━━━━━━</span>
-                        <span>{{ selectedOrderLogistics.to }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <LogisticsModal
+            v-model="showLogisticsModal"
+            :logistics-detail="currentLogisticsDetail"
+        />
+
+        <!-- Refund Application Modal -->
+        <RefundModal
+            v-model="showRefundModal"
+            :form-data="refundForm"
+            :submitting="refundSubmitting"
+            @submit="submitRefund"
+        />
 
         <!-- Confirm Modal -->
         <div
-            class="modal-mask"
-            :class="{ show: showConfirmModal }"
+            v-if="showConfirmModal"
+            class="modal-overlay"
             @click.self="showConfirmModal = false"
         >
-            <div class="modal" style="max-width: 400px">
-                <div class="modal-header">
-                    <h3>{{ confirmTitle }}</h3>
-                    <button
-                        class="modal-close"
-                        @click="showConfirmModal = false"
-                    >
-                        ×
-                    </button>
-                </div>
-                <div class="modal-body" style="text-align: center">
-                    <div style="font-size: 48px; margin-bottom: 12px">
-                        {{ confirmIcon }}
-                    </div>
-                    <p
-                        style="
-                            font-size: 15px;
-                            color: var(--ink);
-                            line-height: 1.6;
-                        "
-                    >
-                        {{ confirmMsg }}
-                    </p>
-                </div>
-                <div
-                    class="modal-footer"
-                    style="justify-content: center; gap: 12px"
-                >
+            <div class="confirm-modal">
+                <div class="confirm-icon">{{ confirmIcon }}</div>
+                <h3 class="confirm-title">{{ confirmTitle }}</h3>
+                <p class="confirm-message">{{ confirmMsg }}</p>
+                <div class="confirm-actions">
                     <button
                         class="btn btn-outline"
                         @click="showConfirmModal = false"
                     >
                         取消
                     </button>
-                    <button class="btn btn-cinnabar" @click="onConfirmOk">
+                    <button
+                        class="btn btn-cinnabar"
+                        @click="
+                            showConfirmModal = false;
+                            if (confirmCallback) confirmCallback();
+                        "
+                    >
                         确认
                     </button>
                 </div>
@@ -806,8 +169,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
+import {
+    ref,
+    computed,
+    nextTick,
+    onMounted,
+    onUnmounted,
+    watch,
+    reactive,
+} from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
+import {
+    ProductList,
+    CartPanel,
+    OrderList,
+    CustomerService,
+    ProductDetailModal,
+    PaymentModal,
+    LogisticsModal,
+    RefundModal,
+} from "@/components/shop";
+import {
+    ApiProduct,
+    type ProductVO,
+    type CategoryVO,
+    type CartItemVO,
+    type CartSummaryVO,
+} from "@/network/product";
+import { ApiOrder, type OrderVO } from "@/network/order";
+import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
+import { ApiLogistics } from "@/network";
 
 interface Product {
     id: string;
@@ -821,23 +212,22 @@ interface Product {
     effect: string;
     desc: string;
 }
-interface CartItem {
-    id: string;
-    qty: number;
-    fromAi: boolean;
-}
 interface LogisticsStep {
     time: string;
     text: string;
     state: string;
 }
+/** 前端订单展示数据结构（由后端 OrderVO 转换而来） */
 interface Order {
-    no: string;
-    time: string;
-    status: "unpaid" | "topay" | "shipped" | "done";
-    items: { id: string; qty: number }[];
-    amount: number;
-    logistics?: { from: string; to: string; steps: LogisticsStep[] };
+    id: number; // 订单ID
+    no: string; // 订单号
+    time: string; // 创建时间
+    status: "unpaid" | "topay" | "shipped" | "done" | "cancelled"; // 订单状态（不含退款状态）
+    items: { id: string; qty: number; name: string; price: number }[]; // 订单项
+    amount: number; // 订单总金额
+    logistics?: { from: string; to: string; steps: LogisticsStep[] }; // 物流信息（可选）
+    refundStatus?: number; // 退款状态（独立）：0=申请中, 1=审核通过, 2=退款中, 3=已完成, 4=已拒绝
+    auditRemark?: string; // 退款审核备注（退款失败时显示原因）
 }
 interface Agent {
     id: string;
@@ -854,153 +244,7 @@ interface ChatMsg {
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
-const products: Product[] = [
-    {
-        id: "p1",
-        name: "枸杞红枣养生茶",
-        cat: "tea",
-        price: 38,
-        sold: 1287,
-        stock: 520,
-        icon: "🍵",
-        tags: ["滋阴", "补气"],
-        effect: "养肝明目、补气养血，气郁质兼阴虚体质宜",
-        desc: "精选宁夏中宁枸杞与新疆若羌灰枣，每日 1 包，沸水冲泡 3 分钟即饮。",
-    },
-    {
-        id: "p2",
-        name: "四物汤药膳包",
-        cat: "food",
-        price: 68,
-        sold: 856,
-        stock: 230,
-        icon: "🍲",
-        tags: ["补血", "女性"],
-        effect: "补血调经，适合女性月经后调理",
-        desc: "当归、川芎、白芍、熟地，经典四物配方，文火慢炖 40 分钟。",
-    },
-    {
-        id: "p3",
-        name: "五黑五谷粉",
-        cat: "food",
-        price: 58,
-        sold: 2103,
-        stock: 680,
-        icon: "🥣",
-        tags: ["脾胃", "营养"],
-        effect: "健脾养胃、补肾乌发",
-        desc: "黑米、黑豆、黑芝麻、黑枣、黑桑椹，五种黑色食材精磨。",
-    },
-    {
-        id: "p4",
-        name: "艾草足浴包（30包）",
-        cat: "health",
-        price: 45,
-        sold: 3210,
-        stock: 980,
-        icon: "🌿",
-        tags: ["驱寒", "安神"],
-        effect: "温经散寒、舒缓疲劳，睡前泡脚 15 分钟",
-        desc: "纯艾草、生姜、红花，棉布袋包装，开水冲泡 5 分钟后兑入温水。",
-    },
-    {
-        id: "p5",
-        name: "桂圆红枣枸杞茶",
-        cat: "tea",
-        price: 42,
-        sold: 912,
-        stock: 340,
-        icon: "🍯",
-        tags: ["补血", "安神"],
-        effect: "补血安神，气血不足者宜",
-        desc: "桂圆肉、和田大枣、宁夏枸杞，三味配方。",
-    },
-    {
-        id: "p6",
-        name: "传统艾灸盒",
-        cat: "health",
-        price: 128,
-        sold: 567,
-        stock: 120,
-        icon: "🔥",
-        tags: ["温灸", "穴位"],
-        effect: "温经通络、扶阳固本",
-        desc: "桃木艾灸盒，配 10 根纯艾条，附穴位图。",
-    },
-    {
-        id: "p7",
-        name: "红糖姜茶（暖宫）",
-        cat: "female",
-        price: 35,
-        sold: 4521,
-        stock: 1200,
-        icon: "🫖",
-        tags: ["暖宫", "经期"],
-        effect: "暖宫散寒，缓解痛经",
-        desc: "古法熬制黑糖块 + 老姜粉，经期前 3 天饮用最佳。",
-    },
-    {
-        id: "p8",
-        name: "益母草调理颗粒",
-        cat: "female",
-        price: 55,
-        sold: 1820,
-        stock: 430,
-        icon: "🌸",
-        tags: ["调经", "女性"],
-        effect: "活血调经，适合月经不调",
-        desc: "纯天然益母草提取，独立小包装。",
-    },
-    {
-        id: "p9",
-        name: "宁夏枸杞 250g",
-        cat: "herb",
-        price: 48,
-        sold: 6789,
-        stock: 2100,
-        icon: "🟥",
-        tags: ["滋补", "明目"],
-        effect: "滋肝明目、补肾益精",
-        desc: "中宁特级头茬枸杞，无熏硫无添加。",
-    },
-    {
-        id: "p10",
-        name: "当归片 100g",
-        cat: "herb",
-        price: 38,
-        sold: 2340,
-        stock: 870,
-        icon: "🌾",
-        tags: ["补血", "调经"],
-        effect: "补血活血、调经止痛",
-        desc: "甘肃岷县当归，传统刨片工艺。",
-    },
-    {
-        id: "p11",
-        name: "紫砂养生壶",
-        cat: "tool",
-        price: 198,
-        sold: 432,
-        stock: 65,
-        icon: "🫖",
-        tags: ["茶具"],
-        effect: "宜兴紫砂，泡茶聚香",
-        desc: "宜兴原矿紫砂，全手工拉胚，容量 280ml。",
-    },
-    {
-        id: "p12",
-        name: "砭石刮痧板",
-        cat: "tool",
-        price: 88,
-        sold: 1567,
-        stock: 340,
-        icon: "⚪",
-        tags: ["理疗", "刮痧"],
-        effect: "活血通络，肩颈保健",
-        desc: "泗滨砭石，富含矿物元素。",
-    },
-];
-
+// 客服数据（保持静态）
 const agents: Agent[] = [
     {
         id: "cs1",
@@ -1039,108 +283,24 @@ const tabDefs = [
     { key: "service", icon: "💬", label: "客服咨询" },
 ];
 
-const catDefs = [
-    { key: "all", label: "全部" },
-    { key: "food", label: "食疗食材类" },
-    { key: "tea", label: "养生茶饮" },
-    { key: "health", label: "健康调理类" },
-    { key: "female", label: "女性养生专区" },
-    { key: "herb", label: "中药材" },
-    { key: "tool", label: "养生器具" },
-];
-
-const orderStatusDefs = [
-    { key: "all", label: "全部" },
-    { key: "unpaid", label: "未支付" },
-    { key: "topay", label: "待发货" },
-    { key: "shipped", label: "已发货" },
-    { key: "done", label: "已完成" },
-];
-
 // ── Reactive state ────────────────────────────────────────────────────────────
 const activeTab = ref("shop");
 const currentCat = ref("all");
 const searchKw = ref("");
 
-const cart = ref<CartItem[]>([
-    { id: "p4", qty: 2, fromAi: false },
-    { id: "p1", qty: 1, fromAi: true },
-    { id: "p9", qty: 1, fromAi: false },
-]);
+// 商品列表（从后端获取）
+const products = ref<Product[]>([]);
+const categories = ref<CategoryVO[]>([]);
+const loading = ref(false);
 
-const orders = ref<Order[]>([
-    {
-        no: "YYG20260526001",
-        time: "2026-05-26 10:32",
-        status: "unpaid",
-        items: [
-            { id: "p2", qty: 1 },
-            { id: "p9", qty: 1 },
-        ],
-        amount: 116,
-    },
-    {
-        no: "YYG20260525012",
-        time: "2026-05-25 18:14",
-        status: "topay",
-        items: [
-            { id: "p7", qty: 2 },
-            { id: "p10", qty: 1 },
-        ],
-        amount: 108,
-    },
-    {
-        no: "YYG20260523008",
-        time: "2026-05-23 09:45",
-        status: "shipped",
-        items: [
-            { id: "p4", qty: 1 },
-            { id: "p6", qty: 1 },
-        ],
-        amount: 173,
-        logistics: {
-            from: "杭州 · 颐养阁仓库",
-            to: "上海 · 黄浦区",
-            steps: [
-                {
-                    time: "2026-05-26 08:12",
-                    text: "【上海中转】快件已到达【上海转运中心】",
-                    state: "active",
-                },
-                {
-                    time: "2026-05-25 22:38",
-                    text: "【杭州中转】快件离开【杭州中转中心】发往【上海】",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-25 14:20",
-                    text: "【杭州集散】快件已到达【杭州中转中心】",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-23 16:05",
-                    text: "【已揽件】顺丰速运 已揽收",
-                    state: "done",
-                },
-                {
-                    time: "2026-05-23 11:30",
-                    text: "【商家发货】颐养阁官方店铺已发货",
-                    state: "done",
-                },
-            ],
-        },
-    },
-    {
-        no: "YYG20260518003",
-        time: "2026-05-18 20:01",
-        status: "done",
-        items: [
-            { id: "p1", qty: 2 },
-            { id: "p3", qty: 1 },
-        ],
-        amount: 134,
-    },
-]);
+// 购物车（从后端获取）
+const cartItems = ref<CartItemVO[]>([]);
+const cartLoading = ref(false);
+const cartSummary = ref<CartSummaryVO | null>(null); // 购物车汇总信息
+
+// 订单列表（从后端获取）
+const orders = ref<Order[]>([]);
+const orderLoading = ref(false);
 
 const orderFilter = ref("all");
 const currentAgent = ref("cs1");
@@ -1186,6 +346,22 @@ const confirmMsg = ref("");
 const confirmIcon = ref("");
 const confirmCallback = ref<(() => void) | null>(null);
 
+// Refund modal states
+const showRefundModal = ref(false);
+const refundForm = reactive({
+    orderId: 0,
+    orderNo: "",
+    orderAmount: 0,
+    refundType: 1, // 1=仅退款, 2=退货退款
+    refundAmount: 0,
+    reason: "",
+    description: "",
+});
+const refundSubmitting = ref(false);
+
+// Logistics detail state
+const currentLogisticsDetail = ref<any>(null);
+
 // Toast
 const toastMsg = ref("");
 const toastVisible = ref(false);
@@ -1195,88 +371,214 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null;
 const openMoreIdx = ref(-1);
 
 // ── Computed ──────────────────────────────────────────────────────────────────
-const filteredProducts = computed(() =>
-    products
-        .filter((p) => currentCat.value === "all" || p.cat === currentCat.value)
-        .filter(
-            (p) =>
-                !searchKw.value ||
-                p.name.includes(searchKw.value) ||
-                p.effect.includes(searchKw.value),
-        ),
+const cartCount = computed(
+    () =>
+        cartSummary.value?.totalQuantity ??
+        cartItems.value.reduce((s, c) => s + c.quantity, 0),
+);
+const cartTotal = computed(
+    () =>
+        cartSummary.value?.totalPrice ??
+        cartItems.value.reduce((s, c) => s + c.price * c.quantity, 0),
 );
 
-const cartCount = computed(() => cart.value.reduce((s, c) => s + c.qty, 0));
-const cartTotal = computed(() =>
-    cart.value.reduce((s, c) => s + getProduct(c.id).price * c.qty, 0),
-);
+const filteredOrders = computed(() => {
+    const filter = orderFilter.value;
 
-const filteredOrders = computed(() =>
-    orders.value.filter(
-        (o) => orderFilter.value === "all" || o.status === orderFilter.value,
-    ),
-);
+    // 如果是退款相关的筛选,基于 refundStatus 字段
+    if (filter === "refunding") {
+        // 退款中:refundStatus 为 0, 1, 2(申请中、审核通过、退款中)
+        return orders.value.filter(
+            (o) =>
+                o.refundStatus !== undefined &&
+                [0, 1, 2].includes(o.refundStatus),
+        );
+    }
+    if (filter === "refunded") {
+        // 已退款:refundStatus 为 3(退款已完成)
+        return orders.value.filter((o) => o.refundStatus === 3);
+    }
+    if (filter === "rejected") {
+        // 退款失败:refundStatus 为 4(退款被拒绝)
+        return orders.value.filter((o) => o.refundStatus === 4);
+    }
 
-const currentAgentObj = computed(
-    () => agents.find((a) => a.id === currentAgent.value)!,
-);
-const currentChatHistory = computed(
-    () => chatHistory.value[currentAgent.value] || [],
-);
+    // 其他情况(全部、未支付、待发货、已发货、已完成、已取消)
+    // 只显示没有退款状态的订单
+    if (filter === "all") {
+        return orders.value.filter((o) => o.refundStatus === undefined);
+    }
 
-const selectedOrderLogistics = computed(() => {
-    if (!selectedOrderNo.value) return null;
-    return (
-        orders.value.find((o) => o.no === selectedOrderNo.value)?.logistics ??
-        null
+    // 基于订单状态筛选,同时排除有退款状态的订单
+    return orders.value.filter(
+        (o) => o.refundStatus === undefined && o.status === filter,
     );
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+/** 将后端 ProductVO 转换为前端 Product */
+function convertProductVO(vo: ProductVO): Product {
+    // 使用后端返回的 categoryName 作为分类
+    const cat = vo.categoryName || "all";
+
+    // 从 tags 字符串中提取标签数组
+    const tags = vo.tags ? vo.tags.split(",") : [];
+
+    // 使用 emoji 映射（根据中文分类名）
+    const iconMap: Record<string, string> = {
+        食疗食材类: "🍲",
+        养生茶饮: "🍵",
+        健康调理类: "🌿",
+        女性养生专区: "🌸",
+        中药材: "🟥",
+        养生器具: "⚪",
+    };
+
+    return {
+        id: `p${vo.id}`,
+        name: vo.name,
+        cat,
+        price: vo.discountPrice,
+        sold: vo.soldCount,
+        stock: vo.stock,
+        icon: iconMap[cat] || "📦",
+        tags,
+        effect: vo.efficacy || "",
+        desc: vo.description || "",
+    };
+}
+
 function getProduct(id: string): Product {
-    return products.find((p) => p.id === id)!;
+    const product = products.value.find((p) => p.id === id);
+    if (!product) {
+        console.warn(`商品不存在: ${id}`);
+        // 返回一个默认商品对象，避免渲染错误
+        return {
+            id,
+            name: "未知商品",
+            cat: "all",
+            price: 0,
+            sold: 0,
+            stock: 0,
+            icon: "❓",
+            tags: [],
+            effect: "",
+            desc: "",
+        };
+    }
+    return product;
+}
+
+/** 根据 productId 获取商品图标 */
+function getProductIcon(productId: number): string {
+    const product = products.value.find((p) => p.id === `p${productId}`);
+    return product ? product.icon : "📦";
 }
 
 function orderCount(key: string): number {
-    if (key === "all") return orders.value.length;
-    return orders.value.filter((o) => o.status === key).length;
+    if (key === "all") {
+        // 全部：只显示没有退款状态的订单
+        return orders.value.filter((o) => o.refundStatus === undefined).length;
+    }
+
+    // 如果是退款相关的筛选，基于 refundStatus 字段
+    if (key === "refunding") {
+        return orders.value.filter(
+            (o) =>
+                o.refundStatus !== undefined &&
+                [0, 1, 2].includes(o.refundStatus),
+        ).length;
+    }
+    if (key === "refunded") {
+        return orders.value.filter((o) => o.refundStatus === 3).length;
+    }
+    if (key === "rejected") {
+        return orders.value.filter((o) => o.refundStatus === 4).length;
+    }
+
+    // 其他情况基于订单状态统计，同时排除有退款状态的订单
+    return orders.value.filter(
+        (o) => o.refundStatus === undefined && o.status === key,
+    ).length;
 }
 
-function orderStatusText(status: string): string {
-    const map: Record<string, string> = {
-        unpaid: "待支付",
-        topay: "待发货",
-        shipped: "运输中",
-        done: "已完成",
+/** 获取退款状态文本 */
+function getRefundStatusText(status?: number): string {
+    if (status === undefined) return "";
+    const map: Record<number, string> = {
+        0: "退款申请中",
+        1: "审核通过",
+        2: "退款中",
+        3: "退款已完成",
+        4: "退款失败",
     };
-    return map[status] || status;
-}
-
-function orderStatusClass(status: string): string {
-    const map: Record<string, string> = {
-        unpaid: "status-pay",
-        topay: "status-ship",
-        shipped: "status-shipped",
-        done: "status-done",
-    };
-    return map[status] || "";
+    return map[status] || "未知";
 }
 
 // ── Cart actions ──────────────────────────────────────────────────────────────
-function addToCart(id: string, qty: number, fromAi: boolean) {
-    const existing = cart.value.find((c) => c.id === id);
-    if (existing) existing.qty += qty;
-    else cart.value.push({ id, qty, fromAi });
-    showToast(fromAi ? "已加入购物车（AI 推荐）" : "已加入购物车");
+/** 加载购物车列表 */
+async function loadCartList() {
+    cartLoading.value = true;
+    try {
+        const response = await ApiProduct.getCartDetail();
+        const apiResponse = response.data;
+        if (apiResponse && apiResponse.data) {
+            // 后端返回的是 CartSummaryVO 结构
+            cartSummary.value = apiResponse.data;
+            cartItems.value = apiResponse.data.items;
+            console.log("购物车商品数:", cartItems.value.length);
+            console.log("选中商品总数:", apiResponse.data.totalQuantity);
+            console.log("选中商品总金额:", apiResponse.data.totalPrice);
+        }
+    } catch (error) {
+        console.error("加载购物车失败:", error);
+        showToast("加载购物车失败，请重试");
+    } finally {
+        cartLoading.value = false;
+    }
 }
 
-function changeQty(id: string, delta: number) {
-    const item = cart.value.find((c) => c.id === id);
-    if (item) item.qty = Math.max(1, item.qty + delta);
+/** 添加商品到购物车 */
+async function addToCart(productId: number, qty: number) {
+    try {
+        await ApiProduct.addToCart({ productId, quantity: qty });
+        showToast("已加入购物车");
+        // 重新加载购物车列表（获取最新数据）
+        await loadCartList();
+    } catch (error) {
+        console.error("加入购物车失败:", error);
+        showToast("加入购物车失败，请重试");
+    }
 }
 
-function removeFromCart(id: string) {
-    cart.value = cart.value.filter((c) => c.id !== id);
+/** 更新购物车项数量 */
+async function changeQty(cartItemId: number, delta: number) {
+    const item = cartItems.value.find((c) => c.id === cartItemId);
+    if (!item) return;
+
+    const newQty = Math.max(1, item.quantity + delta);
+    try {
+        // 使用新的 API 方法名和参数格式
+        await ApiProduct.updateCartItemQuantity(cartItemId, newQty);
+        // 重新加载以获取最新的汇总信息
+        await loadCartList();
+    } catch (error) {
+        console.error("更新购物车失败:", error);
+        showToast("更新购物车失败，请重试");
+    }
+}
+
+/** 从购物车移除 */
+async function removeFromCart(cartItemId: number) {
+    try {
+        await ApiProduct.removeCartItem(cartItemId);
+        showToast("已从购物车移除");
+        // 重新加载以获取最新的汇总信息
+        await loadCartList();
+    } catch (error) {
+        console.error("移除购物车项失败:", error);
+        showToast("移除失败，请重试");
+    }
 }
 
 // ── Product detail ────────────────────────────────────────────────────────────
@@ -1288,95 +590,271 @@ function openProduct(p: Product) {
 
 function addToCartFromDetail() {
     if (!selectedProduct.value) return;
-    addToCart(selectedProduct.value.id, pdQty.value, false);
+    // 从 id "p1" 中提取数字 1
+    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
+    addToCart(productId, pdQty.value);
     showPdModal.value = false;
 }
 
 function buyNow() {
     if (!selectedProduct.value) return;
-    addToCart(selectedProduct.value.id, pdQty.value, false);
+    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
+    addToCart(productId, pdQty.value);
     showPdModal.value = false;
     openPay();
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 function openPay() {
-    if (cart.value.length === 0) {
+    if (cartItems.value.length === 0) {
         showToast("购物车为空");
         return;
     }
     showPayModal.value = true;
 }
 
-function mockPaySuccess() {
-    const total = cartTotal.value;
-    const no =
-        "YYG" +
-        new Date().toISOString().slice(0, 10).replace(/-/g, "") +
-        String(Math.floor(Math.random() * 900) + 100);
-    orders.value.unshift({
-        no,
-        time: new Date().toISOString().slice(0, 16).replace("T", " "),
-        status: "topay",
-        items: cart.value.map((c) => ({ id: c.id, qty: c.qty })),
-        amount: total,
-    });
-    cart.value = [];
-    showPayModal.value = false;
-    showToast("支付成功，订单已生成");
-    setTimeout(() => {
-        activeTab.value = "order";
-    }, 600);
+/** 模拟支付成功（实际应调用后端创建订单接口） */
+async function mockPaySuccess() {
+    if (cartItems.value.length === 0) {
+        showToast("购物车为空");
+        return;
+    }
+
+    try {
+        // 获取选中的购物车项 ID 列表
+        const cartIds = cartItems.value.map((item) => item.id);
+
+        // TODO: 这里需要用户填写收货信息，暂时使用默认值
+        // 实际应该弹出表单让用户输入收货地址、姓名、电话
+        const orderData = {
+            cartIds,
+            receiverName: "张三", // 应该从用户资料或表单中获取
+            receiverPhone: "13800138000", // 应该从用户资料或表单中获取
+            receiverAddress: "北京市朝阳区xxx街道xxx号", // 应该从用户资料或表单中获取
+            remark: "请尽快发货",
+        };
+
+        // 调用后端创建订单接口
+        const response = await ApiOrder.createOrder(orderData);
+        const apiResponse = response.data;
+
+        if (apiResponse && apiResponse.data) {
+            console.log("订单创建成功:", apiResponse.data);
+            showToast("支付成功，订单已生成");
+
+            // 清空购物车
+            cartItems.value = [];
+            cartSummary.value = null;
+
+            showPayModal.value = false;
+
+            // 重新加载订单列表并切换到订单页
+            await loadOrders();
+            setTimeout(() => {
+                activeTab.value = "order";
+            }, 600);
+        }
+    } catch (error) {
+        console.error("创建订单失败:", error);
+        showToast("创建订单失败，请重试");
+    }
 }
 
 // ── Order actions ─────────────────────────────────────────────────────────────
-function cancelOrder(no: string) {
-    showConfirm("取消订单", "确认取消该订单？取消后不可恢复。", "🗑️", () => {
-        orders.value = orders.value.filter((o) => o.no !== no);
-        showToast("订单已取消");
-    });
-}
+/** 取消订单 */
+async function cancelOrder(no: string) {
+    // 先从 filteredOrders 中查找，如果找不到再从 orders 中查找
+    let order = filteredOrders.value.find((o) => o.no === no);
+    if (!order) {
+        order = orders.value.find((o) => o.no === no);
+    }
+    if (!order) {
+        showToast("订单不存在");
+        return;
+    }
 
-function refundOrder(_no: string) {
-    showToast("已提交退款申请，客服将在 24h 内处理");
-}
-function remindShip(_no: string) {
-    showToast("已提醒卖家发货");
-}
-function extendReceipt(_no: string) {
-    showToast("收货时间已延长 7 天");
-}
-function reviewOrder(_no: string) {
-    showToast("评价功能开发中，敬请期待");
-}
-
-function confirmReceipt(no: string) {
     showConfirm(
-        "确认收货",
-        "确认已收到商品？确认后款项将打给卖家，请谨慎操作。",
-        "📦",
-        () => {
-            const o = orders.value.find((x) => x.no === no);
-            if (o) o.status = "done";
-            showToast("已确认收货，欢迎再次光临～");
+        "取消订单",
+        "确认取消该订单？取消后不可恢复。",
+        "🗑️",
+        async () => {
+            try {
+                await ApiOrder.cancelOrder(order.id, "用户主动取消");
+                showToast("订单已取消");
+                // 重新加载订单列表
+                await loadOrders();
+            } catch (error) {
+                console.error("取消订单失败:", error);
+                showToast("取消订单失败，请重试");
+            }
         },
     );
 }
 
+/** 支付订单（对待支付订单进行支付） */
+async function payOrder(no: string) {
+    // 先从 filteredOrders 中查找，如果找不到再从 orders 中查找
+    let order = filteredOrders.value.find((o) => o.no === no);
+    if (!order) {
+        order = orders.value.find((o) => o.no === no);
+    }
+    if (!order) {
+        showToast("订单不存在");
+        return;
+    }
+
+    showConfirm(
+        "确认支付",
+        `确认支付订单 ${no}，金额 ¥${order.amount.toFixed(2)}？`,
+        "💳",
+        async () => {
+            try {
+                // 调用后端模拟支付接口
+                await ApiOrder.simulatePay(order.id);
+                showToast("支付成功！");
+                // 重新加载订单列表以更新状态
+                await loadOrders();
+            } catch (error) {
+                console.error("支付失败:", error);
+                showToast("支付失败，请重试");
+            }
+        },
+    );
+}
+
+/** 申请退款 - 打开模态框 */
+function openRefundModal(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
+
+    refundForm.orderId = order.id;
+    refundForm.orderNo = order.no;
+    refundForm.orderAmount = order.amount;
+    refundForm.refundType = 1; // 默认仅退款
+    refundForm.refundAmount = order.amount; // 默认全额退款
+    refundForm.reason = "";
+    refundForm.description = "";
+    showRefundModal.value = true;
+}
+
+/** 提交退款申请 */
+async function submitRefund() {
+    // 表单验证
+    if (!refundForm.reason.trim()) {
+        showToast("请填写退款原因");
+        return;
+    }
+    if (refundForm.refundAmount <= 0) {
+        showToast("退款金额必须大于0");
+        return;
+    }
+    if (refundForm.refundAmount > refundForm.orderAmount) {
+        showToast("退款金额不能超过订单金额");
+        return;
+    }
+
+    refundSubmitting.value = true;
+    try {
+        const trimmedDescription = refundForm.description.trim();
+        const refundData: ApplyRefundDTO = {
+            refundType: refundForm.refundType,
+            refundAmount: refundForm.refundAmount,
+            reason: refundForm.reason.trim(),
+            ...(trimmedDescription && { description: trimmedDescription }),
+        };
+
+        await ApiRefund.applyRefund(refundForm.orderId, refundData);
+        showToast("退款申请已提交，客服将在 24h 内处理");
+        showRefundModal.value = false;
+
+        // 重新加载订单列表以获取最新状态
+        await loadOrders();
+    } catch (error) {
+        console.error("申请退款失败:", error);
+        showToast("申请退款失败，请重试");
+    } finally {
+        refundSubmitting.value = false;
+    }
+}
+
+/** 提醒发货 */
+function remindShip(_no: string) {
+    showToast("已提醒卖家发货");
+}
+
+/** 延长收货 */
+function extendReceipt(_no: string) {
+    showToast("收货时间已延长 7 天");
+}
+
+/** 评价订单 */
+function reviewOrder(_no: string) {
+    showToast("评价功能开发中，敬请期待");
+}
+
+/** 确认收货 */
+async function confirmReceipt(no: string) {
+    const order = orders.value.find((x) => x.no === no);
+    if (!order) return;
+
+    showConfirm(
+        "确认收货",
+        "确认已收到商品？确认后款项将打给卖家，请谨慎操作。",
+        "📦",
+        async () => {
+            try {
+                // 使用物流 API 的确认收货接口
+                await ApiLogistics.confirmReceipt(order.id);
+                showToast("已确认收货，欢迎再次光临～");
+                // 重新加载订单列表
+                await loadOrders();
+            } catch (error) {
+                console.error("确认收货失败:", error);
+                showToast("确认收货失败，请重试");
+            }
+        },
+    );
+}
+
+/** 再次购买 */
 function reBuy(no: string) {
     const o = orders.value.find((x) => x.no === no);
     if (!o) return;
     o.items.forEach((it) => {
-        const existing = cart.value.find((c) => c.id === it.id && !c.fromAi);
-        if (existing) existing.qty += it.qty;
-        else cart.value.push({ id: it.id, qty: it.qty, fromAi: false });
+        // 从 id "p1" 中提取数字 1
+        const productId = parseInt(it.id.replace("p", ""));
+        addToCart(productId, it.qty);
     });
     showToast("商品已加入购物车");
 }
 
-function openLogistics(no: string) {
-    selectedOrderNo.value = no;
-    showLogisticsModal.value = true;
+/** 查看物流 */
+async function openLogistics(no: string) {
+    const order = orders.value.find((o) => o.no === no);
+    if (!order) return;
+
+    try {
+        // 调用后端接口获取物流信息
+        const response = await ApiLogistics.getOrderLogistics(order.id);
+        const apiResponse = response.data;
+
+        if (apiResponse && apiResponse.data) {
+            const logistics = apiResponse.data;
+            console.log("物流信息:", logistics);
+
+            // 存储物流详情数据
+            currentLogisticsDetail.value = logistics;
+            selectedOrderNo.value = no;
+
+            // 显示物流模态框
+            showLogisticsModal.value = true;
+        } else {
+            showToast("暂无物流信息");
+        }
+    } catch (error) {
+        console.error("查询物流失败:", error);
+        showToast("查询物流失败，请重试");
+    }
 }
 
 function toggleMore(idx: number) {
@@ -1384,11 +862,6 @@ function toggleMore(idx: number) {
 }
 
 // ── Customer service ──────────────────────────────────────────────────────────
-function switchAgent(id: string) {
-    currentAgent.value = id;
-    nextTick(scrollChatToBottom);
-}
-
 async function sendChat() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -1397,17 +870,33 @@ async function sendChat() {
         now.getHours().toString().padStart(2, "0") +
         ":" +
         now.getMinutes().toString().padStart(2, "0");
-    chatHistory.value[currentAgent.value].push({ from: "me", text, time });
+
+    // 确保聊天历史数组存在
+    const agentId = currentAgent.value;
+    if (!chatHistory.value[agentId]) {
+        chatHistory.value[agentId] = [];
+    }
+
+    chatHistory.value[agentId].push({ from: "me", text, time });
     chatInput.value = "";
     await nextTick();
     scrollChatToBottom();
     setTimeout(async () => {
-        const replies = presetReplies[currentAgent.value];
-        chatHistory.value[currentAgent.value].push({
-            from: "agent",
-            text: replies[Math.floor(Math.random() * replies.length)],
-            time,
-        });
+        const replies = presetReplies[agentId] || [];
+        if (!chatHistory.value[agentId]) {
+            chatHistory.value[agentId] = [];
+        }
+        if (replies.length > 0) {
+            const randomIndex = Math.floor(Math.random() * replies.length);
+            const replyText = replies[randomIndex];
+            if (replyText) {
+                chatHistory.value[agentId].push({
+                    from: "agent",
+                    text: replyText,
+                    time,
+                });
+            }
+        }
         await nextTick();
         scrollChatToBottom();
     }, 800);
@@ -1425,11 +914,6 @@ function showConfirm(title: string, msg: string, icon: string, cb: () => void) {
     confirmIcon.value = icon;
     confirmCallback.value = cb;
     showConfirmModal.value = true;
-}
-
-function onConfirmOk() {
-    if (confirmCallback.value) confirmCallback.value();
-    showConfirmModal.value = false;
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -1534,17 +1018,16 @@ function convertOrderVO(vo: OrderVO): Order {
         refundStatus = 3; // 默认为已完成
     }
 
-    // 如果后端返回了退款审核备注，直接使用
-    // @ts-ignore - 后端可能会扩展返回此字段
-    if (vo.auditRemark) {
-        auditRemark = vo.auditRemark;
+    // 如果后端返回了退款审核备注,直接使用
+    if ((vo as any).auditRemark) {
+        auditRemark = (vo as any).auditRemark as string;
     }
 
-    return {
+    const order: Order = {
         id: vo.id,
         no: vo.orderNo,
         time: vo.createdAt,
-        // 如果订单状态是退款中或已退款，映射为对应的订单基础状态
+        // 如果订单状态是退款中或已退款,映射为对应的订单基础状态
         status:
             vo.status === 5 || vo.status === 6
                 ? "shipped"
@@ -1556,10 +1039,17 @@ function convertOrderVO(vo: OrderVO): Order {
             price: item.price,
         })),
         amount: vo.payAmount || vo.totalAmount,
-        refundStatus, // 独立的退款状态
-        auditRemark, // 退款审核备注
-        // 物流信息暂时不处理，后续可以根据需要添加
     };
+
+    // 只有在有值时才添加可选属性
+    if (refundStatus !== undefined) {
+        order.refundStatus = refundStatus;
+    }
+    if (auditRemark !== undefined) {
+        order.auditRemark = auditRemark;
+    }
+
+    return order;
 }
 
 /** 加载订单列表 */
@@ -2155,6 +1645,35 @@ onUnmounted(() => {
         box-shadow: var(--shadow);
     }
 }
+
+.order-header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    svg {
+        transition: transform 0.3s ease;
+    }
+
+    &:not(:disabled):hover svg {
+        transform: rotate(180deg);
+    }
+}
 .order-card {
     background: var(--paper);
     border-radius: 14px;
@@ -2189,6 +1708,21 @@ onUnmounted(() => {
     font-weight: 600;
     font-size: 14px;
 }
+.order-status-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.refund-status-badge {
+    font-family: "STKaiti", serif;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(212, 175, 55, 0.1);
+    color: var(--gold-dark);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
 .status-pay {
     color: var(--cinnabar);
 }
@@ -2200,6 +1734,35 @@ onUnmounted(() => {
 }
 .status-done {
     color: var(--ink-muted);
+}
+.status-cancelled {
+    color: var(--ink-light);
+}
+.status-refunding {
+    color: var(--gold);
+    animation: pulse 2s ease-in-out infinite;
+}
+.status-approved {
+    color: var(--jade);
+}
+.status-processing {
+    color: var(--cinnabar);
+}
+.status-refunded {
+    color: var(--jade);
+}
+.status-rejected {
+    color: var(--cinnabar);
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
 }
 .order-body {
     padding: 16px 20px;
@@ -2241,6 +1804,79 @@ onUnmounted(() => {
     .btn {
         padding: 7px 16px;
         font-size: 13px;
+    }
+}
+
+.refund-status-tip,
+.refund-completed-tip,
+.refund-rejected-tip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+
+    .tip-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .tip-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tip-text {
+        color: var(--ink);
+        font-weight: 500;
+    }
+
+    .tip-reason {
+        color: var(--cinnabar);
+        font-size: 12px;
+        font-weight: 600;
+    }
+}
+
+.refund-status-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(212, 175, 55, 0.1),
+        rgba(212, 175, 55, 0.05)
+    );
+    border: 1px solid rgba(212, 175, 55, 0.3);
+
+    .tip-text {
+        color: var(--gold-dark);
+    }
+}
+
+.refund-completed-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(93, 173, 126, 0.1),
+        rgba(93, 173, 126, 0.05)
+    );
+    border: 1px solid rgba(93, 173, 126, 0.3);
+
+    .tip-text {
+        color: var(--jade-dark);
+    }
+}
+
+.refund-rejected-tip {
+    background: linear-gradient(
+        135deg,
+        rgba(214, 69, 65, 0.1),
+        rgba(214, 69, 65, 0.05)
+    );
+    border: 1px solid rgba(214, 69, 65, 0.3);
+
+    .tip-text {
+        color: var(--cinnabar);
     }
 }
 
@@ -2871,6 +2507,15 @@ onUnmounted(() => {
             box-shadow: 0 0 0 5px rgba(179, 60, 44, 0.12);
         }
     }
+    .step-content {
+        margin-bottom: 4px;
+        line-height: 1.6;
+    }
+    .step-location {
+        font-size: 13px;
+        color: var(--ink-muted);
+        margin-bottom: 4px;
+    }
     .step-time {
         color: var(--ink-muted);
         font-size: 12px;
@@ -2887,6 +2532,248 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+// Empty logistics state
+.empty-logistics {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--ink-muted);
+    p {
+        margin: 8px 0;
+        font-size: 14px;
+    }
+    .hint {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+}
+
+// Logistics status styles
+.track-status {
+    margin-top: 8px;
+    font-size: 14px;
+    span {
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 12px;
+        display: inline-block;
+        &.status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        &.status-shipped {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        &.status-transit {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+        &.status-signed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    }
+}
+
+// Refund modal
+.refund-order-info {
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    .label {
+        color: var(--ink-muted);
+    }
+    .value {
+        color: var(--ink);
+        font-weight: 500;
+        &.highlight {
+            color: var(--cinnabar);
+            font-weight: 700;
+            font-size: 18px;
+        }
+    }
+}
+
+.refund-form {
+    .form-group {
+        margin-bottom: 18px;
+    }
+    .form-label {
+        display: block;
+        font-size: 14px;
+        color: var(--ink);
+        font-weight: 600;
+        margin-bottom: 8px;
+        &.required::after {
+            content: " *";
+            color: var(--cinnabar);
+        }
+    }
+    .radio-group {
+        display: flex;
+        gap: 20px;
+    }
+    .radio-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--ink);
+        input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--jade);
+        }
+    }
+    .input-with-prefix {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+        &:focus-within {
+            border-color: var(--jade);
+        }
+        .prefix {
+            padding: 0 12px;
+            background: var(--paper-warm);
+            color: var(--ink-muted);
+            font-weight: 600;
+            font-size: 14px;
+            border-right: 1px solid var(--line);
+        }
+        input {
+            flex: 1;
+            border: none;
+            padding: 10px 12px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+        }
+    }
+    .form-hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--ink-muted);
+    }
+    .form-select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+        background: white;
+        cursor: pointer;
+        &:focus {
+            border-color: var(--jade);
+        }
+    }
+    .form-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        resize: vertical;
+        transition: border-color 0.2s;
+        &:focus {
+            border-color: var(--jade);
+        }
+    }
+}
+
+// ── Confirm Modal ────────────────────────────────────────────────────────────
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    animation: fadeIn 0.2s ease;
+}
+
+.confirm-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease;
+    text-align: center;
+}
+
+.confirm-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.confirm-title {
+    font-family: "STKaiti", serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+}
+
+.confirm-message {
+    font-size: 14px;
+    color: var(--ink-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+
+    .btn {
+        min-width: 100px;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────

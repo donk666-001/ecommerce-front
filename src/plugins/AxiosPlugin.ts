@@ -30,13 +30,55 @@ async function performTokenRefresh(): Promise<boolean> {
     try {
         // 直接使用原生 fetch 避免循环依赖和拦截器干扰
         const baseURL = "/e-commerce/api";
-        const response = await fetch(`${baseURL}/users/refresh`, {
+        const requestUrl = `${baseURL}/users/refresh`;
+
+        console.log("[Token Refresh] 请求配置:", {
+            baseURL,
+            requestUrl,
+            fullUrl: window.location.origin + requestUrl,
+        });
+
+        const response = await fetch(requestUrl, {
             method: "GET",
             credentials: "include",
             headers: {
                 "Content-Type": "application/json",
             },
         });
+
+        // 先检查响应状态，避免解析非 JSON 响应
+        if (!response.ok) {
+            console.warn(
+                `[Token Refresh] ⚠️ HTTP 错误: ${response.status} ${response.statusText}`,
+            );
+            // 尝试读取错误信息（可能是 JSON 或文本）
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                try {
+                    const errorResult = await response.json();
+                    console.warn("[Token Refresh] 错误详情:", errorResult);
+                } catch {
+                    console.warn("[Token Refresh] 无法解析错误响应");
+                }
+            }
+            refreshState = "unauthorized";
+            await handleUnauthorized();
+            rejectPendingRequests();
+            return false;
+        }
+
+        // 确保响应是 JSON 格式
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            console.warn(
+                "[Token Refresh] ⚠️ 响应不是 JSON 格式:",
+                contentType || "unknown",
+            );
+            refreshState = "unauthorized";
+            await handleUnauthorized();
+            rejectPendingRequests();
+            return false;
+        }
 
         const result = await response.json();
         console.log("[Token Refresh] 刷新响应:", result);
