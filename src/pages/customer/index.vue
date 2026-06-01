@@ -107,6 +107,7 @@
                     class="panel panel-scroll"
                 >
                     <DashboardPanel
+                        ref="dashboardPanelRef"
                         :chat-count="chatCount"
                         :queue-count="queueCount"
                         :agent-name="agentName"
@@ -188,6 +189,7 @@ import SettingsPanel from "@/components/customer/SettingsPanel.vue";
 const router = useRouter();
 const chatPanelRef = ref<InstanceType<typeof ChatPanel>>();
 const historyPanelRef = ref<InstanceType<typeof HistoryPanel>>();
+const dashboardPanelRef = ref<InstanceType<typeof DashboardPanel>>();
 const userStore = useUserStore();
 
 // 导航配置
@@ -229,9 +231,10 @@ function handleSwitchToChat(session: CustomerSession) {
     chatPanelRef.value?.injectSession(session);
 }
 
-// 会话结束 → 同步历史
+// 会话结束 → 同步历史 + 今日接待数 +1
 function handleSessionEnded(record: HistorySession) {
     historyPanelRef.value?.addRecord(record);
+    dashboardPanelRef.value?.incrementTodayServed();
 }
 
 // 账号菜单

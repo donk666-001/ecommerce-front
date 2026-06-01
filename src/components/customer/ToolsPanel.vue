@@ -48,17 +48,18 @@
                         v-for="item in paginatedProducts"
                         :key="item.id"
                         class="product-card"
-                        title="点击查看商品详情"
-                        @click="openShopProduct(item.id)"
                     >
                         <div class="product-info">
-                            <div class="product-name">
-                                {{ item.name }}
-                                <span class="goto-icon">↗</span>
-                            </div>
+                            <div class="product-name">{{ item.name }}</div>
                             <div class="product-desc">{{ item.desc }}</div>
                             <div class="product-price">¥{{ item.price }}</div>
                         </div>
+                        <button
+                            class="detail-btn"
+                            @click="openShopProduct(item.id)"
+                        >
+                            详情
+                        </button>
                     </div>
                 </div>
                 <div v-if="products.length > 0" class="pagination">
@@ -107,6 +108,7 @@
                             <th>金额</th>
                             <th>状态</th>
                             <th>下单日期</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -114,13 +116,8 @@
                             v-for="item in paginatedOrders"
                             :key="item.id"
                             class="order-row"
-                            title="点击查看订单详情"
-                            @click="openShopOrder(item.id)"
                         >
-                            <td class="order-id">
-                                {{ item.id }}
-                                <span class="row-goto">↗</span>
-                            </td>
+                            <td class="order-id">{{ item.id }}</td>
                             <td>{{ item.productName }}</td>
                             <td>{{ item.custName }}</td>
                             <td>¥{{ item.amount }}</td>
@@ -133,6 +130,14 @@
                                 </span>
                             </td>
                             <td>{{ item.date }}</td>
+                            <td>
+                                <button
+                                    class="detail-btn"
+                                    @click="openShopOrder(item.id)"
+                                >
+                                    详情
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -348,25 +353,15 @@ onMounted(() => {
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--paper-warm);
-    cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
 
     &:hover {
         border-color: var(--jade);
         box-shadow: var(--shadow);
-
-        .goto-icon {
-            opacity: 1;
-        }
     }
-}
-
-.goto-icon {
-    font-size: 14px;
-    color: var(--jade);
-    opacity: 0;
-    transition: opacity 0.15s;
-    margin-left: 4px;
 }
 
 .product-info {
@@ -425,14 +420,8 @@ onMounted(() => {
 }
 
 .order-row {
-    cursor: pointer;
-
     &:hover td {
         background: var(--jade-soft);
-    }
-
-    &:hover .row-goto {
-        opacity: 1;
     }
 }
 
@@ -442,12 +431,22 @@ onMounted(() => {
     color: var(--ink-muted);
 }
 
-.row-goto {
-    font-size: 13px;
+.detail-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--jade);
+    border-radius: 6px;
+    background: transparent;
     color: var(--jade);
-    opacity: 0;
-    margin-left: 4px;
-    transition: opacity 0.15s;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover {
+        background: var(--jade);
+        color: #fff;
+    }
 }
 
 .pagination {

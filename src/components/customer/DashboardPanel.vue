@@ -19,7 +19,7 @@
             </div>
             <div class="stat-card cinnabar">
                 <div class="stat-label">今日已接待</div>
-                <div class="stat-value">{{ stats.todayServed }}</div>
+                <div class="stat-value">{{ todayServed }}</div>
                 <div class="stat-foot">每 30 秒更新</div>
             </div>
             <div class="stat-card ink">
@@ -107,6 +107,19 @@ const stats = ref<CustomerStats>({
 });
 const colleagues = ref<AgentColleague[]>([]);
 
+// 本次登录期间本客服结束的会话数（不随轮询重置）
+const todayServedExtra = ref(0);
+
+const todayServed = computed(
+    () => stats.value.todayServed + todayServedExtra.value,
+);
+
+function incrementTodayServed() {
+    todayServedExtra.value += 1;
+}
+
+defineExpose({ incrementTodayServed });
+
 // 实时合并：自己那行用 prop 覆盖状态/接待数/今日已接待
 const displayColleagues = computed(() =>
     colleagues.value.map((c) =>
@@ -115,7 +128,7 @@ const displayColleagues = computed(() =>
                   ...c,
                   status: props.agentStatus,
                   currentLoad: props.chatCount,
-                  todayServed: stats.value.todayServed,
+                  todayServed: todayServed.value,
               }
             : c,
     ),
