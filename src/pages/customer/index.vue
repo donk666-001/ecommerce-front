@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="customer-workspace">
         <!-- 侧边栏 -->
         <aside class="sidebar">
@@ -18,101 +18,146 @@
                     :class="{ active: currentPanel === item.panel }"
                     @click="switchPanel(item.panel)"
                 >
-                    <span class="nav-icon">{{ item.icon }}</span>
                     <span>{{ item.label }}</span>
                     <span
-                        v-if="item.badge"
+                        v-if="item.panel === 'chat' && chatCount > 0"
                         class="nav-badge"
-                        :class="{ gold: item.badgeType === 'gold' }"
                     >
-                        {{ item.badge }}
+                        {{ chatCount }}
+                    </span>
+                    <span
+                        v-if="item.panel === 'queue' && queueCount > 0"
+                        class="nav-badge gold"
+                    >
+                        {{ queueCount }}
                     </span>
                 </button>
             </nav>
 
-            <div class="sidebar-footer">v1.0 · 颐养阁 © 2026</div>
+            <div class="sidebar-account-wrap">
+                <Transition name="account-menu">
+                    <div v-if="showAccountMenu" class="account-menu">
+                        <div class="account-profile">
+                            <div class="agent-avatar account-avatar">
+                                {{ agentName.slice(-1) }}
+                            </div>
+                            <div class="account-meta">
+                                <div class="account-name">{{ agentName }}</div>
+                                <div class="account-role">{{ agentId }}</div>
+                            </div>
+                        </div>
+                        <div class="account-sep"></div>
+                        <button
+                            v-for="status in statusOptions"
+                            :key="status.value"
+                            type="button"
+                            class="account-menu-item"
+                            :class="{
+                                'item-active': agentStatus === status.value,
+                            }"
+                            @click.stop="setStatus(status.value, status.label)"
+                        >
+                            <span
+                                class="status-led"
+                                :class="`led-${status.value}`"
+                            ></span>
+                            <span>{{ status.label }}</span>
+                        </button>
+                        <div class="account-sep"></div>
+                        <button
+                            type="button"
+                            class="account-menu-item danger"
+                            @click.stop="handleLogout"
+                        >
+                            <span>退出登录</span>
+                        </button>
+                    </div>
+                </Transition>
+
+                <button
+                    type="button"
+                    class="sidebar-account"
+                    :class="{ open: showAccountMenu }"
+                    @click.stop="toggleAccountMenu"
+                >
+                    <div class="account-info">
+                        <div class="agent-avatar">
+                            {{ agentName.slice(-1) }}
+                        </div>
+                        <div class="account-meta">
+                            <div class="account-name">{{ agentName }}</div>
+                            <div class="account-role">{{ agentId }}</div>
+                        </div>
+                    </div>
+                    <span
+                        class="status-led"
+                        :class="`led-${agentStatus}`"
+                    ></span>
+                </button>
+            </div>
         </aside>
 
         <!-- 主内容区 -->
         <div class="main">
-            <!-- 顶部栏 -->
-            <div class="topbar">
-                <div class="breadcrumb">
-                    客服中心 /
-                    <span class="current">{{ currentPanelLabel }}</span>
-                </div>
-                <div class="topbar-right">
-                    <!-- 状态选择器 -->
-                    <div class="status-selector" @click="toggleStatusMenu">
-                        <span
-                            class="status-led"
-                            :class="`led-${agentStatus}`"
-                        ></span>
-                        <span>{{ statusText }}</span>
-                        <span style="font-size: 10px; color: var(--ink-muted)"
-                            >▼</span
-                        >
-
-                        <div v-show="showStatusMenu" class="status-menu">
-                            <div
-                                v-for="status in statusOptions"
-                                :key="status.value"
-                                class="status-menu-item"
-                                @click="setStatus(status.value, status.label)"
-                            >
-                                <span
-                                    class="status-led"
-                                    :class="`led-${status.value}`"
-                                ></span>
-                                <span>{{ status.label }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 客服信息 -->
-                    <div class="agent-card">
-                        <div class="agent-avatar">{{ agentName[0] }}</div>
-                        <div>
-                            <div class="agent-name">{{ agentName }}</div>
-                            <div class="agent-meta">
-                                {{ agentId }} · {{ agentRole }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="logout" @click="handleLogout">退出</button>
-                </div>
-            </div>
-
             <!-- 内容面板 -->
             <div class="content">
                 <!-- 工作台面板 -->
-                <div v-show="currentPanel === 'dashboard'" class="panel active">
-                    <DashboardPanel />
+                <div
+                    v-show="currentPanel === 'dashboard'"
+                    class="panel panel-scroll"
+                >
+                    <DashboardPanel
+                        :chat-count="chatCount"
+                        :queue-count="queueCount"
+                        :agent-name="agentName"
+                        :agent-status="agentStatus"
+                    />
                 </div>
 
-                <!-- 接待中面板 -->
-                <div v-show="currentPanel === 'chat'" class="panel active">
-                    <ChatPanel />
+                <!-- 接待中面板（不加内边距，自己管理布局）-->
+                <div v-show="currentPanel === 'chat'" class="panel panel-fill">
+                    <ChatPanel
+                        ref="chatPanelRef"
+                        :agent-name="agentName"
+                        :agent-id="agentId"
+                        @count-update="chatCount = $event"
+                        @switch-to-queue="currentPanel = 'queue'"
+                        @session-ended="handleSessionEnded"
+                    />
                 </div>
 
                 <!-- 排队队列面板 -->
-                <div v-show="currentPanel === 'queue'" class="panel active">
-                    <QueuePanel />
+                <div
+                    v-show="currentPanel === 'queue'"
+                    class="panel panel-scroll"
+                >
+                    <QueuePanel
+                        @switch-to-chat="handleSwitchToChat"
+                        @count-update="queueCount = $event"
+                    />
                 </div>
 
                 <!-- 历史会话面板 -->
-                <div v-show="currentPanel === 'history'" class="panel active">
-                    <HistoryPanel />
+                <div
+                    v-show="currentPanel === 'history'"
+                    class="panel panel-scroll"
+                >
+                    <HistoryPanel ref="historyPanelRef" />
                 </div>
 
                 <!-- 商品订单速查面板 -->
-                <div v-show="currentPanel === 'tools'" class="panel active">
+                <div
+                    v-show="currentPanel === 'tools'"
+                    class="panel panel-scroll"
+                >
                     <ToolsPanel />
                 </div>
 
                 <!-- 个人设置面板 -->
-                <div v-show="currentPanel === 'settings'" class="panel active">
+                <div
+                    v-show="currentPanel === 'settings'"
+                    class="panel panel-scroll"
+                >
                     <SettingsPanel />
                 </div>
             </div>
@@ -124,7 +169,11 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/user";
-import { ApiCustomer } from "@/network/customer";
+import {
+    ApiCustomer,
+    type HistorySession,
+    type CustomerSession,
+} from "@/network/customer";
 import { customerWS } from "@/network/customer.ws";
 import { ElMessage } from "element-plus";
 
@@ -137,46 +186,27 @@ import ToolsPanel from "@/components/customer/ToolsPanel.vue";
 import SettingsPanel from "@/components/customer/SettingsPanel.vue";
 
 const router = useRouter();
+const chatPanelRef = ref<InstanceType<typeof ChatPanel>>();
+const historyPanelRef = ref<InstanceType<typeof HistoryPanel>>();
 const userStore = useUserStore();
 
 // 导航配置
 const navItems = [
-    { panel: "dashboard", icon: "📊", label: "工作台" },
-    { panel: "chat", icon: "💬", label: "接待中", badge: 3 },
-    {
-        panel: "queue",
-        icon: "⏳",
-        label: "排队队列",
-        badge: 2,
-        badgeType: "gold",
-    },
-    { panel: "history", icon: "📜", label: "历史会话" },
-    { panel: "tools", icon: "🔍", label: "商品订单速查" },
-    { panel: "settings", icon: "⚙️", label: "个人设置" },
+    { panel: "dashboard", label: "工作台" },
+    { panel: "chat", label: "接待中" },
+    { panel: "queue", label: "排队队列" },
+    { panel: "history", label: "历史会话" },
+    { panel: "tools", label: "商品订单速查" },
+    { panel: "settings", label: "个人设置" },
 ];
 
 const currentPanel = ref("dashboard");
-
-// 面包屑标签映射
-const panelLabels: Record<string, string> = {
-    dashboard: "工作台",
-    chat: "接待中",
-    queue: "排队队列",
-    history: "历史会话",
-    tools: "商品订单速查",
-    settings: "个人设置",
-};
-
-const currentPanelLabel = computed(() => panelLabels[currentPanel.value]);
+const chatCount = ref(0);
+const queueCount = ref(0);
 
 // 客服状态管理
 const agentStatus = ref<"online" | "break" | "off">("online");
-const showStatusMenu = ref(false);
-
-const statusText = computed(() => {
-    const map = { online: "在线", break: "小休", off: "下班" };
-    return map[agentStatus.value];
-});
+const showAccountMenu = ref(false);
 
 const statusOptions = [
     { value: "online", label: "在线" },
@@ -187,21 +217,26 @@ const statusOptions = [
 // 客服信息（从 store 获取）
 const agentId = computed(() => userStore.G_LoginInfo.account || "CS001");
 const agentName = computed(() => userStore.G_LoginInfo.nickName || "小翠");
-const agentRole = computed(() => {
-    const roleMap: Record<number, string> = {
-        4: "售前客服",
-    };
-    return roleMap[userStore.G_UserInfo.role_id] || "客服";
-});
 
 // 切换面板
 function switchPanel(panel: string) {
     currentPanel.value = panel;
 }
 
-// 状态菜单
-function toggleStatusMenu() {
-    showStatusMenu.value = !showStatusMenu.value;
+// 从排队队列接入，跳转到接待中并注入新会话
+function handleSwitchToChat(session: CustomerSession) {
+    currentPanel.value = "chat";
+    chatPanelRef.value?.injectSession(session);
+}
+
+// 会话结束 → 同步历史
+function handleSessionEnded(record: HistorySession) {
+    historyPanelRef.value?.addRecord(record);
+}
+
+// 账号菜单
+function toggleAccountMenu() {
+    showAccountMenu.value = !showAccountMenu.value;
 }
 
 async function setStatus(status: string, label: string) {
@@ -209,7 +244,7 @@ async function setStatus(status: string, label: string) {
         const success = await ApiCustomer.updateStatus(status as any);
         if (success) {
             agentStatus.value = status as any;
-            showStatusMenu.value = false;
+            showAccountMenu.value = false;
             ElMessage.success(`状态已切换：${label}`);
         } else {
             ElMessage.error("状态切换失败");
@@ -231,7 +266,7 @@ async function handleLogout() {
 // 点击外部关闭状态菜单
 onMounted(async () => {
     document.addEventListener("click", () => {
-        showStatusMenu.value = false;
+        showAccountMenu.value = false;
     });
 
     // 连接WebSocket
@@ -287,20 +322,20 @@ onUnmounted(() => {
     justify-content: center;
     border-radius: 50%;
     font-family: "STKaiti", serif;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     box-shadow: 0 3px 8px rgba(179, 60, 44, 0.3);
 }
 
 .sidebar-title {
     font-family: "STKaiti", serif;
-    font-size: 17px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--ink);
 }
 
 .sidebar-sub {
-    font-size: 11px;
+    font-size: 15px;
     color: var(--ink-muted);
     margin-top: 2px;
 }
@@ -319,7 +354,7 @@ onUnmounted(() => {
     align-items: center;
     gap: 10px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 17px;
     color: var(--ink-light);
     cursor: pointer;
     border-left: 4px solid transparent;
@@ -339,17 +374,11 @@ onUnmounted(() => {
     }
 }
 
-.nav-icon {
-    width: 18px;
-    font-size: 16px;
-    text-align: center;
-}
-
 .nav-badge {
     margin-left: auto;
     background: var(--cinnabar);
     color: white;
-    font-size: 11px;
+    font-size: 14px;
     padding: 1px 7px;
     border-radius: 9px;
     font-weight: 700;
@@ -359,12 +388,134 @@ onUnmounted(() => {
     }
 }
 
-.sidebar-footer {
-    padding: 14px;
-    text-align: center;
-    font-size: 11px;
-    color: var(--ink-muted);
+.sidebar-account-wrap {
+    position: relative;
+    padding: 10px 12px;
     border-top: 1px solid rgba(92, 131, 116, 0.15);
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.sidebar-account {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: inherit;
+    transition:
+        background 0.16s,
+        box-shadow 0.16s;
+
+    &:hover,
+    &.open {
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 3px 14px rgba(60, 50, 30, 0.08);
+    }
+}
+
+.account-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.account-meta {
+    text-align: left;
+}
+
+.account-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.account-role {
+    font-size: 14px;
+    color: var(--ink-muted);
+    margin-top: 1px;
+}
+
+.account-menu {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + 6px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(60, 50, 30, 0.12);
+    padding: 6px 0;
+    z-index: 200;
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px 8px;
+}
+
+.account-avatar {
+    flex-shrink: 0;
+}
+
+.account-sep {
+    height: 1px;
+    background: var(--line);
+    margin: 4px 0;
+}
+
+.account-menu-item {
+    width: 100%;
+    height: 38px;
+    border: none;
+    background: transparent;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--ink);
+    cursor: pointer;
+    transition:
+        background 0.14s,
+        color 0.14s;
+
+    &:hover {
+        background: var(--cream);
+    }
+
+    &.item-active {
+        font-weight: 600;
+        color: var(--jade);
+    }
+
+    &.danger {
+        color: var(--cinnabar);
+    }
+
+    &.danger:hover {
+        background: var(--cinnabar-soft);
+    }
+}
+
+.account-menu-enter-active,
+.account-menu-leave-active {
+    transition:
+        opacity 0.16s ease,
+        transform 0.16s ease;
+}
+
+.account-menu-enter-from,
+.account-menu-leave-to {
+    opacity: 0;
+    transform: translateY(6px);
 }
 
 /* 主内容区 */
@@ -373,54 +524,8 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     min-width: 0;
-}
-
-.topbar {
-    height: 64px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-}
-
-.breadcrumb {
-    font-size: 15px;
-    color: var(--ink-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .current {
-        color: var(--ink);
-        font-weight: 500;
-    }
-}
-
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.status-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    background: var(--paper-warm);
-    cursor: pointer;
-    font-size: 13px;
-    position: relative;
-
-    &:hover {
-        border-color: var(--jade);
-    }
+    height: 100%;
+    overflow: hidden;
 }
 
 .status-led {
@@ -450,39 +555,6 @@ onUnmounted(() => {
     }
 }
 
-.status-menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 6px;
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    min-width: 160px;
-    z-index: 100;
-}
-
-.status-menu-item {
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    cursor: pointer;
-
-    &:hover {
-        background: var(--cream);
-    }
-}
-
-.agent-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-}
-
 .agent-avatar {
     width: 36px;
     height: 36px;
@@ -491,43 +563,35 @@ onUnmounted(() => {
     color: white;
     font-family: "STKaiti", serif;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
-.agent-name {
-    font-weight: 600;
-}
-
-.agent-meta {
-    font-size: 11px;
-    color: var(--ink-muted);
-}
-
-.logout {
-    background: transparent;
-    border: none;
-    color: var(--ink-muted);
-    cursor: pointer;
-    font-size: 13px;
-    font-family: inherit;
-
-    &:hover {
-        color: var(--cinnabar);
-    }
-}
-
 .content {
     flex: 1;
-    overflow: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 所有面板绝对定位，撑满 .content */
+.panel {
+    position: absolute;
+    inset: 0;
+    animation: fadeIn 0.25s ease;
+}
+
+/* 带内边距 + 可滚动（除接待中外的所有面板）*/
+.panel-scroll {
+    overflow-y: auto;
     padding: 24px;
 }
 
-.panel {
-    animation: fadeIn 0.25s ease;
+/* 接待中：铺满，内部自管理滚动 */
+.panel-fill {
+    overflow: hidden;
 }
 
 @keyframes fadeIn {

@@ -88,6 +88,25 @@
                     </svg>
                     <span>物流管理</span>
                 </button>
+                <button
+                    class="nav-item"
+                    :class="{ active: activeTab === 'products' }"
+                    @click="activeTab = 'products'"
+                >
+                    <svg
+                        class="nav-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                    >
+                        <path
+                            d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"
+                        />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                    <span>商品管理</span>
+                </button>
 
                 <div class="nav-section">系统</div>
                 <button
@@ -239,6 +258,7 @@
                 />
                 <AdminRefund v-show="activeTab === 'refunds'" />
                 <AdminLogistics v-show="activeTab === 'logistics'" />
+                <AdminProducts v-show="activeTab === 'products'" />
                 <AdminPermissions v-show="activeTab === 'permissions'" />
                 <AdminAgents v-show="activeTab === 'agents'" />
             </main>
@@ -377,6 +397,7 @@ import AdminPermissions from "@/components/admin/AdminPermissions.vue";
 import AdminAgents from "@/components/admin/AdminAgents.vue";
 import AdminRefund from "@/components/admin/AdminRefund.vue";
 import AdminLogistics from "@/components/admin/AdminLogistics.vue";
+import AdminProducts from "@/components/admin/AdminProducts.vue";
 
 const router = useRouter();
 const userStore = useUserStore();

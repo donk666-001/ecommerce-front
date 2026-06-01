@@ -1,27 +1,29 @@
-<template>
+﻿<template>
     <div class="history-panel">
         <div class="section-title font-serif">历史会话</div>
 
         <!-- 搜索筛选区 -->
-        <div class="panel-card">
-            <div class="filter-bar">
+        <div class="panel-card filter-card">
+            <div class="filter-row">
                 <el-input
-                    v-model="filters.custName"
-                    placeholder="搜索客户姓名"
+                    v-model="keyword"
+                    placeholder="搜索客户ID / 客户名称 / 客服ID / 客服名称（支持模糊查询）"
                     clearable
-                    style="width: 200px"
-                    @clear="handleSearch"
+                    class="filter-input"
                     @keyup.enter="handleSearch"
+                    @clear="handleSearch"
                 />
-                <el-date-picker
-                    v-model="dateRange"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    style="width: 240px"
-                    @change="handleSearch"
-                />
+                <div class="filter-date-wrap">
+                    <span class="filter-label">结束日期</span>
+                    <el-date-picker
+                        v-model="dateRange"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始"
+                        end-placeholder="结束"
+                        @change="handleSearch"
+                    />
+                </div>
                 <el-button type="primary" @click="handleSearch">搜索</el-button>
                 <el-button @click="handleReset">重置</el-button>
             </div>
@@ -31,58 +33,51 @@
         <div class="panel-card">
             <div class="panel-card-body">
                 <div v-if="loading" class="loading-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">📜</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        加载中...
-                    </div>
+                    <div class="state-text">加载中...</div>
                 </div>
                 <div v-else-if="historyList.length === 0" class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">📭</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        暂无历史会话
-                    </div>
+                    <div class="state-text">暂无历史会话</div>
                 </div>
                 <table v-else class="history-table">
                     <thead>
                         <tr>
-                            <th>会话ID</th>
-                            <th>客户</th>
-                            <th>客服</th>
-                            <th>开始时间</th>
-                            <th>时长</th>
+                            <th>客户 ID</th>
+                            <th>客户名称</th>
+                            <th>客服 ID</th>
+                            <th>客服名称</th>
                             <th>消息数</th>
-                            <th>评价</th>
+                            <th>开始时间</th>
+                            <th>结束时间</th>
                             <th>结束原因</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in historyList" :key="item.sessionId">
-                            <td class="session-id">{{ item.sessionId }}</td>
+                        <tr v-for="item in historyList" :key="item.id">
+                            <td class="id-cell">{{ item.custId }}</td>
                             <td>{{ item.custName }}</td>
+                            <td class="id-cell">{{ item.agentId }}</td>
                             <td>{{ item.agentName }}</td>
-                            <td>{{ item.startTime }}</td>
-                            <td>{{ item.duration }}</td>
                             <td>{{ item.msgCount }}</td>
+                            <td class="time-cell">{{ item.startTime }}</td>
+                            <td class="time-cell">{{ item.endTime }}</td>
                             <td>
                                 <span
-                                    class="rating-tag"
-                                    :class="getRatingClass(item.rating)"
+                                    class="reason-tag"
+                                    :class="getReasonClass(item.endReason)"
                                 >
-                                    {{ item.rating }}
+                                    {{ getReasonText(item.endReason) }}
                                 </span>
                             </td>
-                            <td>{{ getEndReasonText(item.endReason) }}</td>
                         </tr>
                     </tbody>
                 </table>
 
-                <!-- 分页 -->
                 <div v-if="total > 0" class="pagination">
                     <el-pagination
                         v-model:current-page="currentPage"
                         v-model:page-size="pageSize"
                         :total="total"
-                        :page-sizes="[10, 20, 50]"
+                        :page-sizes="[10, 20]"
                         layout="total, sizes, prev, pager, next, jumper"
                         @size-change="handleSizeChange"
                         @current-change="handlePageChange"
@@ -103,35 +98,27 @@ const historyList = ref<HistorySession[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
+const keyword = ref("");
 const dateRange = ref<[Date, Date] | null>(null);
-
-const filters = ref({
-    custName: "",
-    startDate: "",
-    endDate: "",
-});
 
 async function loadHistory() {
     loading.value = true;
     try {
-        const params: any = {
-            page: currentPage.value,
-            pageSize: pageSize.value,
-        };
+        const params: Record<string, string | number> = {};
 
-        if (filters.value.custName) {
-            params.custName = filters.value.custName;
+        if (keyword.value) {
+            params.keyword = keyword.value.trim();
         }
 
-        if (dateRange.value && dateRange.value.length === 2) {
-            params.startDate = formatDate(dateRange.value[0]);
-            params.endDate = formatDate(dateRange.value[1]);
+        if (dateRange.value?.length === 2) {
+            params.startDate = fmt(dateRange.value[0]);
+            params.endDate = fmt(dateRange.value[1]);
         }
 
         const data = await ApiCustomer.getHistorySessions(
-            params.page,
-            params.pageSize,
-            params,
+            currentPage.value,
+            pageSize.value,
+            params as any,
         );
         historyList.value = data.records;
         total.value = data.total;
@@ -143,13 +130,20 @@ async function loadHistory() {
     }
 }
 
+function fmt(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
 function handleSearch() {
     currentPage.value = 1;
     loadHistory();
 }
 
 function handleReset() {
-    filters.value.custName = "";
+    keyword.value = "";
     dateRange.value = null;
     currentPage.value = 1;
     loadHistory();
@@ -166,41 +160,30 @@ function handlePageChange(page: number) {
     loadHistory();
 }
 
-function formatDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+function getReasonClass(reason: string): string {
+    return reason === "timeout" ? "reason-timeout" : "reason-manual";
 }
 
-function getRatingClass(rating: string): string {
-    const map: Record<string, string> = {
-        非常满意: "rating-excellent",
-        满意: "rating-good",
-        一般: "rating-average",
-        不满意: "rating-poor",
-    };
-    return map[rating] || "";
+function getReasonText(reason: string): string {
+    return reason === "timeout" ? "客户超时" : "手动结束";
 }
 
-function getEndReasonText(reason: string): string {
-    const map: Record<string, string> = {
-        manual: "手动结束",
-        transfer: "转接",
-        timeout: "超时自动结束",
-    };
-    return map[reason] || reason;
+function addRecord(record: HistorySession) {
+    historyList.value.unshift(record);
+    total.value++;
 }
 
 onMounted(() => {
     loadHistory();
 });
+
+defineExpose({ addRecord });
 </script>
 
 <style scoped lang="scss">
 .section-title {
     font-family: "STKaiti", serif;
-    font-size: 19px;
+    font-size: 22px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -223,14 +206,37 @@ onMounted(() => {
     border: 1px solid rgba(232, 223, 208, 0.5);
 }
 
-.panel-card-body {
-    padding: 14px 18px;
+.filter-card {
+    padding: 16px 20px;
+    margin-bottom: 16px;
 }
 
-.filter-bar {
+.filter-row {
     display: flex;
-    gap: 12px;
     align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-input {
+    flex: 1;
+    min-width: 280px;
+}
+
+.filter-date-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.filter-label {
+    font-size: 16px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+
+.panel-card-body {
     padding: 14px 18px;
 }
 
@@ -240,10 +246,15 @@ onMounted(() => {
     padding: 40px;
 }
 
+.state-text {
+    font-size: 17px;
+    color: var(--ink-muted);
+}
+
 .history-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 17px;
 
     thead {
         background: var(--cream);
@@ -252,13 +263,14 @@ onMounted(() => {
     th {
         text-align: left;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 16px;
         color: var(--ink-muted);
         padding: 12px 16px;
+        white-space: nowrap;
     }
 
     td {
-        padding: 14px 16px;
+        padding: 13px 16px;
         border-top: 1px solid var(--line);
         vertical-align: middle;
     }
@@ -268,35 +280,31 @@ onMounted(() => {
     }
 }
 
-.session-id {
+.id-cell {
     font-family: monospace;
-    font-size: 12px;
+    font-size: 15px;
     color: var(--ink-muted);
 }
 
-.rating-tag {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 11px;
-    border-radius: 3px;
-    font-family: "STKaiti", serif;
+.time-cell {
+    font-size: 15px;
+    white-space: nowrap;
+    color: var(--ink-light);
+}
 
-    &.rating-excellent {
+.reason-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 15px;
+    border-radius: 4px;
+    font-weight: 500;
+
+    &.reason-manual {
         background: var(--jade-soft);
         color: var(--jade);
     }
 
-    &.rating-good {
-        background: #e8f5e9;
-        color: #2e7d32;
-    }
-
-    &.rating-average {
-        background: #fff3e0;
-        color: #ef6c00;
-    }
-
-    &.rating-poor {
+    &.reason-timeout {
         background: var(--cinnabar-soft);
         color: var(--cinnabar);
     }

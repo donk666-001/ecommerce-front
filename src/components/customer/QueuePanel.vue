@@ -1,66 +1,54 @@
-<template>
+﻿<template>
     <div class="queue-panel">
         <div class="section-title font-serif">排队队列</div>
+
         <div class="panel-card">
             <div class="panel-card-head">
                 <h3>等待中的客户</h3>
-                <span style="font-size: 12px; color: var(--ink-muted)"
-                    >系统自动按 FIFO + 职能匹配分配，您也可主动接入</span
+                <span class="head-note"
+                    >系统自动按 FIFO 分配，您也可主动接入</span
                 >
             </div>
             <div class="panel-card-body">
                 <div v-if="loading" class="loading-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">⏳</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        加载中...
-                    </div>
+                    <div class="state-icon">…</div>
+                    <div class="state-text">加载中...</div>
                 </div>
                 <div v-else-if="queueList.length === 0" class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 16px">✨</div>
-                    <div style="font-size: 16px; color: var(--ink-muted)">
-                        暂无排队客户
-                    </div>
+                    <div class="state-text">暂无排队客户</div>
                 </div>
                 <table v-else class="queue-table">
                     <thead>
                         <tr>
-                            <th>排队号</th>
+                            <th>序号</th>
                             <th>客户</th>
                             <th>来源</th>
                             <th>首条消息</th>
                             <th>等待时长</th>
-                            <th>职能</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in queueList" :key="item.queueNum">
-                            <td>
-                                <span class="queue-num"
-                                    >#{{ item.queueNum }}</span
-                                >
+                        <tr
+                            v-for="(item, index) in paginatedList"
+                            :key="item.queueNum"
+                        >
+                            <td class="queue-num">
+                                {{ (currentPage - 1) * pageSize + index + 1 }}
                             </td>
                             <td>{{ item.custName }}</td>
                             <td>
-                                <span
-                                    class="session-tag"
-                                    :class="getSourceTagClass(item.sourceTag)"
-                                >
-                                    {{ item.source }}
-                                </span>
+                                <a class="source-link">{{ item.source }}</a>
                             </td>
                             <td class="first-msg">{{ item.firstMsg }}</td>
                             <td>
-                                <span class="wait-time">{{
-                                    item.waitTime
-                                }}</span>
-                            </td>
-                            <td>
                                 <span
-                                    class="tag"
-                                    :class="getRoleTagClass(item.roleType)"
+                                    class="wait-time"
+                                    :class="{
+                                        overtime: isOvertime(item.startedAt),
+                                    }"
                                 >
-                                    {{ getRoleText(item.roleType) }}
+                                    {{ formatWaitTime(item.startedAt) }}
                                 </span>
                             </td>
                             <td>
@@ -74,18 +62,59 @@
                         </tr>
                     </tbody>
                 </table>
+                <div v-if="queueList.length > 0" class="pagination">
+                    <el-pagination
+                        v-model:current-page="currentPage"
+                        v-model:page-size="pageSize"
+                        :total="queueList.length"
+                        :page-sizes="[10, 20]"
+                        layout="total, sizes, prev, pager, next"
+                        @size-change="currentPage = 1"
+                        @current-change="() => {}"
+                    />
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { ApiCustomer, type QueuedCustomer } from "@/network/customer";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import {
+    ApiCustomer,
+    type QueuedCustomer,
+    type CustomerSession,
+} from "@/network/customer";
 import { ElMessage } from "element-plus";
+
+const emit = defineEmits<{
+    "switch-to-chat": [session: CustomerSession];
+    "count-update": [count: number];
+}>();
 
 const loading = ref(false);
 const queueList = ref<QueuedCustomer[]>([]);
+const now = ref(Date.now());
+const currentPage = ref(1);
+const pageSize = ref(10);
+
+const paginatedList = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value;
+    return queueList.value.slice(start, start + pageSize.value);
+});
+
+let timerInterval: ReturnType<typeof setInterval>;
+
+function formatWaitTime(startedAt: string): string {
+    const ms = now.value - new Date(startedAt).getTime();
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function isOvertime(startedAt: string): boolean {
+    return now.value - new Date(startedAt).getTime() > 5 * 60 * 1000;
+}
 
 async function loadQueue() {
     loading.value = true;
@@ -102,11 +131,13 @@ async function loadQueue() {
 
 async function handleAccept(queueNum: number) {
     try {
-        const success = await ApiCustomer.acceptFromQueue(queueNum);
-        if (success) {
-            ElMessage.success(`已成功接入排队客户 #${queueNum}`);
-            // 重新加载队列
-            await loadQueue();
+        const session = await ApiCustomer.acceptFromQueue(queueNum);
+        if (session) {
+            ElMessage.success("已成功接入，正在跳转接待中...");
+            queueList.value = queueList.value.filter(
+                (item) => item.queueNum !== queueNum,
+            );
+            emit("switch-to-chat", session);
         } else {
             ElMessage.error("接入失败");
         }
@@ -116,39 +147,27 @@ async function handleAccept(queueNum: number) {
     }
 }
 
-function getSourceTagClass(tag: string): string {
-    const map: Record<string, string> = {
-        product: "tag-product",
-        order: "tag-order",
-    };
-    return map[tag] || "";
-}
-
-function getRoleTagClass(role: string): string {
-    const map: Record<string, string> = {
-        presale: "tag-jade",
-        aftersale: "tag-cinnabar",
-    };
-    return map[role] || "";
-}
-
-function getRoleText(role: string): string {
-    const map: Record<string, string> = {
-        presale: "售前",
-        aftersale: "售后",
-    };
-    return map[role] || role;
-}
+watch(
+    () => queueList.value.length,
+    (count) => emit("count-update", count),
+);
 
 onMounted(() => {
     loadQueue();
+    timerInterval = setInterval(() => {
+        now.value = Date.now();
+    }, 1000);
+});
+
+onUnmounted(() => {
+    clearInterval(timerInterval);
 });
 </script>
 
 <style scoped lang="scss">
 .section-title {
     font-family: "STKaiti", serif;
-    font-size: 19px;
+    font-size: 22px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -180,9 +199,14 @@ onMounted(() => {
 
     h3 {
         font-family: "STKaiti", serif;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
     }
+}
+
+.head-note {
+    font-size: 15px;
+    color: var(--ink-muted);
 }
 
 .panel-card-body {
@@ -195,10 +219,21 @@ onMounted(() => {
     padding: 40px;
 }
 
+.state-icon {
+    font-size: 34px;
+    margin-bottom: 12px;
+    color: var(--ink-muted);
+}
+
+.state-text {
+    font-size: 17px;
+    color: var(--ink-muted);
+}
+
 .queue-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 17px;
 
     thead {
         background: var(--cream);
@@ -207,7 +242,7 @@ onMounted(() => {
     th {
         text-align: left;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 16px;
         color: var(--ink-muted);
         padding: 12px 16px;
     }
@@ -224,32 +259,18 @@ onMounted(() => {
 }
 
 .queue-num {
-    display: inline-block;
-    padding: 2px 8px;
-    background: var(--gold-soft);
-    color: var(--gold);
-    border-radius: 4px;
-    font-weight: 600;
-    font-family: "STKaiti", serif;
+    color: var(--ink-muted);
+    font-size: 16px;
 }
 
-.session-tag {
-    display: inline-block;
-    font-size: 10px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    margin-right: 4px;
-    background: var(--gold-soft);
-    color: var(--gold);
-    font-family: "STKaiti", serif;
+.source-link {
+    color: #4a7c6f;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 
-    &.tag-order {
-        background: var(--cinnabar-soft);
-        color: var(--cinnabar);
-    }
-
-    &.tag-product {
-        background: var(--jade-soft);
+    &:hover {
         color: var(--jade);
     }
 }
@@ -263,37 +284,32 @@ onMounted(() => {
 }
 
 .wait-time {
-    color: var(--cinnabar);
+    color: var(--ink-light);
+    font-variant-numeric: tabular-nums;
     font-weight: 600;
+
+    &.overtime {
+        color: var(--cinnabar);
+        font-weight: 700;
+    }
 }
 
-.tag {
-    display: inline-block;
-    padding: 2px 8px;
-    font-size: 11px;
-    border-radius: 3px;
-    font-family: "STKaiti", serif;
-
-    &.tag-jade {
-        background: var(--jade-soft);
-        color: var(--jade);
-    }
-
-    &.tag-cinnabar {
-        background: var(--cinnabar-soft);
-        color: var(--cinnabar);
-    }
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .btn {
     border: 1px solid var(--line);
     background: white;
-    padding: 6px 14px;
-    font-size: 13px;
+    padding: 6px 16px;
+    font-size: 16px;
     border-radius: 7px;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.15s;
+    white-space: nowrap;
 
     &:hover {
         border-color: var(--ink-muted);

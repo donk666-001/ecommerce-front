@@ -4,14 +4,10 @@
         <div class="panel-header">
             <h3 class="panel-title font-serif">物流管理</h3>
             <div class="panel-actions">
-                <input
-                    v-model="searchKeyword"
-                    type="text"
-                    placeholder="搜索订单号 / 物流单号"
-                    class="search-input"
-                    @keyup.enter="loadLogisticsList"
-                />
-                <button class="btn btn-primary" @click="loadLogisticsList">
+                <button
+                    class="btn btn-outline"
+                    @click="showSearchForm = !showSearchForm"
+                >
                     <svg
                         width="16"
                         height="16"
@@ -20,9 +16,11 @@
                         stroke="currentColor"
                         stroke-width="2"
                     >
-                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <path
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                        />
                     </svg>
-                    搜索
+                    {{ showSearchForm ? "隐藏筛选" : "高级筛选" }}
                 </button>
                 <button
                     class="btn btn-outline"
@@ -48,28 +46,60 @@
             </div>
         </div>
 
+        <!-- 搜索表单 -->
+        <Transition name="slide-down">
+            <div v-if="showSearchForm" class="search-form-container">
+                <div class="search-form">
+                    <div class="form-row">
+                        <div class="form-item">
+                            <label>物流单号</label>
+                            <input
+                                v-model.trim="searchForm.trackingNo"
+                                type="text"
+                                placeholder="请输入物流单号"
+                            />
+                        </div>
+                        <div class="form-item">
+                            <label>物流公司</label>
+                            <select v-model="searchForm.logisticsCompany">
+                                <option value="">全部</option>
+                                <option value="顺丰速运">顺丰速运</option>
+                                <option value="中通快递">中通快递</option>
+                                <option value="圆通速递">圆通速递</option>
+                                <option value="申通快递">申通快递</option>
+                                <option value="韵达快递">韵达快递</option>
+                                <option value="京东物流">京东物流</option>
+                                <option value="德邦快递">德邦快递</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="form-item">
+                            <label>物流状态</label>
+                            <select v-model.number="searchForm.status">
+                                <option :value="undefined">全部</option>
+                                <option :value="0">待发货</option>
+                                <option :value="1">已发货</option>
+                                <option :value="2">运输中</option>
+                                <option :value="3">已签收</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @click="handleSearch">
+                            搜索
+                        </button>
+                        <button class="btn btn-outline" @click="handleReset">
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
         <!-- 物流列表 -->
         <div v-if="loading" class="loading-container">
             <div class="spinner"></div>
             <p>加载中...</p>
-        </div>
-
-        <div
-            v-else-if="logisticsList.length === 0 && !hasSearched"
-            class="empty-state"
-        >
-            <svg
-                width="80"
-                height="80"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1"
-            >
-                <rect x="2" y="3" width="20" height="18" rx="2" />
-                <path d="M8 7h8M8 11h8M8 15h5" />
-            </svg>
-            <p>请输入订单号或物流单号进行搜索</p>
         </div>
 
         <div v-else-if="logisticsList.length === 0" class="empty-state">
@@ -92,7 +122,6 @@
                 <thead>
                     <tr>
                         <th>订单ID</th>
-                        <th>订单号</th>
                         <th>物流单号</th>
                         <th>物流公司</th>
                         <th>状态</th>
@@ -102,9 +131,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(item, index) in logisticsList" :key="item.id">
+                    <tr v-for="item in logisticsList" :key="item.id">
                         <td>{{ item.orderId }}</td>
-                        <td>{{ getOrderNo(index) }}</td>
                         <td>{{ item.trackingNo || "-" }}</td>
                         <td>{{ item.logisticsCompany || "-" }}</td>
                         <td>
@@ -125,14 +153,20 @@
                                 <button
                                     v-if="
                                         !item.trackingNo ||
-                                        item.trackingNo === '未设置'
+                                        item.trackingNo.trim() === '' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'PENDING' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'NULL' ||
+                                        item.trackingNo.toUpperCase() ===
+                                            'UNDEFINED'
                                     "
                                     class="btn-link primary"
-                                    @click="openShipModal(index)"
+                                    @click="openShipModal(item)"
                                 >
                                     发货
                                 </button>
-                                <!-- 已发货订单显示“查看详情”和“更新轨迹”按钮 -->
+                                <!-- 已发货订单显示"查看详情"和"更新轨迹"按钮 -->
                                 <template v-else>
                                     <button
                                         class="btn-link"
@@ -152,6 +186,49 @@
                     </tr>
                 </tbody>
             </table>
+
+            <!-- 分页控件 -->
+            <div class="pagination">
+                <div class="pagination-info">
+                    共 {{ pagination.total }} 条，第 {{ pagination.current }} /
+                    {{ totalPages }} 页
+                </div>
+                <div class="pagination-controls">
+                    <button
+                        class="btn-page"
+                        :disabled="pagination.current === 1"
+                        @click="handlePageChange(pagination.current - 1)"
+                    >
+                        上一页
+                    </button>
+                    <button
+                        v-for="page in visiblePages"
+                        :key="page"
+                        class="btn-page"
+                        :class="{ active: page === pagination.current }"
+                        @click="handlePageChange(page)"
+                    >
+                        {{ page }}
+                    </button>
+                    <button
+                        class="btn-page"
+                        :disabled="pagination.current === totalPages"
+                        @click="handlePageChange(pagination.current + 1)"
+                    >
+                        下一页
+                    </button>
+                    <select
+                        v-model.number="pagination.size"
+                        class="page-size-select"
+                        @change="handlePageSizeChange"
+                    >
+                        <option :value="10">10条/页</option>
+                        <option :value="20">20条/页</option>
+                        <option :value="50">50条/页</option>
+                        <option :value="100">100条/页</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
         <!-- 发货模态框 -->
@@ -170,14 +247,27 @@
                             </button>
                         </div>
                         <div class="modal-body">
-                            <div class="form-group">
-                                <label>订单号</label>
-                                <input
-                                    :value="currentOrderForShip?.orderNo"
-                                    type="text"
-                                    disabled
-                                    class="input-disabled"
-                                />
+                            <!-- 订单信息展示区 -->
+                            <div class="order-info-banner">
+                                <div class="info-item">
+                                    <span class="label">订单ID：</span>
+                                    <span class="value">{{
+                                        currentLogistics?.orderId
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="info-item"
+                                    v-if="
+                                        currentLogistics?.trackingNo &&
+                                        currentLogistics.trackingNo.toUpperCase() !==
+                                            'PENDING'
+                                    "
+                                >
+                                    <span class="label">物流单号：</span>
+                                    <span class="value">{{
+                                        currentLogistics.trackingNo
+                                    }}</span>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -453,21 +543,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
-import { ApiOrder, type OrderVO } from "@/network/order";
+import { ref, reactive, computed, onMounted } from "vue";
 import { ApiLogistics, type LogisticsVO } from "@/network/logistics";
 
 const loading = ref(false);
-const searchKeyword = ref("");
+const showSearchForm = ref(false);
 const logisticsList = ref<LogisticsVO[]>([]);
-const orderList = ref<OrderVO[]>([]); // 存储订单列表
-const hasSearched = ref(false); // 标记是否已经搜索过
+
+// 搜索表单
+const searchForm = reactive({
+    status: undefined as number | undefined,
+    trackingNo: "",
+    logisticsCompany: "",
+});
+
+// 分页配置
+const pagination = reactive({
+    current: 1,
+    size: 10,
+    total: 0,
+});
+
+// 计算总页数
+const totalPages = computed(() =>
+    Math.ceil(pagination.total / pagination.size),
+);
+
+// 计算可见的页码
+const visiblePages = computed(() => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, pagination.current - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages.value, start + maxVisible - 1);
+
+    if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+        pages.push(i);
+    }
+    return pages;
+});
 
 const showShipModal = ref(false);
 const showUpdateModal = ref(false);
 const showDetailModal = ref(false);
 const currentLogistics = ref<LogisticsVO | null>(null);
-const currentOrderForShip = ref<OrderVO | null>(null);
 const updating = ref(false);
 const shipping = ref(false);
 const updateMessage = ref("");
@@ -506,154 +628,108 @@ const updateForm = reactive({
     time: "",
 });
 
-// 加载物流列表（从订单中筛选有物流的订单）
+// 加载物流列表
 async function loadLogisticsList() {
-    if (!searchKeyword.value.trim()) {
-        showToast("请输入订单号或物流单号进行搜索", "error");
-        logisticsList.value = [];
-        orderList.value = [];
-        hasSearched.value = false;
-        return;
-    }
-
     loading.value = true;
-    hasSearched.value = true;
-
-    const keyword = searchKeyword.value.trim();
-    console.log("========== 开始搜索物流信息 ==========");
-    console.log("搜索关键词:", keyword);
 
     try {
-        // 先尝试作为订单号搜索
-        console.log("步骤1: 尝试作为订单号查询...");
-        console.log("即将调用 API: ApiOrder.getOrderByNo('", keyword, "')");
+        console.log("========== 开始加载物流信息 ==========");
+        console.log("搜索条件:", searchForm);
+        console.log("分页参数:", pagination);
 
-        const orderResponse = await ApiOrder.getOrderByNo(keyword);
+        // 构建请求参数，只在值存在时添加
+        const params: Parameters<typeof ApiLogistics.listLogistics>[0] = {
+            page: pagination.current,
+            size: pagination.size,
+        };
 
-        console.log("✅ 订单号查询成功！响应数据:");
-        console.log(JSON.stringify(orderResponse, null, 2));
-
-        if (orderResponse.data.code === 200 && orderResponse.data.data) {
-            const order = orderResponse.data.data;
-            console.log("订单详情:", order);
-            console.log("订单是否有物流信息:", {
-                trackingNo: order.trackingNo,
-                logisticsCompany: order.logisticsCompany,
-            });
-
-            // 检查订单是否有物流信息
-            if (order.trackingNo || order.logisticsCompany) {
-                // 构造物流信息对象
-                const logisticsInfo: LogisticsVO = {
-                    id: order.id,
-                    orderId: order.id,
-                    trackingNo: order.trackingNo || "未设置",
-                    logisticsCompany: order.logisticsCompany || "未设置",
-                    status: order.status >= 2 ? 1 : 0, // 已发货及以上状态
-                    currentLocation: "",
-                    remark: order.remark || "",
-                    operatorId: 0,
-                    details: [],
-                    createdAt: order.createdAt,
-                    updatedAt: order.updatedAt,
-                };
-                logisticsList.value = [logisticsInfo];
-                orderList.value = [order];
-                console.log(
-                    "✅ 找到物流信息，共",
-                    logisticsList.value.length,
-                    "条",
-                );
-                showToast(`找到 1 条物流信息`, "success");
-            } else {
-                // 即使没有物流信息，也显示出来，让管理员可以发货
-                const logisticsInfo: LogisticsVO = {
-                    id: order.id,
-                    orderId: order.id,
-                    trackingNo: "", // 空字符串表示待发货
-                    logisticsCompany: "",
-                    status: 0, // 待发货
-                    currentLocation: "",
-                    remark: order.remark || "",
-                    operatorId: 0,
-                    details: [],
-                    createdAt: order.createdAt,
-                    updatedAt: order.updatedAt,
-                };
-                logisticsList.value = [logisticsInfo];
-                orderList.value = [order];
-                console.log("⚠️ 订单存在但暂无物流信息，可以进行发货操作");
-                showToast("订单未发货，请点击“发货”按钮进行发货", "error");
-            }
-        } else {
-            console.log("订单号查询返回空数据，尝试作为物流单号查询...");
-            throw new Error("订单不存在");
+        if (searchForm.status !== undefined) {
+            params.status = searchForm.status;
         }
-    } catch (orderError) {
-        console.log("❌ 订单号查询失败:", orderError);
-        console.log("步骤2: 尝试作为物流单号查询...");
+        if (searchForm.trackingNo) {
+            params.trackingNo = searchForm.trackingNo;
+        }
+        if (searchForm.logisticsCompany) {
+            params.logisticsCompany = searchForm.logisticsCompany;
+        }
 
-        try {
-            const keyword = searchKeyword.value.trim();
+        const response = await ApiLogistics.listLogistics(params);
+
+        console.log("✅ 物流列表查询成功！");
+        console.log("Code:", response.data.code);
+        console.log("Message:", response.data.message);
+
+        if (response.data.code === 200 && response.data.data) {
+            const pageResult = response.data.data;
+            logisticsList.value = pageResult.records || [];
+            pagination.total = pageResult.total || 0;
+
             console.log(
-                "即将调用 API: ApiLogistics.getLogisticsByTrackingNo('",
-                keyword,
-                "')",
+                "✅ 找到物流信息，共",
+                pagination.total,
+                "条，当前页",
+                logisticsList.value.length,
+                "条",
             );
 
-            const logisticsResponse =
-                await ApiLogistics.getLogisticsByTrackingNo(keyword);
-
-            console.log("✅ 物流单号查询成功！响应数据:");
-            console.log(JSON.stringify(logisticsResponse, null, 2));
-
-            if (
-                logisticsResponse.data.code === 200 &&
-                logisticsResponse.data.data
-            ) {
-                logisticsList.value = [logisticsResponse.data.data];
-                console.log(
-                    "✅ 找到物流信息，共",
-                    logisticsList.value.length,
-                    "条",
-                );
-                showToast(
-                    `找到 ${logisticsList.value.length} 条物流信息`,
-                    "success",
-                );
+            if (logisticsList.value.length > 0) {
+                showToast(`找到 ${pagination.total} 条物流信息`, "success");
             } else {
-                logisticsList.value = [];
-                console.log("❌ 物流单号查询返回空数据");
                 showToast("未找到相关物流信息", "error");
             }
-        } catch (logisticsError) {
-            console.error("❌ 物流单号查询也失败:", logisticsError);
+        } else {
+            console.log("❌ 物流列表查询返回错误:", response.data.message);
             logisticsList.value = [];
-            orderList.value = [];
-            showToast("未找到相关订单或物流信息", "error");
+            pagination.total = 0;
+            showToast(response.data.message || "加载失败", "error");
         }
+    } catch (error) {
+        console.error("❌ 加载物流信息失败:", error);
+        logisticsList.value = [];
+        pagination.total = 0;
+        showToast("加载物流信息失败", "error");
     } finally {
         loading.value = false;
-        console.log("========== 搜索结束 ==========\n");
+        console.log("========== 加载结束 ==========\n");
     }
+}
+
+// 搜索处理
+function handleSearch() {
+    pagination.current = 1; // 重置到第一页
+    loadLogisticsList();
+}
+
+// 重置搜索
+function handleReset() {
+    searchForm.status = undefined;
+    searchForm.trackingNo = "";
+    searchForm.logisticsCompany = "";
+    pagination.current = 1;
+    loadLogisticsList();
 }
 
 // 刷新按钮处理
 function handleRefresh() {
-    // 如果有搜索关键词，重新搜索；否则清空列表
-    if (searchKeyword.value.trim()) {
-        loadLogisticsList();
-    } else {
-        logisticsList.value = [];
-        orderList.value = [];
-        hasSearched.value = false;
-        showToast("请输入订单号或物流单号进行搜索", "error");
-    }
+    loadLogisticsList();
+}
+
+// 页码变化
+function handlePageChange(page: number) {
+    if (page < 1 || page > totalPages.value) return;
+    pagination.current = page;
+    loadLogisticsList();
+}
+
+// 每页条数变化
+function handlePageSizeChange() {
+    pagination.current = 1; // 重置到第一页
+    loadLogisticsList();
 }
 
 // 打开发货模态框
-function openShipModal(index: number) {
-    currentOrderForShip.value = orderList.value[index] || null;
+function openShipModal(item: LogisticsVO) {
+    currentLogistics.value = item;
     shipForm.trackingNo = "";
     shipForm.logisticsCompany = "";
     shipForm.remark = "";
@@ -664,13 +740,13 @@ function openShipModal(index: number) {
 // 关闭发货模态框
 function closeShipModal() {
     showShipModal.value = false;
-    currentOrderForShip.value = null;
+    currentLogistics.value = null;
     shipMessage.value = "";
 }
 
 // 处理发货
 async function handleShip() {
-    if (!currentOrderForShip.value) return;
+    if (!currentLogistics.value) return;
 
     if (!shipForm.trackingNo.trim()) {
         shipMessage.value = "请填写物流单号";
@@ -699,10 +775,16 @@ async function handleShip() {
             shipData.remark = shipForm.remark.trim();
         }
 
+        console.log("========== 开始发货 ==========");
+        console.log("订单ID:", currentLogistics.value.orderId);
+        console.log("发货数据:", shipData);
+
         const response = await ApiLogistics.shipOrder(
-            currentOrderForShip.value.id,
+            currentLogistics.value.orderId,
             shipData,
         );
+
+        console.log("✅ 发货响应:", response.data);
 
         if (response.data.code === 200) {
             shipMessage.value = "发货成功";
@@ -714,15 +796,17 @@ async function handleShip() {
                 loadLogisticsList(); // 重新加载
             }, 1000);
         } else {
+            console.log("❌ 发货失败:", response.data.message);
             shipMessage.value = response.data.message || "发货失败";
             shipMessageType.value = "error";
         }
     } catch (error) {
-        console.error("发货失败:", error);
+        console.error("❌ 发货异常:", error);
         shipMessage.value = "发货失败，请重试";
         shipMessageType.value = "error";
     } finally {
         shipping.value = false;
+        console.log("========== 发货结束 ==========\n");
     }
 }
 
@@ -811,18 +895,6 @@ function closeDetailModal() {
     currentLogistics.value = null;
 }
 
-// 获取订单号
-function getOrderNo(index: number): string {
-    if (orderList.value[index]) {
-        return orderList.value[index].orderNo;
-    }
-    // 如果是从物流接口查询的，尝试用 orderId
-    if (logisticsList.value[index]?.orderId) {
-        return `#${logisticsList.value[index].orderId}`;
-    }
-    return "-";
-}
-
 // 获取状态文本
 function getStatusText(status: number): string {
     const statusMap: Record<number, string> = {
@@ -873,8 +945,8 @@ function formatDateTime(timeStr: string): string {
 }
 
 onMounted(() => {
-    // 页面加载时不自动搜索，等待用户输入
-    console.log("物流管理页面已加载");
+    // 页面加载时自动加载所有物流列表
+    loadLogisticsList();
 });
 </script>
 
@@ -901,12 +973,56 @@ onMounted(() => {
     gap: 12px;
 }
 
-.search-input {
+/* 搜索表单 */
+.search-form-container {
+    margin-bottom: 24px;
+}
+
+.search-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-item label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.form-item input,
+.form-item select {
     padding: 8px 12px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 14px;
-    width: 280px;
+}
+
+.form-item input:focus,
+.form-item select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    ring: 2px solid #bfdbfe;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
 }
 
 .btn {
@@ -1135,6 +1251,39 @@ onMounted(() => {
     padding: 24px;
 }
 
+/* 订单信息展示区 */
+.order-info-banner {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-left: 4px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.order-info-banner .info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.order-info-banner .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.order-info-banner .label {
+    font-size: 14px;
+    color: #0369a1;
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.order-info-banner .value {
+    font-size: 14px;
+    color: #0c4a6e;
+    font-family: "Courier New", monospace;
+    font-weight: 500;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -1361,5 +1510,78 @@ onMounted(() => {
     background: #fee2e2;
     color: #991b1b;
     border: 1px solid #fecaca;
+}
+
+/* 分页 */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-page {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-page:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.btn-page.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-size-select {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.page-size-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+/* Slide Down Transition */
+.slide-down-enter-active,
+.slide-down-leave-active {
+    transition: all 0.3s ease;
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
 }
 </style>
