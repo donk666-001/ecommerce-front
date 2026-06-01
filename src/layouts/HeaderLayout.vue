@@ -220,8 +220,11 @@
                 :show-arrow="true"
                 popper-class="notification-detail-popover"
             >
-                <div v-if="detailNotification" class="popover-detail"
-                    :class="{ unread: !detailNotification.isRead }">
+                <div
+                    v-if="detailNotification"
+                    class="popover-detail"
+                    :class="{ unread: !detailNotification.isRead }"
+                >
                     <div class="detail-banner">
                         <span class="detail-badge">{{
                             formatNotificationType(detailNotification.type)

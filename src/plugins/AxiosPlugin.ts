@@ -31,13 +31,13 @@ async function performTokenRefresh(): Promise<boolean> {
         // 直接使用原生 fetch 避免循环依赖和拦截器干扰
         const baseURL = "/e-commerce/api";
         const requestUrl = `${baseURL}/users/refresh`;
-        
+
         console.log("[Token Refresh] 请求配置:", {
             baseURL,
             requestUrl,
             fullUrl: window.location.origin + requestUrl,
         });
-        
+
         const response = await fetch(requestUrl, {
             method: "GET",
             credentials: "include",

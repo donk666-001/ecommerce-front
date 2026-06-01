@@ -12,14 +12,14 @@ export async function tryAutoLogin(): Promise<boolean> {
         const baseURL = import.meta.env.BASE_URL || "/";
         const apiBase = `${baseURL}/api`;
         const requestUrl = `${apiBase}/users/refresh`;
-        
+
         console.log("[Auto Login] 请求配置:", {
             baseURL,
             apiBase,
             requestUrl,
             fullUrl: window.location.origin + requestUrl,
         });
-        
+
         const response = await fetch(requestUrl, {
             method: "GET",
             credentials: "include", // 携带 Cookie（双 Cookie：访问令牌 + 刷新令牌）
