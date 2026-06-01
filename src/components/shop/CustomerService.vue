@@ -1,410 +1,407 @@
 <template>
-  <div class="panel">
-    <div class="service-layout">
-      <div class="agent-list">
-        <div class="agent-list-title">
-          颐养阁官方店铺 · 客服
-        </div>
-        <div
-          v-for="a in agents"
-          :key="a.id"
-          class="agent-item"
-          :class="{ active: currentAgent === a.id }"
-          @click="$emit('update:currentAgent', a.id)"
-        >
-          <div class="agent-avatar">
-            {{ a.avatar }}
-            <div
-              class="agent-status-dot"
-              :class="a.status"
-            ></div>
-          </div>
-          <div class="agent-info">
-            <div class="agent-name">{{ a.name }}</div>
-            <div class="agent-tag">
-              {{ a.tag }} ·
-              {{
-                a.status === "online"
-                  ? "在线"
-                  : a.status === "busy"
-                    ? "忙碌"
-                    : "离线"
-              }}
+    <div class="panel">
+        <div class="service-layout">
+            <div class="agent-list">
+                <div class="agent-list-title">颐养阁官方店铺 · 客服</div>
+                <div
+                    v-for="a in agents"
+                    :key="a.id"
+                    class="agent-item"
+                    :class="{ active: currentAgent === a.id }"
+                    @click="$emit('update:currentAgent', a.id)"
+                >
+                    <div class="agent-avatar">
+                        {{ a.avatar }}
+                        <div class="agent-status-dot" :class="a.status"></div>
+                    </div>
+                    <div class="agent-info">
+                        <div class="agent-name">{{ a.name }}</div>
+                        <div class="agent-tag">
+                            {{ a.tag }} ·
+                            {{
+                                a.status === "online"
+                                    ? "在线"
+                                    : a.status === "busy"
+                                      ? "忙碌"
+                                      : "离线"
+                            }}
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-      <div class="chat-panel">
-        <div class="chat-header">
-          <div class="agent-avatar sm">
-            {{ currentAgentObj.avatar }}
-          </div>
-          <div>
-            <h4>客服 · {{ currentAgentObj.name }}</h4>
-            <div class="desc">
-              {{ currentAgentObj.desc }}
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <div class="agent-avatar sm">
+                        {{ currentAgentObj.avatar }}
+                    </div>
+                    <div>
+                        <h4>客服 · {{ currentAgentObj.name }}</h4>
+                        <div class="desc">
+                            {{ currentAgentObj.desc }}
+                        </div>
+                    </div>
+                    <div class="chat-header-tip">
+                        为保护用户体验，同一客服不会同时回复多用户
+                    </div>
+                </div>
+                <div class="chat-body" ref="chatBodyRef">
+                    <div
+                        v-for="(m, mi) in currentChatHistory"
+                        :key="mi"
+                        class="chat-msg"
+                        :class="m.from"
+                    >
+                        <div v-if="m.from === 'agent'" class="agent-avatar xs">
+                            {{ currentAgentObj.avatar }}
+                        </div>
+                        <div v-else class="user-avatar xs">我</div>
+                        <div>
+                            <div class="chat-meta">
+                                {{
+                                    m.from === "agent"
+                                        ? currentAgentObj.name
+                                        : "我"
+                                }}
+                                · {{ m.time }}
+                            </div>
+                            <div class="chat-bubble">{{ m.text }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-row">
+                    <input
+                        :value="chatInput"
+                        @input="
+                            $emit(
+                                'update:chatInput',
+                                ($event.target as HTMLInputElement).value,
+                            )
+                        "
+                        placeholder="输入您想咨询的问题，按 Enter 发送..."
+                        @keydown.enter="$emit('sendChat')"
+                    />
+                    <button class="btn btn-jade" @click="$emit('sendChat')">
+                        发送
+                    </button>
+                </div>
             </div>
-          </div>
-          <div class="chat-header-tip">
-            为保护用户体验，同一客服不会同时回复多用户
-          </div>
         </div>
-        <div class="chat-body" ref="chatBodyRef">
-          <div
-            v-for="(m, mi) in currentChatHistory"
-            :key="mi"
-            class="chat-msg"
-            :class="m.from"
-          >
-            <div
-              v-if="m.from === 'agent'"
-              class="agent-avatar xs"
-            >
-              {{ currentAgentObj.avatar }}
-            </div>
-            <div v-else class="user-avatar xs">我</div>
-            <div>
-              <div class="chat-meta">
-                {{
-                  m.from === "agent"
-                    ? currentAgentObj.name
-                    : "我"
-                }}
-                · {{ m.time }}
-              </div>
-              <div class="chat-bubble">{{ m.text }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="chat-input-row">
-          <input
-            :value="chatInput"
-            @input="$emit('update:chatInput', ($event.target as HTMLInputElement).value)"
-            placeholder="输入您想咨询的问题，按 Enter 发送..."
-            @keydown.enter="$emit('sendChat')"
-          />
-          <button class="btn btn-jade" @click="$emit('sendChat')">
-            发送
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from "vue";
 
 interface Agent {
-  id: string;
-  name: string;
-  desc: string;
-  tag: string;
-  status: string;
-  avatar: string;
+    id: string;
+    name: string;
+    desc: string;
+    tag: string;
+    status: string;
+    avatar: string;
 }
 
 interface ChatMsg {
-  from: "agent" | "me";
-  text: string;
-  time: string;
+    from: "agent" | "me";
+    text: string;
+    time: string;
 }
 
 interface Props {
-  agents: Agent[];
-  currentAgent: string;
-  chatHistory: Record<string, ChatMsg[]>;
-  chatInput: string;
+    agents: Agent[];
+    currentAgent: string;
+    chatHistory: Record<string, ChatMsg[]>;
+    chatInput: string;
 }
 
 const props = defineProps<Props>();
 
 defineEmits<{
-  'update:currentAgent': [value: string];
-  'update:chatInput': [value: string];
-  'sendChat': [];
+    "update:currentAgent": [value: string];
+    "update:chatInput": [value: string];
+    sendChat: [];
 }>();
 
 const chatBodyRef = ref<HTMLElement | null>(null);
 
 const currentAgentObj = computed(
-  () => props.agents.find((a) => a.id === props.currentAgent)!,
+    () => props.agents.find((a) => a.id === props.currentAgent)!,
 );
 
 const currentChatHistory = computed(
-  () => props.chatHistory[props.currentAgent] || [],
+    () => props.chatHistory[props.currentAgent] || [],
 );
 
 // 监听聊天历史变化，自动滚动到底部
 watch(
-  () => props.chatHistory[props.currentAgent],
-  async () => {
-    await nextTick();
-    scrollChatToBottom();
-  },
-  { deep: true },
+    () => props.chatHistory[props.currentAgent],
+    async () => {
+        await nextTick();
+        scrollChatToBottom();
+    },
+    { deep: true },
 );
 
 function scrollChatToBottom() {
-  if (chatBodyRef.value)
-    chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
+    if (chatBodyRef.value)
+        chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
 }
 </script>
 
 <style scoped lang="scss">
 .panel {
-  // panel 样式由父组件提供
+    // panel 样式由父组件提供
 }
 
 .service-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 16px;
-  min-height: 540px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+    min-height: 540px;
 }
 
 .agent-list {
-  background: var(--paper);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(232, 223, 208, 0.4);
-  padding: 12px;
-  overflow: auto;
+    background: var(--paper);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(232, 223, 208, 0.4);
+    padding: 12px;
+    overflow: auto;
 }
 
 .agent-list-title {
-  font-family: "STKaiti", serif;
-  font-size: 14px;
-  color: var(--ink-muted);
-  padding: 4px 10px 10px;
-  border-bottom: 1px solid var(--line);
+    font-family: "STKaiti", serif;
+    font-size: 14px;
+    color: var(--ink-muted);
+    padding: 4px 10px 10px;
+    border-bottom: 1px solid var(--line);
 }
 
 .agent-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: 4px;
-  transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s;
 
-  &:hover {
-    background: var(--cream);
-  }
+    &:hover {
+        background: var(--cream);
+    }
 
-  &.active {
-    background: var(--jade-soft);
-  }
+    &.active {
+        background: var(--jade-soft);
+    }
 }
 
 .agent-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold), var(--cinnabar));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-family: "STKaiti", serif;
-  font-weight: 600;
-  font-size: 14px;
-  position: relative;
-  flex-shrink: 0;
-
-  &.sm {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--cinnabar));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: "STKaiti", serif;
+    font-weight: 600;
     font-size: 14px;
-  }
+    position: relative;
+    flex-shrink: 0;
 
-  &.xs {
-    width: 32px;
-    height: 32px;
-    font-size: 11px;
-  }
+    &.sm {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+
+    &.xs {
+        width: 32px;
+        height: 32px;
+        font-size: 11px;
+    }
 }
 
 .agent-status-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--jade-light);
-  border: 2px solid var(--paper);
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--jade-light);
+    border: 2px solid var(--paper);
 
-  &.busy {
-    background: var(--gold);
-  }
+    &.busy {
+        background: var(--gold);
+    }
 
-  &.off {
-    background: var(--ink-muted);
-  }
+    &.off {
+        background: var(--ink-muted);
+    }
 }
 
 .agent-info {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .agent-name {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--ink);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
 }
 
 .agent-tag {
-  font-size: 11px;
-  color: var(--ink-muted);
-  margin-top: 1px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 1px;
 }
 
 .chat-panel {
-  background: var(--paper);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(232, 223, 208, 0.4);
-  display: flex;
-  flex-direction: column;
+    background: var(--paper);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(232, 223, 208, 0.4);
+    display: flex;
+    flex-direction: column;
 }
 
 .chat-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-  h4 {
-    font-family: "STKaiti", serif;
-    font-size: 16px;
-    color: var(--ink);
-  }
+    h4 {
+        font-family: "STKaiti", serif;
+        font-size: 16px;
+        color: var(--ink);
+    }
 
-  .desc {
-    font-size: 12px;
-    color: var(--ink-muted);
-  }
+    .desc {
+        font-size: 12px;
+        color: var(--ink-muted);
+    }
 }
 
 .chat-header-tip {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--ink-muted);
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ink-muted);
 }
 
 .chat-body {
-  flex: 1;
-  padding: 16px 18px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: var(--paper-warm);
-  min-height: 380px;
+    flex: 1;
+    padding: 16px 18px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--paper-warm);
+    min-height: 380px;
 }
 
 .chat-msg {
-  display: flex;
-  gap: 10px;
-  max-width: 75%;
+    display: flex;
+    gap: 10px;
+    max-width: 75%;
 
-  &.me {
-    align-self: flex-end;
-    flex-direction: row-reverse;
-  }
+    &.me {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
 }
 
 .chat-bubble {
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.5;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
 
-  .agent & {
-    background: white;
-    border: 1px solid var(--line);
-    border-top-left-radius: 4px;
-    color: var(--ink);
-  }
+    .agent & {
+        background: white;
+        border: 1px solid var(--line);
+        border-top-left-radius: 4px;
+        color: var(--ink);
+    }
 
-  .me & {
-    background: var(--jade);
-    color: white;
-    border-top-right-radius: 4px;
-  }
+    .me & {
+        background: var(--jade);
+        color: white;
+        border-top-right-radius: 4px;
+    }
 }
 
 .chat-meta {
-  font-size: 11px;
-  color: var(--ink-muted);
-  padding: 0 6px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    padding: 0 6px;
 }
 
 .user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold), var(--jade));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 11px;
-  flex-shrink: 0;
-
-  &.xs {
     width: 32px;
     height: 32px;
-  }
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--jade));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 11px;
+    flex-shrink: 0;
+
+    &.xs {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 .chat-input-row {
-  padding: 12px 14px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  gap: 10px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
 
-  input {
-    flex: 1;
-    padding: 10px 14px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 13px;
-    outline: none;
-    color: var(--ink);
+    input {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+        color: var(--ink);
 
-    &:focus {
-      border-color: var(--jade);
+        &:focus {
+            border-color: var(--jade);
+        }
     }
-  }
 }
 
 .btn {
-  border: none;
-  padding: 10px 22px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 
-  &-jade {
-    background: var(--jade);
-    color: white;
+    &-jade {
+        background: var(--jade);
+        color: white;
 
-    &:hover {
-      background: #4a6f60;
+        &:hover {
+            background: #4a6f60;
+        }
     }
-  }
 }
 </style>
