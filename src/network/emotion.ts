@@ -75,6 +75,14 @@ export type PsychScaleLatestVO = {
     answers?: PsychScaleAnswerVO[];
 };
 
+type RawPsychScaleLatestVO = Omit<
+    PsychScaleLatestVO,
+    "answers" | "dimensionScores"
+> & {
+    answers?: PsychScaleAnswerVO[] | string;
+    dimensionScores?: Record<string, number> | string;
+};
+
 type ApiEnvelope<T> = {
     code?: number;
     data?: T;
@@ -116,12 +124,41 @@ function unwrapEmotionResponse<T>(data: T | ApiEnvelope<T>, fallback: T) {
 function parseJsonArray<T>(value: unknown, fallback: T[]) {
     if (Array.isArray(value)) return value as T[];
     if (typeof value !== "string" || !value.trim()) return fallback;
+    if (value.trim() === "##default") return fallback;
     try {
         const parsed: unknown = JSON.parse(value);
         return Array.isArray(parsed) ? (parsed as T[]) : fallback;
     } catch {
         return fallback;
     }
+}
+
+function parseJsonObject(value: unknown) {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    if (typeof value !== "string" || !value.trim()) return {};
+    if (value.trim() === "##default") return {};
+    try {
+        const parsed: unknown = JSON.parse(value);
+        return typeof parsed === "object" &&
+            parsed !== null &&
+            !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)
+            : {};
+    } catch {
+        return {};
+    }
+}
+
+function normalizeNumberMap(value: unknown) {
+    return Object.fromEntries(
+        Object.entries(parseJsonObject(value))
+            .map(([key, item]) => [key, Number(item)] as const)
+            .filter((entry): entry is readonly [string, number] =>
+                Number.isFinite(entry[1]),
+            ),
+    );
 }
 
 function normalizeQuestions(questions: PsychScaleQuestionVO[]) {
@@ -138,6 +175,98 @@ function normalizeEmotion17Days(data: Emotion17DaysVO): Emotion17DaysVO {
         ...data,
         days: parseJsonArray<DayEmotionVO>(data.days, []),
     };
+}
+
+function normalizeScaleLatest(data: RawPsychScaleLatestVO): PsychScaleLatestVO {
+    const dimensionScores = normalizeNumberMap(data.dimensionScores);
+    const answers = parseJsonArray<PsychScaleAnswerVO>(data.answers, []);
+    const normalized: PsychScaleLatestVO = {
+        scaleCode: data.scaleCode,
+        scaleName: data.scaleName,
+        rawScore: normalizeNumber(data.rawScore),
+        standardScore: normalizeNumber(data.standardScore),
+        resultLevel: data.resultLevel,
+        resultDesc: data.resultDesc,
+    };
+    if (data.testDate !== undefined) normalized.testDate = data.testDate;
+    if (data.userId !== undefined) normalized.userId = data.userId;
+    if (data.resultJson !== undefined) normalized.resultJson = data.resultJson;
+
+    if (Object.keys(dimensionScores).length) {
+        normalized.dimensionScores = dimensionScores;
+    } else {
+        delete normalized.dimensionScores;
+    }
+    if (answers.length) {
+        normalized.answers = answers;
+    } else {
+        delete normalized.answers;
+    }
+
+    return normalized;
+}
+
+function normalizeScaleLatestList(data: RawPsychScaleLatestVO[]) {
+    return data.map((item) => normalizeScaleLatest(item));
+}
+
+function normalizeNumber(value: unknown) {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) ? normalized : 0;
+}
+
+class ApiPsychScale {
+    static async getScaleQuestions(scaleCode: string) {
+        const response = await GAxiosWithCredentials.get<
+            PsychScaleQuestionVO[] | ApiEnvelope<PsychScaleQuestionVO[]>
+        >(`/psych-scale/${scaleCode}/questions`);
+        return normalizeQuestions(unwrapEmotionResponse(response.data, []));
+    }
+
+    static async submitScaleTest(
+        scaleCode: string,
+        data: PsychScaleTestSubmitPayload,
+    ) {
+        const response = await GAxiosWithCredentials.post<
+            RawPsychScaleLatestVO | ApiEnvelope<RawPsychScaleLatestVO>
+        >(`/psych-scale/${scaleCode}/test`, data);
+        const fallback: RawPsychScaleLatestVO = {
+            userId: data.userId,
+            scaleCode,
+            scaleName: scaleCode,
+            rawScore: 0,
+            standardScore: 0,
+            resultLevel: "",
+            resultDesc: "",
+        };
+        return normalizeScaleLatest(
+            unwrapEmotionResponse(response.data, fallback),
+        );
+    }
+
+    static async getScaleHistory(scaleCode: string, userId: number) {
+        const response = await GAxiosWithCredentials.get<
+            RawPsychScaleLatestVO[] | ApiEnvelope<RawPsychScaleLatestVO[]>
+        >(`/psych-scale/${scaleCode}/history`, {
+            params: { userId },
+        });
+        return normalizeScaleLatestList(
+            unwrapEmotionResponse(response.data, []),
+        );
+    }
+
+    static async getScaleLatest(scaleCode: string, userId: number) {
+        const response = await GAxiosWithCredentials.get<
+            RawPsychScaleLatestVO | ApiEnvelope<RawPsychScaleLatestVO | null>
+        >(`/psych-scale/${scaleCode}/latest`, {
+            params: { userId },
+            validateStatus: (status) =>
+                (status >= 200 && status < 300) || status === 404,
+        });
+        if (response.status === 404) return null;
+        const result = unwrapEmotionResponse(response.data, null);
+        return result ? normalizeScaleLatest(result) : null;
+    }
 }
 
 class ApiEmotion {
@@ -165,52 +294,24 @@ class ApiEmotion {
         );
     }
 
-    static async getScaleQuestions(scaleCode: string) {
-        const response = await GAxiosWithCredentials.get<
-            PsychScaleQuestionVO[] | ApiEnvelope<PsychScaleQuestionVO[]>
-        >(`/psych-scale/${scaleCode}/questions`);
-        return normalizeQuestions(unwrapEmotionResponse(response.data, []));
+    static getScaleQuestions(scaleCode: string) {
+        return ApiPsychScale.getScaleQuestions(scaleCode);
     }
 
-    static async submitScaleTest(
+    static submitScaleTest(
         scaleCode: string,
         data: PsychScaleTestSubmitPayload,
     ) {
-        const response = await GAxiosWithCredentials.post<
-            PsychScaleLatestVO | ApiEnvelope<PsychScaleLatestVO>
-        >(`/psych-scale/${scaleCode}/test`, data);
-        const fallback: PsychScaleLatestVO = {
-            userId: data.userId,
-            scaleCode,
-            scaleName: scaleCode,
-            rawScore: 0,
-            standardScore: 0,
-            resultLevel: "",
-            resultDesc: "",
-        };
-        return unwrapEmotionResponse(response.data, fallback);
+        return ApiPsychScale.submitScaleTest(scaleCode, data);
     }
 
-    static async getScaleHistory(scaleCode: string, userId: number) {
-        const response = await GAxiosWithCredentials.get<
-            PsychScaleLatestVO[] | ApiEnvelope<PsychScaleLatestVO[]>
-        >(`/psych-scale/${scaleCode}/history`, {
-            params: { userId },
-        });
-        return unwrapEmotionResponse(response.data, []);
+    static getScaleHistory(scaleCode: string, userId: number) {
+        return ApiPsychScale.getScaleHistory(scaleCode, userId);
     }
 
-    static async getScaleLatest(scaleCode: string, userId: number) {
-        const response = await GAxiosWithCredentials.get<
-            PsychScaleLatestVO | ApiEnvelope<PsychScaleLatestVO | null>
-        >(`/psych-scale/${scaleCode}/latest`, {
-            params: { userId },
-            validateStatus: (status) =>
-                (status >= 200 && status < 300) || status === 404,
-        });
-        if (response.status === 404) return null;
-        return unwrapEmotionResponse(response.data, null);
+    static getScaleLatest(scaleCode: string, userId: number) {
+        return ApiPsychScale.getScaleLatest(scaleCode, userId);
     }
 }
 
-export { ApiEmotion };
+export { ApiEmotion, ApiPsychScale };

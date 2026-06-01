@@ -13,7 +13,7 @@
                 </div>
                 <div class="constitution-name">{{ constitutionName }}</div>
                 <div class="constitution-sub">
-                    主体质 阴虚 (68 分) · 兼体质 气郁 (52 分)
+                    {{ constitutionSubText }}
                 </div>
 
                 <svg class="radar" viewBox="0 0 200 200">
@@ -36,74 +36,42 @@
                         stroke-opacity="0.3"
                     />
                     <polygon
-                        points="100,30 165,60 150,135 90,170 35,130 50,55"
+                        :points="constitutionRadarPoints"
                         fill="#C9A55C"
                         fill-opacity="0.3"
                         stroke="#C9A55C"
                         stroke-width="2"
                     />
                     <text
-                        x="100"
-                        y="15"
+                        v-for="axis in radarAxes"
+                        :key="axis.name"
+                        :x="axis.labelX"
+                        :y="axis.labelY"
                         text-anchor="middle"
                         font-size="11"
                         fill="#6B7C7A"
                     >
-                        阴虚
-                    </text>
-                    <text
-                        x="185"
-                        y="62"
-                        text-anchor="middle"
-                        font-size="11"
-                        fill="#6B7C7A"
-                    >
-                        气郁
-                    </text>
-                    <text
-                        x="185"
-                        y="145"
-                        text-anchor="middle"
-                        font-size="11"
-                        fill="#6B7C7A"
-                    >
-                        血瘀
-                    </text>
-                    <text
-                        x="100"
-                        y="195"
-                        text-anchor="middle"
-                        font-size="11"
-                        fill="#6B7C7A"
-                    >
-                        平和
-                    </text>
-                    <text
-                        x="15"
-                        y="145"
-                        text-anchor="middle"
-                        font-size="11"
-                        fill="#6B7C7A"
-                    >
-                        湿热
-                    </text>
-                    <text
-                        x="15"
-                        y="62"
-                        text-anchor="middle"
-                        font-size="11"
-                        fill="#6B7C7A"
-                    >
-                        气虚
+                        {{ axis.name }}
                     </text>
                 </svg>
+
+                <div v-if="topDimensions.length" class="constitution-tags">
+                    <span
+                        v-for="item in topDimensions.slice(0, 3)"
+                        :key="item.name"
+                    >
+                        {{ item.name }} {{ formatScore(item.score) }}分
+                    </span>
+                </div>
+
                 <button
                     class="btn"
                     style="margin-top: 8px"
                     type="button"
-                    @click="showTestModal = true"
+                    :disabled="isLoadingConstitution"
+                    @click="openConstitutionTest"
                 >
-                    重新测试体质
+                    {{ constitutionButtonText }}
                 </button>
             </div>
 
@@ -185,7 +153,7 @@
                 <div
                     v-if="showTestModal"
                     class="modal-backdrop"
-                    @click.self="showTestModal = false"
+                    @click.self="closeTestModal"
                 >
                     <section
                         class="tcm-dialog"
@@ -197,34 +165,93 @@
                             class="modal-close"
                             type="button"
                             aria-label="关闭体质测试"
-                            @click="showTestModal = false"
+                            @click="closeTestModal"
                         >
                             ×
                         </button>
-                        <h3 id="test-title">体质快速复测</h3>
-                        <p>
-                            选择近期最明显的感受，系统会在前端即时更新体质倾向。
-                        </p>
-                        <div class="test-options">
-                            <button
-                                v-for="item in testOptions"
-                                :key="item.name"
-                                type="button"
-                                :class="{
-                                    active: selectedBodyType === item.name,
-                                }"
-                                @click="selectedBodyType = item.name"
+                        <h3 id="test-title">体质测试</h3>
+                        <p>{{ testIntroText }}</p>
+
+                        <div v-if="isLoadingQuestions" class="test-state">
+                            正在同步体质测试题目...
+                        </div>
+                        <div
+                            v-else-if="constitutionQuestions.length === 0"
+                            class="test-state"
+                        >
+                            暂无体质测试题目
+                        </div>
+                        <div v-else class="test-questions">
+                            <div
+                                v-for="question in constitutionQuestions"
+                                :key="question.questionNo"
+                                class="test-question"
                             >
-                                <strong>{{ item.name }}</strong>
-                                <span>{{ item.desc }}</span>
-                            </button>
+                                <span>
+                                    {{ question.questionNo }}.
+                                    {{ question.questionText }}
+                                </span>
+                                <div class="test-options">
+                                    <button
+                                        v-for="option in question.options"
+                                        :key="option.optionCode"
+                                        type="button"
+                                        :class="{
+                                            active:
+                                                testAnswers[
+                                                    question.questionNo
+                                                ] === option.optionCode,
+                                        }"
+                                        @click="
+                                            setTestAnswer(
+                                                question.questionNo,
+                                                option.optionCode,
+                                            )
+                                        "
+                                    >
+                                        <strong>{{ option.optionCode }}</strong>
+                                        <span>{{ option.optionText }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="testResult || latestConstitution"
+                            class="test-result"
+                        >
+                            <strong>{{ resultTitle }}</strong>
+                            <span>标准分 {{ resultScoreText }}</span>
+                            <p>{{ resultDescription }}</p>
+                        </div>
+
+                        <div
+                            v-if="constitutionHistory.length"
+                            class="test-history"
+                        >
+                            <span
+                                v-for="item in constitutionHistory.slice(0, 3)"
+                                :key="`${item.testDate}-${item.standardScore}`"
+                            >
+                                {{ formatDateText(item.testDate) }} ·
+                                {{ readResultTitle(item) || "已测" }}
+                            </span>
+                        </div>
+
+                        <div v-if="testError" class="test-error">
+                            {{ testError }}
                         </div>
                         <button
                             class="btn"
                             type="button"
-                            @click="completeBodyTest"
+                            :disabled="
+                                isSubmittingTest ||
+                                !canSubmitTest ||
+                                !hasActiveUser
+                            "
+                            @click="submitConstitutionTest"
                         >
-                            完成测试
+                            {{ isSubmittingTest ? "提交中" : "提交测试" }}
                         </button>
                     </section>
                 </div>
@@ -288,7 +315,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import {
+    ApiPsychScale,
+    type PsychScaleLatestVO,
+    type PsychScaleQuestionVO,
+} from "@/network";
+import { useUserStore } from "@/store";
 
 type Acupoint = {
     name: string;
@@ -298,18 +331,52 @@ type Acupoint = {
     left: string;
 };
 type Course = { name: string; emoji: string; meta: string; detail: string };
+type DimensionEntry = { name: string; score: number };
+type RadarAxis = {
+    name: string;
+    labelX: number;
+    labelY: number;
+    valueX: number;
+    valueY: number;
+};
 
-const constitutionName = ref("阴虚兼气郁");
+const CONSTITUTION_SCALE_CODE = "CONSTITUTION";
+const emit = defineEmits<{
+    "constitution-updated": [result: PsychScaleLatestVO | null];
+}>();
+const userStore = useUserStore();
+
 const showTestModal = ref(false);
 const showAllCourses = ref(false);
-const selectedBodyType = ref("阴虚");
 const selectedCourse = ref<Course | null>(null);
+const latestConstitution = ref<PsychScaleLatestVO | null>(null);
+const testResult = ref<PsychScaleLatestVO | null>(null);
+const constitutionHistory = ref<PsychScaleLatestVO[]>([]);
+const constitutionQuestions = ref<PsychScaleQuestionVO[]>([]);
+const testAnswers = ref<Record<string, string>>({});
+const isLoadingConstitution = ref(false);
+const isLoadingQuestions = ref(false);
+const isSubmittingTest = ref(false);
+const testError = ref("");
 
-const testOptions = [
-    { name: "阴虚", desc: "口干、手足心热、睡眠偏浅" },
-    { name: "气郁", desc: "胸闷、叹气、情绪容易波动" },
-    { name: "平和", desc: "精力稳定，饮食睡眠较规律" },
-    { name: "湿热", desc: "困重、油腻、口苦或痘痘明显" },
+const radarAxes: RadarAxis[] = [
+    { name: "阴虚", labelX: 100, labelY: 15, valueX: 100, valueY: 30 },
+    { name: "气郁", labelX: 185, labelY: 62, valueX: 165, valueY: 60 },
+    { name: "血瘀", labelX: 185, labelY: 145, valueX: 150, valueY: 135 },
+    { name: "平和", labelX: 100, labelY: 195, valueX: 90, valueY: 170 },
+    { name: "湿热", labelX: 15, labelY: 145, valueX: 35, valueY: 130 },
+    { name: "气虚", labelX: 15, labelY: 62, valueX: 50, valueY: 55 },
+];
+const bodyTypeAliases = [
+    { name: "平和", keys: ["平和", "pinghe", "balanced"] },
+    { name: "气虚", keys: ["气虚", "qixu", "qideficiency"] },
+    { name: "阳虚", keys: ["阳虚", "yangxu", "yangdeficiency"] },
+    { name: "阴虚", keys: ["阴虚", "yinxu", "yindeficiency"] },
+    { name: "痰湿", keys: ["痰湿", "tanshi", "phlegmdamp"] },
+    { name: "湿热", keys: ["湿热", "shire", "dampheat"] },
+    { name: "血瘀", keys: ["血瘀", "xueyu", "bloodstasis"] },
+    { name: "气郁", keys: ["气郁", "qiyu", "qistagnation"] },
+    { name: "特禀", keys: ["特禀", "tebing", "specialdiathesis"] },
 ];
 
 const acupoints: Acupoint[] = [
@@ -398,18 +465,314 @@ const allCourses: Course[] = [
 ];
 const courses = allCourses.slice(0, 4);
 
-function completeBodyTest() {
-    constitutionName.value =
-        selectedBodyType.value === "平和"
-            ? "平和质"
-            : `${selectedBodyType.value}体质`;
-    showTestModal.value = false;
-}
+const activeUserId = computed(() => {
+    const loginId = Number(userStore.G_LoginInfo.id);
+    const infoId = Number(userStore.G_UserInfo.id);
+    return Number.isFinite(loginId) && loginId > 0 ? loginId : infoId;
+});
+const hasActiveUser = computed(() => isValidUserId(activeUserId.value));
+const displayResult = computed(
+    () => testResult.value ?? latestConstitution.value,
+);
+const topDimensions = computed(() => readDimensionEntries(displayResult.value));
+const radarScores = computed(() =>
+    Object.fromEntries(
+        topDimensions.value.map((item) => [item.name, item.score]),
+    ),
+);
+const constitutionName = computed(
+    () => readResultTitle(displayResult.value) || "待测试体质",
+);
+const constitutionSubText = computed(() => {
+    if (!hasActiveUser.value) return "登录后同步后台体质测试结果";
+    if (isLoadingConstitution.value && !latestConstitution.value) {
+        return "正在同步体质测试结果";
+    }
+    if (!displayResult.value) return "完成一次体质测试后，这里会显示后台结果";
+
+    const [primary, secondary] = topDimensions.value;
+    if (primary && secondary) {
+        return `主体质 ${formatConstitutionName(primary.name)} (${formatScore(
+            primary.score,
+        )} 分) · 兼体质 ${formatConstitutionName(
+            secondary.name,
+        )} (${formatScore(secondary.score)} 分)`;
+    }
+    if (primary) {
+        return `主体质 ${formatConstitutionName(primary.name)} (${formatScore(
+            primary.score,
+        )} 分)`;
+    }
+
+    const result = displayResult.value;
+    return (
+        cleanApiText(result.resultDesc) ||
+        `标准分 ${formatScore(result.standardScore)}`
+    );
+});
+const constitutionRadarPoints = computed(() =>
+    radarAxes
+        .map((axis) => {
+            const score = radarScores.value[axis.name] ?? 18;
+            const ratio = clamp(Number(score) / 100, 0.18, 1);
+            const x = 100 + (axis.valueX - 100) * ratio;
+            const y = 100 + (axis.valueY - 100) * ratio;
+            return `${formatCoordinate(x)},${formatCoordinate(y)}`;
+        })
+        .join(" "),
+);
+const constitutionButtonText = computed(() =>
+    latestConstitution.value ? "重新测试体质" : "开始体质测试",
+);
+const testIntroText = computed(() => {
+    if (!hasActiveUser.value)
+        return "可先查看题目，登录后才能提交后台测评结果。";
+    if (constitutionQuestions.value.length) {
+        return `${constitutionQuestions.value.length} 题 · 提交后同步保存体质测试结果。`;
+    }
+    return "题目来自统一量表测评接口，提交后会写入测试历史。";
+});
+const canSubmitTest = computed(
+    () =>
+        constitutionQuestions.value.length > 0 &&
+        constitutionQuestions.value.every((question) =>
+            Boolean(testAnswers.value[question.questionNo]),
+        ),
+);
+const resultTitle = computed(
+    () => readResultTitle(displayResult.value) || "体质结果已同步",
+);
+const resultScoreText = computed(() =>
+    formatScore(displayResult.value?.standardScore),
+);
+const resultDescription = computed(
+    () =>
+        cleanApiText(displayResult.value?.resultDesc) ||
+        "结果已保存，可在后台历史中继续查看。",
+);
 
 function closeCourseDialog() {
     selectedCourse.value = null;
     showAllCourses.value = false;
 }
+
+async function openConstitutionTest() {
+    showTestModal.value = true;
+    testResult.value = null;
+    testAnswers.value = {};
+    await loadConstitutionTest();
+}
+
+function closeTestModal() {
+    showTestModal.value = false;
+}
+
+function setTestAnswer(questionNo: string, optionCode: string) {
+    testAnswers.value = {
+        ...testAnswers.value,
+        [questionNo]: optionCode,
+    };
+}
+
+async function loadLatestConstitution() {
+    if (!hasActiveUser.value) {
+        latestConstitution.value = null;
+        return;
+    }
+
+    isLoadingConstitution.value = true;
+    try {
+        latestConstitution.value = await ApiPsychScale.getScaleLatest(
+            CONSTITUTION_SCALE_CODE,
+            activeUserId.value,
+        );
+    } catch (error) {
+        console.error("读取体质测试结果失败", error);
+        latestConstitution.value = null;
+    } finally {
+        isLoadingConstitution.value = false;
+    }
+}
+
+async function loadConstitutionTest() {
+    isLoadingQuestions.value = true;
+    testError.value = "";
+    try {
+        const [questionsResult, historyResult, latestResult] =
+            await Promise.allSettled([
+                ApiPsychScale.getScaleQuestions(CONSTITUTION_SCALE_CODE),
+                hasActiveUser.value
+                    ? ApiPsychScale.getScaleHistory(
+                          CONSTITUTION_SCALE_CODE,
+                          activeUserId.value,
+                      )
+                    : Promise.resolve<PsychScaleLatestVO[]>([]),
+                hasActiveUser.value
+                    ? ApiPsychScale.getScaleLatest(
+                          CONSTITUTION_SCALE_CODE,
+                          activeUserId.value,
+                      )
+                    : Promise.resolve<PsychScaleLatestVO | null>(null),
+            ] as const);
+
+        if (questionsResult.status === "rejected") throw questionsResult.reason;
+        constitutionQuestions.value = questionsResult.value;
+
+        if (historyResult.status === "fulfilled") {
+            constitutionHistory.value = historyResult.value;
+        } else {
+            constitutionHistory.value = [];
+            console.error("读取体质测试历史失败", historyResult.reason);
+        }
+
+        if (latestResult.status === "fulfilled") {
+            latestConstitution.value = latestResult.value;
+        } else {
+            console.error("读取最近一次体质测试失败", latestResult.reason);
+        }
+    } catch (error) {
+        console.error("读取体质测试题目失败", error);
+        constitutionQuestions.value = [];
+        testError.value = resolveTcmErrorMessage(error, "体质测试题目同步失败");
+    } finally {
+        isLoadingQuestions.value = false;
+    }
+}
+
+async function submitConstitutionTest() {
+    if (!canSubmitTest.value || !hasActiveUser.value) return;
+
+    isSubmittingTest.value = true;
+    testError.value = "";
+    try {
+        const result = await ApiPsychScale.submitScaleTest(
+            CONSTITUTION_SCALE_CODE,
+            {
+                userId: activeUserId.value,
+                answers: constitutionQuestions.value.map((question) => ({
+                    questionNo: question.questionNo,
+                    optionCode: testAnswers.value[question.questionNo]!,
+                })),
+            },
+        );
+        testResult.value = result;
+        latestConstitution.value = result;
+        constitutionHistory.value = [result, ...constitutionHistory.value];
+        emit("constitution-updated", result);
+    } catch (error) {
+        console.error("提交体质测试失败", error);
+        testError.value = resolveTcmErrorMessage(
+            error,
+            "体质测试提交失败，请稍后重试",
+        );
+    } finally {
+        isSubmittingTest.value = false;
+    }
+}
+
+function readDimensionEntries(
+    result: PsychScaleLatestVO | null | undefined,
+): DimensionEntry[] {
+    return Object.entries(result?.dimensionScores ?? {})
+        .map(([name, score]) => ({
+            name: normalizeBodyTypeName(name),
+            score: Number(score),
+        }))
+        .filter((item) => item.name && Number.isFinite(item.score))
+        .sort((left, right) => right.score - left.score);
+}
+
+function readResultTitle(result: PsychScaleLatestVO | null | undefined) {
+    if (!result) return "";
+    const level = cleanApiText(result.resultLevel);
+    if (level) return formatConstitutionName(level);
+    const top = readDimensionEntries(result)[0];
+    return top ? formatConstitutionName(top.name) : "";
+}
+
+function normalizeBodyTypeName(value: string) {
+    const clean = cleanApiText(value)
+        .replace(/体质|质|得分|score/gi, "")
+        .trim();
+    if (!clean) return "";
+
+    const key = clean.toLowerCase().replace(/[\s_-]/g, "");
+    const alias = bodyTypeAliases.find((item) =>
+        item.keys.some((aliasKey) => key.includes(aliasKey.toLowerCase())),
+    );
+    return alias?.name ?? clean;
+}
+
+function formatConstitutionName(value: string) {
+    const clean = cleanApiText(value);
+    if (!clean) return "";
+    if (/体质$|质$/.test(clean)) return clean;
+    return clean === "平和" ? "平和质" : `${clean}体质`;
+}
+
+function cleanApiText(value: unknown) {
+    if (value == null) return "";
+    const text = String(value).trim();
+    return text && text !== "##default" ? text : "";
+}
+
+function formatScore(value: number | undefined) {
+    if (typeof value !== "number" || Number.isNaN(value)) return "--";
+    return value.toFixed(1).replace(/\.0$/, "");
+}
+
+function formatDateText(value: string | undefined) {
+    if (!value) return "最近";
+    return value.split("T")[0] ?? value;
+}
+
+function formatCoordinate(value: number) {
+    return Number(value.toFixed(1));
+}
+
+function clamp(value: number, min: number, max: number) {
+    if (!Number.isFinite(value)) return min;
+    return Math.min(max, Math.max(min, value));
+}
+
+function resolveTcmErrorMessage(error: unknown, fallback: string) {
+    const response = (
+        error as { response?: { status?: number; data?: unknown } }
+    )?.response;
+    if (response?.status === 403) {
+        return readErrorMessage(response.data) || "当前登录状态无权访问该接口";
+    }
+    if (response?.status === 401) {
+        return "登录已过期，请重新登录";
+    }
+    return readErrorMessage(response?.data) || fallback;
+}
+
+function readErrorMessage(data: unknown) {
+    if (typeof data !== "object" || data === null) return "";
+    const source = data as Record<string, unknown>;
+    return typeof source.message === "string"
+        ? source.message
+        : typeof source.msg === "string"
+          ? source.msg
+          : "";
+}
+
+function isValidUserId(value: number) {
+    return Number.isFinite(value) && value > 0;
+}
+
+onMounted(() => {
+    void loadLatestConstitution();
+});
+
+watch(activeUserId, (userId) => {
+    if (!isValidUserId(userId)) {
+        latestConstitution.value = null;
+        return;
+    }
+    void loadLatestConstitution();
+});
 </script>
 
 <style scoped lang="scss">
@@ -444,6 +807,25 @@ function closeCourseDialog() {
     color: var(--ink-muted);
     margin-top: 6px;
     font-size: 14px;
+}
+.constitution-tags {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+.constitution-tags span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(92, 131, 116, 0.12);
+    color: var(--jade);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .radar {
@@ -595,6 +977,14 @@ function closeCourseDialog() {
     background: var(--ink);
     transform: translateY(-1px);
 }
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    transform: none;
+}
+.btn:disabled:hover {
+    background: var(--jade);
+}
 .btn-ghost {
     background: transparent;
     color: var(--jade);
@@ -615,7 +1005,9 @@ function closeCourseDialog() {
 }
 .tcm-dialog {
     position: relative;
-    width: min(560px, 100%);
+    width: min(720px, 100%);
+    max-height: min(86vh, 760px);
+    overflow: auto;
     padding: 28px;
     border-radius: 18px;
     background: var(--paper);
@@ -652,6 +1044,31 @@ function closeCourseDialog() {
     gap: 10px;
     margin-bottom: 16px;
 }
+.test-state {
+    display: grid;
+    place-items: center;
+    min-height: 120px;
+    color: var(--ink-muted);
+    font-size: 13px;
+}
+.test-questions {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.test-question {
+    padding: 14px;
+    border: 1px solid rgba(232, 223, 208, 0.72);
+    border-radius: 12px;
+    background: var(--paper-warm);
+}
+.test-question > span {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--ink);
+    font-weight: 600;
+    line-height: 1.6;
+}
 .test-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -682,6 +1099,49 @@ function closeCourseDialog() {
     color: var(--ink-muted);
     font-size: 12px;
     font-style: normal;
+}
+.test-options strong {
+    display: block;
+    color: var(--jade);
+    font-size: 13px;
+}
+.test-result {
+    margin-bottom: 14px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(92, 131, 116, 0.12);
+    border: 1px solid rgba(92, 131, 116, 0.18);
+}
+.test-result strong {
+    display: block;
+    color: var(--ink);
+    font-size: 16px;
+}
+.test-result span,
+.test-result p {
+    display: block;
+    margin: 6px 0 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+}
+.test-history {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.test-history span {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--paper-warm);
+    color: var(--ink-muted);
+    border: 1px solid var(--line);
+    font-size: 12px;
+}
+.test-error {
+    margin-bottom: 12px;
+    color: var(--cinnabar);
+    font-size: 13px;
 }
 .course-list button {
     display: grid;
@@ -723,6 +1183,9 @@ function closeCourseDialog() {
 @media (max-width: 900px) {
     .grid-2,
     .grid-4 {
+        grid-template-columns: 1fr;
+    }
+    .test-options {
         grid-template-columns: 1fr;
     }
 }
