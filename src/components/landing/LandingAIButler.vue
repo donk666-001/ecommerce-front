@@ -202,7 +202,7 @@ onMounted(() => {
     // 使用 IntersectionObserver 监听区块进入视口，逐条显示聊天消息
     const observer = new IntersectionObserver(
         (entries) => {
-            if (entries[0].isIntersecting && !revealed) {
+            if (entries[0]?.isIntersecting && !revealed) {
                 revealed = true;
                 messages.forEach((msg, i) => {
                     setTimeout(() => {

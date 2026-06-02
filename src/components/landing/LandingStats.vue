@@ -43,7 +43,7 @@ onMounted(() => {
 
     const observer = new IntersectionObserver(
         (entries) => {
-            if (entries[0].isIntersecting) {
+            if (entries[0]?.isIntersecting) {
                 stats.forEach((s) => {
                     useCountUp(s.target, 1600, (v) => {
                         s.displayed = String(v);
