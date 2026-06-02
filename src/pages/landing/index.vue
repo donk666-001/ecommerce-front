@@ -1,57 +1,58 @@
 <!-- src/pages/landing/index.vue -->
 <template>
-  <div class="landing-page">
-    <!-- 固定森林场景 -->
-    <LandingScene />
+    <div class="landing-page">
+        <!-- 固定森林场景 -->
+        <LandingScene />
 
-    <!-- 内容层 -->
-    <div class="page-content">
-      <LandingNav />
+        <!-- 内容层 -->
+        <div class="page-content">
+            <LandingNav />
 
-      <main>
-        <LandingHero @go-login="router.push('/login')" />
-        <LandingStats />
-        <LandingFeatures />
-        <LandingAIButler />
-        <LandingHowTo />
-        <LandingExperts />
-        <LandingTestimonials />
-        <LandingCTA @go-login="router.push('/login')" />
-        <LandingFooter />
-      </main>
+            <main>
+                <LandingHero @go-login="router.push('/login')" />
+                <LandingStats />
+                <LandingFeatures />
+                <LandingAIButler />
+                <LandingHowTo />
+                <LandingExperts />
+                <LandingTestimonials />
+                <LandingCTA @go-login="router.push('/login')" />
+                <LandingFooter />
+            </main>
+        </div>
     </div>
-  </div>
 </template>
 
 <script lang="ts" setup>
-import { useRouter } from 'vue-router'
-import LandingScene        from '@/components/landing/LandingScene.vue'
-import LandingNav          from '@/components/landing/LandingNav.vue'
-import LandingHero         from '@/components/landing/LandingHero.vue'
-import LandingStats        from '@/components/landing/LandingStats.vue'
-import LandingFeatures     from '@/components/landing/LandingFeatures.vue'
-import LandingAIButler     from '@/components/landing/LandingAIButler.vue'
-import LandingHowTo        from '@/components/landing/LandingHowTo.vue'
-import LandingExperts      from '@/components/landing/LandingExperts.vue'
-import LandingTestimonials from '@/components/landing/LandingTestimonials.vue'
-import LandingCTA          from '@/components/landing/LandingCTA.vue'
-import LandingFooter       from '@/components/landing/LandingFooter.vue'
+import { useRouter } from "vue-router";
+import LandingScene from "@/components/landing/LandingScene.vue";
+import LandingNav from "@/components/landing/LandingNav.vue";
+import LandingHero from "@/components/landing/LandingHero.vue";
+import LandingStats from "@/components/landing/LandingStats.vue";
+import LandingFeatures from "@/components/landing/LandingFeatures.vue";
+import LandingAIButler from "@/components/landing/LandingAIButler.vue";
+import LandingHowTo from "@/components/landing/LandingHowTo.vue";
+import LandingExperts from "@/components/landing/LandingExperts.vue";
+import LandingTestimonials from "@/components/landing/LandingTestimonials.vue";
+import LandingCTA from "@/components/landing/LandingCTA.vue";
+import LandingFooter from "@/components/landing/LandingFooter.vue";
 
-const router = useRouter()
+const router = useRouter();
 </script>
 
 <style lang="scss" scoped>
 .landing-page {
-  min-height: 100vh;
-  background: #0c180a; // 图片加载前的兜底色
-  color: white;
-  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  line-height: 1.6;
-  overflow-x: hidden;
+    min-height: 100vh;
+    background: #0c180a; // 图片加载前的兜底色
+    color: white;
+    font-family:
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
 }
 
 .page-content {
-  position: relative;
-  z-index: 1;
+    position: relative;
+    z-index: 1;
 }
 </style>
