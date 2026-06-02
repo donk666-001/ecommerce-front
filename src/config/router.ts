@@ -8,6 +8,9 @@ const router = createRouter({
     routes,
 });
 
+/** 不需要登录即可访问的公开路由 */
+const PUBLIC_PATHS = ["/login", "/landing"];
+
 router.beforeEach(async (to) => {
     const userStore = useUserStore();
 
@@ -32,8 +35,8 @@ router.beforeEach(async (to) => {
         return resolvePostLoginPath(userStore.G_UserInfo.role_id, to.query.redirect);
     }
 
-    // 未登录访问非 /login 页面 → 跳登录页
-    if (to.path !== "/login" && !isLogin) {
+    // 未登录访问非公开路由 → 跳登录页
+    if (!PUBLIC_PATHS.includes(to.path) && !isLogin) {
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
     }
 });
