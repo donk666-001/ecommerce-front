@@ -5,8 +5,8 @@
             <div class="sidebar-header">
                 <div class="logo-seal">颐</div>
                 <div>
-                    <div class="sidebar-title">客服工作台</div>
-                    <div class="sidebar-sub">颐养阁官方店铺</div>
+                    <div class="sidebar-title">颐养阁</div>
+                    <div class="sidebar-sub">客服工作台</div>
                 </div>
             </div>
 
@@ -97,6 +97,35 @@
             </div>
         </aside>
 
+        <!-- 退出登录二次确认弹窗 -->
+        <Teleport to="body">
+            <Transition name="logout-modal">
+                <div
+                    v-if="showLogoutConfirm"
+                    class="logout-mask"
+                    @click.self="showLogoutConfirm = false"
+                >
+                    <div class="logout-dialog">
+                        <div class="logout-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="32" height="32">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                        </div>
+                        <div class="logout-title">确认退出工作台？</div>
+                        <div class="logout-body">所有进行中的会话将释放并重新分配给其他客服，请确认后再退出。</div>
+                        <div class="logout-actions">
+                            <button class="logout-btn cancel" @click="showLogoutConfirm = false">取消</button>
+                            <button class="logout-btn confirm" :disabled="logoutLoading" @click="confirmLogout">
+                                {{ logoutLoading ? '退出中…' : '确认退出' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
         <!-- 主内容区 -->
         <div class="main">
             <!-- 内容面板 -->
@@ -124,6 +153,7 @@
                         @count-update="chatCount = $event"
                         @switch-to-queue="currentPanel = 'queue'"
                         @session-ended="handleSessionEnded"
+                        @msg-count-update="dashboardPanelRef?.addMessages($event)"
                     />
                 </div>
 
@@ -209,6 +239,8 @@ const queueCount = ref(0);
 // 客服状态管理
 const agentStatus = ref<"online" | "break" | "off">("online");
 const showAccountMenu = ref(false);
+const showLogoutConfirm = ref(false);
+const logoutLoading = ref(false);
 
 const statusOptions = [
     { value: "online", label: "在线" },
@@ -259,11 +291,21 @@ async function setStatus(status: string, label: string) {
 }
 
 // 退出登录
-async function handleLogout() {
-    if (!confirm("确认退出工作台？所有进行中的会话将释放并重新分配。")) return;
-    await userStore.logout();
-    ElMessage.success("已退出登录");
-    router.push("/customer/login");
+function handleLogout() {
+    showAccountMenu.value = false;
+    showLogoutConfirm.value = true;
+}
+
+async function confirmLogout() {
+    logoutLoading.value = true;
+    try {
+        await userStore.logout();
+        showLogoutConfirm.value = false;
+        ElMessage.success("已退出登录");
+        router.push("/customer/login");
+    } finally {
+        logoutLoading.value = false;
+    }
 }
 
 // 点击外部关闭状态菜单
@@ -299,7 +341,7 @@ onUnmounted(() => {
 /* 侧边栏 */
 .sidebar {
     width: 220px;
-    background: linear-gradient(180deg, var(--jade-pale) 0%, #d9e5d1 100%);
+    background: linear-gradient(180deg, #eaf1e4 0%, #d5e3d0 100%);
     border-right: 1px solid rgba(92, 131, 116, 0.2);
     display: flex;
     flex-direction: column;
@@ -605,6 +647,121 @@ onUnmounted(() => {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* 退出确认弹窗 */
+.logout-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(44, 54, 57, 0.42);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logout-dialog {
+    width: 360px;
+    background: var(--paper, #fffef9);
+    border: 1px solid rgba(232, 223, 208, 0.9);
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(44, 54, 57, 0.22), 0 4px 14px rgba(60, 50, 30, 0.1);
+    padding: 36px 32px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.logout-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--cinnabar-soft, #fae5e0);
+    color: var(--cinnabar, #b33c2c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.logout-title {
+    font-family: "STKaiti", serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink, #2c3639);
+    margin-bottom: 10px;
+}
+
+.logout-body {
+    font-size: 15px;
+    color: var(--ink-muted, #6b7c7a);
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.logout-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.logout-btn {
+    flex: 1;
+    height: 42px;
+    border-radius: 11px;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.16s;
+
+    &.cancel {
+        border: 1px solid rgba(216, 202, 183, 0.9);
+        background: white;
+        color: var(--ink-muted, #6b7c7a);
+
+        &:hover {
+            border-color: rgba(92, 131, 116, 0.4);
+            color: var(--ink, #2c3639);
+        }
+    }
+
+    &.confirm {
+        border: none;
+        background: var(--cinnabar, #b33c2c);
+        color: white;
+        box-shadow: 0 6px 16px rgba(179, 60, 44, 0.28);
+
+        &:hover:not(:disabled) {
+            background: #9c3325;
+        }
+
+        &:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+    }
+}
+
+.logout-modal-enter-active,
+.logout-modal-leave-active {
+    transition: opacity 0.2s ease;
+
+    .logout-dialog {
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+}
+
+.logout-modal-enter-from,
+.logout-modal-leave-to {
+    opacity: 0;
+
+    .logout-dialog {
+        transform: translateY(12px) scale(0.97);
+        opacity: 0;
     }
 }
 </style>

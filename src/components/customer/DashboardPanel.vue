@@ -20,11 +20,11 @@
             <div class="stat-card cinnabar">
                 <div class="stat-label">今日已接待</div>
                 <div class="stat-value">{{ todayServed }}</div>
-                <div class="stat-foot">每 30 秒更新</div>
+                <div class="stat-foot">今日接待统计</div>
             </div>
             <div class="stat-card ink">
                 <div class="stat-label">今日消息</div>
-                <div class="stat-value">{{ stats.todayMessages }}</div>
+                <div class="stat-value">{{ todayMessages }}</div>
                 <div class="stat-foot">收发总数</div>
             </div>
         </div>
@@ -107,18 +107,22 @@ const stats = ref<CustomerStats>({
 });
 const colleagues = ref<AgentColleague[]>([]);
 
-// 本次登录期间本客服结束的会话数（不随轮询重置）
+// 本地乐观增量：轮询刷新后端后归零，避免重复计算
 const todayServedExtra = ref(0);
+const todayMsgExtra = ref(0);
 
-const todayServed = computed(
-    () => stats.value.todayServed + todayServedExtra.value,
-);
+const todayServed = computed(() => stats.value.todayServed + todayServedExtra.value);
+const todayMessages = computed(() => stats.value.todayMessages + todayMsgExtra.value);
 
 function incrementTodayServed() {
     todayServedExtra.value += 1;
 }
 
-defineExpose({ incrementTodayServed });
+function addMessages(n: number) {
+    todayMsgExtra.value += n;
+}
+
+defineExpose({ incrementTodayServed, addMessages });
 
 // 实时合并：自己那行用 prop 覆盖状态/接待数/今日已接待
 const displayColleagues = computed(() =>
@@ -137,7 +141,12 @@ const displayColleagues = computed(() =>
 async function loadStats() {
     try {
         const data = await ApiCustomer.getStats();
-        if (data) stats.value = data;
+        if (data) {
+            stats.value = data;
+            // 后端已包含这段时间的新增，本地增量归零避免重复计算
+            todayServedExtra.value = 0;
+            todayMsgExtra.value = 0;
+        }
     } catch (e) {
         console.error("加载统计数据失败:", e);
     }

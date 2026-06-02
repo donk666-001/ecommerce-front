@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from "vue";
+import { ref, computed, nextTick, watch, onUnmounted } from "vue";
 
 interface Agent {
     id: string;
@@ -176,7 +176,10 @@ interface Props {
 
 const props = defineProps<Props>();
 
-defineEmits<{
+const chatBodyRef = ref<HTMLElement | null>(null);
+let autoDismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+const emit = defineEmits<{
     "update:currentAgent": [value: string];
     "update:chatInput": [value: string];
     sendChat: [];
@@ -185,7 +188,27 @@ defineEmits<{
     dismissContextProduct: [];
 }>();
 
-const chatBodyRef = ref<HTMLElement | null>(null);
+function clearAutoDismiss() {
+    if (autoDismissTimer !== null) {
+        clearTimeout(autoDismissTimer);
+        autoDismissTimer = null;
+    }
+}
+
+watch(
+    () => props.contextProduct,
+    (val) => {
+        clearAutoDismiss();
+        if (val) {
+            autoDismissTimer = setTimeout(() => {
+                emit("dismissContextProduct");
+            }, 10000);
+        }
+    },
+    { immediate: true },
+);
+
+onUnmounted(clearAutoDismiss);
 
 const currentAgentObj = computed(
     () => props.agents.find((a) => a.id === props.currentAgent)!,

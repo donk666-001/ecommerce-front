@@ -926,6 +926,7 @@ function sendProductCard(product: {
         );
         bridgeSessionIds.value[agentId] = session.id;
     }
+    serviceContextProduct.value = null;
 }
 
 function viewProductFromService(productId: string) {
