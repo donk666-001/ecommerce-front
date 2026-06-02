@@ -86,17 +86,14 @@
                                 <div class="label">今日打卡进度</div>
                             </div>
                         </div>
-                        <span class="streak-badge"
-                            >🔥 连续打卡 {{ streakDays }} 天 ·
-                            距「而立之约」还差 {{ 30 - streakDays }} 天</span
-                        >
                         <div style="margin-top: 16px">
-                            <button class="btn" @click="completeAllChecks">
-                                一键完成今日打卡
+                            <button class="btn" @click="toggleAllChecks">
+                                {{ allChecksDone ? '一键取消今日打卡' : '一键完成今日打卡' }}
                             </button>
                             <button
                                 class="btn btn-ghost"
                                 style="margin-left: 8px"
+                                @click="openPoster"
                             >
                                 📤 生成打卡海报
                             </button>
@@ -108,17 +105,15 @@
                             <div class="card-title" style="margin: 0">
                                 <span class="dot"></span>本周打卡
                             </div>
-                            <div
-                                style="font-size: 12px; color: var(--ink-muted)"
-                            >
+                            <div style="font-size: 12px; color: var(--ink-muted)">
                                 本周已坚持
-                                <strong style="color: var(--jade)">2 天</strong>
+                                <strong style="color: var(--jade)">{{ thisWeekDoneCount }} 天</strong>
                             </div>
                         </div>
                         <div class="week-strip">
                             <div
                                 v-for="day in weekDays"
-                                :key="day.label"
+                                :key="day.key"
                                 class="day-dot"
                                 :class="day.status"
                             >
@@ -126,14 +121,7 @@
                                 <span class="d-circle">{{ day.display }}</span>
                             </div>
                         </div>
-                        <div
-                            style="
-                                margin-top: 16px;
-                                font-size: 13px;
-                                color: var(--ink-muted);
-                                margin-bottom: 8px;
-                            "
-                        >
+                        <div style="margin-top: 16px; font-size: 13px; color: var(--ink-muted); margin-bottom: 8px">
                             今日打卡心情
                         </div>
                         <div class="chip-row">
@@ -142,17 +130,12 @@
                                 :key="mood"
                                 class="pick-chip"
                                 :class="{ active: selectedMood === mood }"
-                                @click="selectedMood = mood"
-                                >{{ mood }}</span
-                            >
+                                @click="selectMood(mood)"
+                            >{{ mood }}</span>
                         </div>
                         <div class="tip-row" style="margin-top: 16px">
                             <span class="icon">💡</span>
-                            <div class="text">
-                                坚持打卡满
-                                <strong>30 天</strong
-                                >，可解锁「养生达人」称号与节气礼盒优惠券。
-                            </div>
+                            <div class="text">坚持打卡满 <strong>30 天</strong>，可解锁「养生达人」称号与节气礼盒优惠券。</div>
                         </div>
                     </div>
                 </div>
@@ -162,14 +145,21 @@
                         <div class="card-title" style="margin: 0">
                             <span class="dot"></span>今日打卡清单
                         </div>
-                        <button class="btn btn-ghost btn-sm">
-                            ⚙ 自定义打卡项
+                        <button class="btn btn-ghost btn-sm" @click="openCheckinDialog">
+                            ＋ 自定义打卡项
                         </button>
                     </div>
-                    <div class="check-grid">
+
+                    <!-- 空状态 -->
+                    <div v-if="checkItems.length === 0" class="checkin-empty" @click="openCheckinDialog">
+                        <div class="checkin-empty-icon">✅</div>
+                        <div class="checkin-empty-text">点击「自定义打卡项」添加今日打卡计划</div>
+                    </div>
+
+                    <div v-else class="check-grid">
                         <div
-                            v-for="item in checkItems"
-                            :key="item.name"
+                            v-for="(item, idx) in checkItems"
+                            :key="idx"
                             class="check-item"
                             :class="{ done: item.done }"
                         >
@@ -178,29 +168,80 @@
                                 <div class="ci-name">{{ item.name }}</div>
                                 <div class="ci-meta">{{ item.meta }}</div>
                             </div>
-                            <div
-                                class="check-box"
-                                @click="item.done = !item.done"
-                            >
-                                ✓
-                            </div>
+                            <button class="ci-del" @click.stop="removeCheckin(idx)">✕</button>
+                            <div class="check-box" @click="toggleCheckinItem(idx)">✓</div>
                         </div>
                     </div>
+
+                    <!-- 自定义打卡弹窗 -->
+                    <Teleport to="body">
+                        <Transition name="wset-modal">
+                            <div v-if="showCheckinDialog" class="wset-mask" @click.self="showCheckinDialog = false">
+                                <div class="wset-dialog checkin-dialog">
+                                    <div class="wset-header">
+                                        <span>添加打卡项</span>
+                                        <button @click="showCheckinDialog = false">✕</button>
+                                    </div>
+                                    <div class="wset-body">
+                                        <label>
+                                            <span>图标（emoji）</span>
+                                            <div class="checkin-emoji-grid">
+                                                <button
+                                                    v-for="e in checkinEmojiOptions"
+                                                    :key="e"
+                                                    class="checkin-emoji-btn"
+                                                    :class="{ active: checkinForm.icon === e }"
+                                                    @click="checkinForm.icon = e"
+                                                >{{ e }}</button>
+                                            </div>
+                                            <input
+                                                v-model="checkinForm.icon"
+                                                class="checkin-icon-input"
+                                                placeholder="或直接输入任意 emoji"
+                                                maxlength="4"
+                                            />
+                                        </label>
+                                        <label>
+                                            <span>打卡名称</span>
+                                            <div class="wset-input-row">
+                                                <input v-model="checkinForm.name" class="checkin-text-input" placeholder="如：冥想、读书、散步…" />
+                                            </div>
+                                        </label>
+                                        <label>
+                                            <span>备注说明（选填）</span>
+                                            <div class="wset-input-row">
+                                                <input v-model="checkinForm.meta" class="checkin-text-input" placeholder="如：目标 30 分钟" />
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="wset-footer">
+                                        <button class="wset-btn" @click="showCheckinDialog = false">取消</button>
+                                        <button class="wset-btn primary" @click="saveCheckin">添加</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </Teleport>
                 </div>
 
                 <div class="grid-2" style="margin-top: 20px">
                     <div class="card">
                         <div class="row">
-                            <div class="card-title" style="margin: 0">
-                                <span class="dot"></span>打卡日历 · 5 月
+                            <div class="card-title" style="margin:0;display:flex;align-items:center;gap:8px">
+                                <span class="dot"></span>打卡日历
+                                <select class="cal-month-select" v-model.number="calMonth">
+                                    <option v-for="(m, i) in 12" :key="i" :value="i">{{ i + 1 }} 月</option>
+                                </select>
+                                <select class="cal-month-select" v-model.number="calYear">
+                                    <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
+                                </select>
                             </div>
-                            <div
-                                style="font-size: 12px; color: var(--ink-muted)"
-                            >
-                                本月打卡
-                                <strong style="color: var(--jade)"
-                                    >20 天</strong
-                                >
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <span style="font-size:12px;color:var(--ink-muted)">
+                                    本月打卡 <strong style="color:var(--jade)">{{ calMonthDoneCount }} 天</strong>
+                                </span>
+                                <button class="cal-nav-btn" @click="calPrevMonth">‹</button>
+                                <button class="cal-nav-btn" @click="calNextMonth">›</button>
                             </div>
                         </div>
                         <div class="heatmap">
@@ -211,17 +252,21 @@
                             <div class="hm-head">五</div>
                             <div class="hm-head">六</div>
                             <div class="hm-head">日</div>
-                            <div
-                                v-for="i in 4"
-                                :key="'blank-' + i"
-                                class="hm-cell muted"
-                            ></div>
-                            <div
-                                v-for="(lv, idx) in heatmapData"
-                                :key="idx"
-                                class="hm-cell"
-                                :class="lv ? 'lv' + lv : ''"
-                            ></div>
+                            <template v-for="cell in calendarCells" :key="cell.key || 'b' + cell.day">
+                                <div
+                                    v-if="cell.type === 'blank'"
+                                    class="hm-cell muted"
+                                ></div>
+                                <div
+                                    v-else
+                                    class="hm-cell"
+                                    :class="[cell.level ? 'lv' + cell.level : '', cell.isToday ? 'hm-today' : '', cell.hasData ? 'hm-clickable' : '']"
+                                    :title="cell.hasData ? `${cell.key} 点击查看` : cell.key"
+                                    @click="cell.hasData && openHistoryDetail(cell.key)"
+                                >
+                                    <span class="hm-cell-day">{{ cell.day }}</span>
+                                </div>
+                            </template>
                         </div>
                         <div class="hm-legend">
                             少 <span class="hm-cell"></span
@@ -231,6 +276,46 @@
                             ><span class="hm-cell lv4"></span> 多
                         </div>
                     </div>
+
+                    <!-- 历史打卡详情弹窗 -->
+                    <Teleport to="body">
+                        <Transition name="wset-modal">
+                            <div v-if="showHistoryDetail" class="wset-mask" @click.self="showHistoryDetail = false">
+                                <div class="wset-dialog history-dialog">
+                                    <div class="wset-header">
+                                        <span>{{ historyDetailKey }} 打卡记录</span>
+                                        <button @click="showHistoryDetail = false">✕</button>
+                                    </div>
+                                    <div class="wset-body">
+                                        <div v-if="historyDetailRecord" class="history-content">
+                                            <div class="history-mood">
+                                                当日心情：<strong>{{ historyDetailRecord.mood || '未记录' }}</strong>
+                                            </div>
+                                            <div class="history-items">
+                                                <div
+                                                    v-for="(item, i) in historyDetailRecord.items"
+                                                    :key="i"
+                                                    class="history-item"
+                                                    :class="{ done: item.done }"
+                                                >
+                                                    <span class="history-item-icon">{{ item.icon }}</span>
+                                                    <span class="history-item-name">{{ item.name }}</span>
+                                                    <span v-if="item.meta" class="history-item-meta">{{ item.meta }}</span>
+                                                    <span class="history-item-status">{{ item.done ? '✓' : '—' }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="history-summary">
+                                                完成 {{ historyDetailRecord.items.filter(i => i.done).length }} / {{ historyDetailRecord.items.length }} 项
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="wset-footer">
+                                        <button class="wset-btn primary" @click="showHistoryDetail = false">关闭</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </Teleport>
 
                     <div class="card">
                         <div class="card-title">
@@ -268,6 +353,27 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 海报预览弹窗 -->
+                <Teleport to="body">
+                    <Transition name="wset-modal">
+                        <div v-if="showPoster" class="wset-mask" @click.self="showPoster = false">
+                            <div class="poster-modal">
+                                <div class="poster-modal-header">
+                                    <span>打卡海报预览</span>
+                                    <button @click="showPoster = false">✕</button>
+                                </div>
+                                <div class="poster-canvas-wrap">
+                                    <canvas ref="posterCanvasRef" class="poster-canvas"></canvas>
+                                </div>
+                                <div class="poster-modal-footer">
+                                    <button class="wset-btn" @click="showPoster = false">关闭</button>
+                                    <button class="wset-btn primary" @click="downloadPoster">⬇ 下载海报</button>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </Teleport>
             </section>
 
             <!-- ===== Module 2: 饮食与作息记录 ===== -->
@@ -279,206 +385,239 @@
                         <div class="card-title" style="margin: 0">
                             <span class="dot"></span>今日饮食记录
                         </div>
-                        <div style="font-size: 12px; color: var(--ink-muted)">
-                            已记录
-                            <strong style="color: var(--jade)">3 / 4 餐</strong>
+                        <div v-if="meals.length > 0" style="font-size: 12px; color: var(--ink-muted)">
+                            已记录 <strong style="color: var(--jade)">{{ meals.length }} 餐</strong>
+                            · <strong style="color: var(--gold)">{{ totalCal }} 千卡</strong>
                         </div>
                     </div>
-                    <div class="grid-4">
+
+                    <!-- 空状态 -->
+                    <div v-if="meals.length === 0" class="meal-empty" @click="openMealDialog">
+                        <div class="meal-empty-icon">＋</div>
+                        <div class="meal-empty-text">记录今日饮食</div>
+                    </div>
+
+                    <!-- 已添加的餐次 -->
+                    <div v-else class="grid-4" style="margin-top: 14px">
                         <div
-                            v-for="meal in meals"
-                            :key="meal.name"
+                            v-for="(meal, idx) in meals"
+                            :key="idx"
                             class="meal-card"
                         >
                             <div class="meal-img" :class="meal.bg">
-                                <template v-if="meal.empty">＋</template>
+                                <img v-if="meal.image" :src="meal.image" class="meal-card-img" />
                                 <template v-else>{{ meal.emoji }}</template>
+                                <button class="meal-del" @click.stop="removeMeal(idx)">✕</button>
                             </div>
                             <div class="meal-body">
-                                <div class="meal-name">
-                                    {{ meal.name }}
-                                    <span v-if="meal.tag" class="meal-tag">{{
-                                        meal.tag
-                                    }}</span>
-                                </div>
+                                <div class="meal-name">{{ meal.name }}</div>
                                 <div class="meal-foods">{{ meal.foods }}</div>
-                                <div class="meal-cal">
-                                    ≈ {{ meal.cal }} 千卡
-                                </div>
+                                <div class="meal-cal">≈ {{ meal.cal }} 千卡</div>
+                            </div>
+                        </div>
+                        <!-- 继续添加 -->
+                        <div class="meal-card meal-add-card" @click="openMealDialog">
+                            <div class="meal-img meal-add-img">＋</div>
+                            <div class="meal-body">
+                                <div class="meal-name" style="color:var(--ink-muted);justify-content:center">添加一餐</div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- 添加饮食弹窗 -->
+                    <Teleport to="body">
+                        <Transition name="wset-modal">
+                            <div v-if="showMealDialog" class="wset-mask" @click.self="showMealDialog = false">
+                                <div class="wset-dialog meal-dialog">
+                                    <div class="wset-header meal-dialog-header">
+                                        <span>记录饮食</span>
+                                        <button @click="showMealDialog = false">✕</button>
+                                    </div>
+                                    <div class="wset-body meal-dialog-body">
+                                        <!-- 餐次类型 -->
+                                        <div class="meal-field">
+                                            <div class="meal-field-label">餐次类型</div>
+                                            <div class="meal-type-grid">
+                                                <button
+                                                    v-for="t in mealTypes"
+                                                    :key="t.name"
+                                                    class="meal-type-btn"
+                                                    :class="{ active: mealForm.name === t.name }"
+                                                    @click="selectMealType(t)"
+                                                >
+                                                    {{ t.emoji }} {{ t.name }}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 餐食图片 -->
+                                        <div class="meal-field">
+                                            <div class="meal-field-label">餐食图片（选填）</div>
+                                            <div
+                                                class="meal-img-upload"
+                                                :class="{ 'has-img': mealForm.image }"
+                                                @click="triggerMealImgInput"
+                                            >
+                                                <img v-if="mealForm.image" :src="mealForm.image" class="meal-img-preview" />
+                                                <template v-else>
+                                                    <span class="meal-img-icon">📷</span>
+                                                    <span class="meal-img-hint">点击上传图片</span>
+                                                </template>
+                                                <button
+                                                    v-if="mealForm.image"
+                                                    class="meal-img-remove"
+                                                    @click.stop="mealForm.image = ''"
+                                                >✕</button>
+                                            </div>
+                                            <input
+                                                ref="mealImgInputRef"
+                                                type="file"
+                                                accept="image/*"
+                                                style="display:none"
+                                                @change="onMealImgSelect"
+                                            />
+                                        </div>
+
+                                        <!-- 吃了什么 -->
+                                        <div class="meal-field">
+                                            <div class="meal-field-label">吃了什么</div>
+                                            <textarea
+                                                v-model="mealForm.foods"
+                                                class="meal-textarea"
+                                                rows="3"
+                                                placeholder="描述食物内容，如：糙米饭、清蒸鲈鱼、西兰花…"
+                                            ></textarea>
+                                        </div>
+
+                                        <!-- 估算热量 -->
+                                        <div class="meal-field">
+                                            <div class="meal-field-label">估算热量</div>
+                                            <div class="wset-input-row">
+                                                <input class="meal-cal-input" v-model.number="mealForm.cal" type="number" min="0" max="9999" step="10" />
+                                                <span class="wset-unit">千卡</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="wset-footer">
+                                        <button class="wset-btn meal-dialog-btn" @click="showMealDialog = false">取消</button>
+                                        <button class="wset-btn primary meal-dialog-btn" @click="saveMeal">记录</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </Teleport>
                 </div>
 
                 <div class="grid-2" style="margin-top: 20px">
                     <div class="card">
                         <div class="row">
-                            <div class="card-title" style="margin: 0">
+                            <div class="card-title" style="margin:0;display:flex;align-items:center;gap:10px">
                                 <span class="dot"></span>今日饮水追踪
+                                <button class="wset-inline-btn" @click="openWaterSettings">设置目标</button>
                             </div>
-                            <div
-                                style="font-size: 12px; color: var(--ink-muted)"
-                            >
-                                <strong style="color: var(--moon)">{{
-                                    waterFilled * 250
-                                }}</strong>
-                                / 2000 ml
-                            </div>
+                            <span style="font-size:12px;color:var(--ink-muted)">
+                                <strong style="color:var(--moon)">{{ waterFilled * waterCupSize }}</strong>
+                                / {{ waterGoal }} ml
+                            </span>
                         </div>
+
                         <div class="water-grid">
                             <div
-                                v-for="i in 8"
+                                v-for="i in waterCupCount"
                                 :key="i"
                                 class="water-cup"
                                 :class="{ filled: i <= waterFilled }"
-                                @click="
-                                    waterFilled = i <= waterFilled ? i - 1 : i
-                                "
+                                @click="waterFilled = i <= waterFilled ? i - 1 : i"
                             >
-                                💧
+                                <span class="wc-emoji">💧</span>
+                                <span class="wc-label">{{ waterCupSize }}ml</span>
                             </div>
                         </div>
-                        <div class="tip-row">
-                            <span class="icon">🍵</span>
-                            <div class="text">
-                                还差
-                                <strong
-                                    >{{ 2000 - waterFilled * 250 }}ml</strong
-                                >
-                                达成目标，小满时节宜温水代茶，可饮
-                                <strong>麦冬陈皮饮</strong>。
-                            </div>
-                        </div>
+
+                        <!-- 饮水设置弹窗 -->
+                        <Teleport to="body">
+                            <Transition name="wset-modal">
+                                <div v-if="showWaterSettings" class="wset-mask" @click.self="showWaterSettings = false">
+                                    <div class="wset-dialog">
+                                        <div class="wset-header">
+                                            <span>饮水目标设置</span>
+                                            <button @click="showWaterSettings = false">✕</button>
+                                        </div>
+                                        <div class="wset-body">
+                                            <label>
+                                                <span>每日总量</span>
+                                                <div class="wset-input-row">
+                                                    <input v-model.number="wsetForm.goal" type="number" min="500" max="5000" step="100" />
+                                                    <span class="wset-unit">ml</span>
+                                                </div>
+                                            </label>
+                                            <label>
+                                                <span>每次饮水</span>
+                                                <div class="wset-input-row">
+                                                    <input v-model.number="wsetForm.cupSize" type="number" min="50" max="1000" step="50" />
+                                                    <span class="wset-unit">ml / 次</span>
+                                                </div>
+                                            </label>
+                                            <div class="wset-preview">
+                                                预计需要喝 <strong>{{ Math.ceil(wsetForm.goal / wsetForm.cupSize) }}</strong> 次
+                                            </div>
+                                        </div>
+                                        <div class="wset-footer">
+                                            <button class="wset-btn" @click="showWaterSettings = false">取消</button>
+                                            <button class="wset-btn primary" @click="saveWaterSettings">保存</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
                     </div>
 
                     <div class="card">
-                        <div class="card-title">
+                        <div class="card-title" style="display:flex;align-items:center;gap:10px">
                             <span class="dot"></span>今日营养小结
+                            <button class="wset-inline-btn" @click="openCalSettings">设置目标</button>
                         </div>
-                        <div class="nutri-ring">
-                            <div class="cal-circle">
+                        <div style="display: flex; justify-content: center; padding: 8px 0">
+                            <div class="cal-circle" :style="calCircleStyle">
                                 <div class="inner">
-                                    <div class="num">1510</div>
-                                    <div class="unit">千卡 / 1800</div>
-                                </div>
-                            </div>
-                            <div style="flex: 1">
-                                <div
-                                    v-for="n in nutrition"
-                                    :key="n.label"
-                                    class="nutri-bar"
-                                >
-                                    <div class="nb-label">
-                                        <span>{{ n.label }}</span
-                                        ><span>{{ n.value }}</span>
-                                    </div>
-                                    <div class="nutri-track">
-                                        <div
-                                            class="nutri-fill"
-                                            :style="{
-                                                width: n.pct + '%',
-                                                background: n.color,
-                                            }"
-                                        ></div>
-                                    </div>
+                                    <div class="num" :style="calOver ? 'color:var(--cinnabar)' : ''">{{ totalCal }}</div>
+                                    <div class="unit">千卡 / {{ calGoal }}</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="tip-row" style="margin-top: 14px">
-                            <span class="icon">✅</span>
-                            <div class="text">
-                                今日饮食
-                                <strong>清淡均衡</strong
-                                >，膳食纤维充足，建议晚餐后散步助消化。
-                            </div>
+                        <div v-if="calOver" class="cal-over-tip">
+                            已超过目标 <strong>{{ totalCal - calGoal }}</strong> 千卡
                         </div>
+
+                        <!-- 热量目标设置弹窗 -->
+                        <Teleport to="body">
+                            <Transition name="wset-modal">
+                                <div v-if="showCalSettings" class="wset-mask" @click.self="showCalSettings = false">
+                                    <div class="wset-dialog">
+                                        <div class="wset-header">
+                                            <span>热量目标设置</span>
+                                            <button @click="showCalSettings = false">✕</button>
+                                        </div>
+                                        <div class="wset-body">
+                                            <label>
+                                                <span>每日摄入目标</span>
+                                                <div class="wset-input-row">
+                                                    <input v-model.number="calForm.goal" type="number" min="500" max="5000" step="50" />
+                                                    <span class="wset-unit">千卡</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <div class="wset-footer">
+                                            <button class="wset-btn" @click="showCalSettings = false">取消</button>
+                                            <button class="wset-btn primary" @click="saveCalSettings">保存</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
                     </div>
                 </div>
 
-                <div class="card" style="margin-top: 20px">
-                    <div class="row">
-                        <div class="card-title" style="margin: 0">
-                            <span class="dot"></span>近 7 日作息趋势
-                        </div>
-                        <div style="font-size: 12px; color: var(--ink-muted)">
-                            平均睡眠
-                            <strong style="color: var(--jade)">7h 26min</strong>
-                            · 平均入睡
-                            <strong style="color: var(--jade)">23:08</strong>
-                        </div>
-                    </div>
-                    <div class="mini-chart">
-                        <svg
-                            class="chart-svg"
-                            viewBox="0 0 700 150"
-                            preserveAspectRatio="none"
-                        >
-                            <defs>
-                                <linearGradient
-                                    id="trendGrad"
-                                    x1="0"
-                                    y1="0"
-                                    x2="0"
-                                    y2="1"
-                                >
-                                    <stop
-                                        offset="0%"
-                                        stop-color="#5C8374"
-                                        stop-opacity="0.35"
-                                    />
-                                    <stop
-                                        offset="100%"
-                                        stop-color="#5C8374"
-                                        stop-opacity="0"
-                                    />
-                                </linearGradient>
-                            </defs>
-                            <line
-                                class="chart-grid"
-                                x1="0"
-                                y1="40"
-                                x2="700"
-                                y2="40"
-                            />
-                            <line
-                                class="chart-grid"
-                                x1="0"
-                                y1="80"
-                                x2="700"
-                                y2="80"
-                            />
-                            <line
-                                class="chart-grid"
-                                x1="0"
-                                y1="120"
-                                x2="700"
-                                y2="120"
-                            />
-                            <path
-                                d="M 50 95 L 158 70 L 266 85 L 374 55 L 482 65 L 590 45 L 650 50 L 650 150 L 50 150 Z"
-                                fill="url(#trendGrad)"
-                            />
-                            <path
-                                d="M 50 95 L 158 70 L 266 85 L 374 55 L 482 65 L 590 45 L 650 50"
-                                fill="none"
-                                stroke="#5C8374"
-                                stroke-width="2.5"
-                            />
-                            <circle cx="50" cy="95" r="4" fill="#5C8374" />
-                            <circle cx="158" cy="70" r="4" fill="#5C8374" />
-                            <circle cx="266" cy="85" r="4" fill="#5C8374" />
-                            <circle cx="374" cy="55" r="4" fill="#5C8374" />
-                            <circle cx="482" cy="65" r="4" fill="#5C8374" />
-                            <circle cx="590" cy="45" r="4" fill="#5C8374" />
-                            <circle cx="650" cy="50" r="4" fill="#B33C2C" />
-                        </svg>
-                    </div>
-                    <div class="chart-labels">
-                        <span>5/14</span><span>5/15</span><span>5/16</span
-                        ><span>5/17</span><span>5/18</span><span>5/19</span
-                        ><span>5/20</span>
-                    </div>
-                </div>
             </section>
 
             <!-- ===== Module 3: 养生经验分享 ===== -->
@@ -1122,7 +1261,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
 
@@ -1171,59 +1310,344 @@ const ringOffset = computed(() => {
     return RING_C * (1 - done / checkItems.value.length);
 });
 
-const weekDays = [
-    { label: "一", status: "done", display: "✓" },
-    { label: "二", status: "done", display: "✓" },
-    { label: "三", status: "today", display: "今" },
-    { label: "四", status: "", display: "·" },
-    { label: "五", status: "", display: "·" },
-    { label: "六", status: "", display: "·" },
-    { label: "日", status: "", display: "·" },
-];
+// ── 日期工具 ──────────────────────────────────────────
+function fmtDate(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const todayKey = computed(() => fmtDate(new Date()));
 
+// ── 先声明打卡项和心情（watch 依赖它们）──────────────────
 const moods = ["😔 疲惫", "😐 平常", "🙂 轻松", "😄 元气满满"];
-const selectedMood = ref("🙂 轻松");
+const selectedMood = ref('');
+const checkItems = ref<{ name: string; icon: string; meta: string; done: boolean }[]>([]);
 
-const checkItems = ref([
-    {
-        name: "早起",
-        icon: "🌅",
-        meta: "目标 06:30 前 · 已完成 06:24",
-        done: true,
-    },
-    {
-        name: "喝水",
-        icon: "💧",
-        meta: "目标 2000ml · 已饮 1500ml",
-        done: false,
-    },
-    {
-        name: "运动",
-        icon: "🏃",
-        meta: "目标 30 分钟 · 八段锦 32 分钟",
-        done: true,
-    },
-    { name: "冥想静心", icon: "🧘", meta: "目标 10 分钟 · 已完成", done: true },
-    { name: "健康饮食", icon: "🥗", meta: "三餐清淡 · 已记录", done: true },
-    {
-        name: "早睡",
-        icon: "🌙",
-        meta: "目标 23:00 前 · 待今晚打卡",
-        done: true,
-    },
-]);
+// ── 历史打卡存档 ──────────────────────────────────────
+interface DayRecord {
+    items: { name: string; icon: string; meta: string; done: boolean }[];
+    mood: string;
+}
+const checkinHistory = ref<Record<string, DayRecord>>({});
 
-function completeAllChecks() {
-    checkItems.value.forEach((i) => {
-        i.done = true;
-    });
-    toast("🎉 今日打卡全部完成，连续 29 天！");
+function saveTodayHistory() {
+    if (checkItems.value.length === 0) return;
+    checkinHistory.value[todayKey.value] = {
+        items: checkItems.value.map(i => ({ ...i })),
+        mood: selectedMood.value,
+    };
 }
 
-const heatmapData = [
-    3, 4, 2, 3, 4, 3, 4, 2, 3, 4, 4, 3, 3, 4, 3, 2, 4, 3, 4, 4, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0,
+// ── 本周打卡（以周一为起点）────────────────────────────
+const weekDays = computed(() => {
+    const h = checkinHistory.value;
+    const now = new Date();
+    const dow = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((dow + 6) % 7));
+    const labels = ['一', '二', '三', '四', '五', '六', '日'];
+    return labels.map((label, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const key = fmtDate(d);
+        const isToday = key === todayKey.value;
+        const record = h[key];
+        const hasDone = record ? record.items.some(it => it.done) : false;
+        return {
+            key, label, isToday, hasDone,
+            status: isToday ? 'today' : hasDone ? 'done' : '',
+            display: isToday ? '今' : hasDone ? '✓' : '·',
+        };
+    });
+});
+
+const thisWeekDoneCount = computed(() => weekDays.value.filter(d => d.hasDone).length);
+
+// ── 月历 ───────────────────────────────────────────────
+const calYear = ref(new Date().getFullYear());
+const calMonth = ref(new Date().getMonth());
+const yearOptions = computed(() => {
+    const y = new Date().getFullYear();
+    return [y - 1, y, y + 1];
+});
+
+const calTitle = computed(() => `打卡日历 · ${calMonth.value + 1} 月`);
+
+const calendarCells = computed(() => {
+    const h = checkinHistory.value;
+    const y = calYear.value, m = calMonth.value;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const blanks = (new Date(y, m, 1).getDay() + 6) % 7;
+    const cells: { type: 'blank' | 'day'; key: string; day: number; level: number; isToday: boolean; hasData: boolean }[] = [];
+    for (let i = 0; i < blanks; i++) cells.push({ type: 'blank', key: '', day: 0, level: 0, isToday: false, hasData: false });
+    for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const record = h[key];
+        const hasDone = record ? record.items.some(i => i.done) : false;
+        const level = hasDone ? 4 : 0;
+        cells.push({ type: 'day', key, day: d, level, isToday: key === todayKey.value, hasData: !!record });
+    }
+    return cells;
+});
+
+const calMonthDoneCount = computed(() => calendarCells.value.filter(c => c.type === 'day' && c.level > 0).length);
+
+function calPrevMonth() {
+    calMonth.value === 0 ? (calMonth.value = 11, calYear.value--) : calMonth.value--;
+}
+function calNextMonth() {
+    calMonth.value === 11 ? (calMonth.value = 0, calYear.value++) : calMonth.value++;
+}
+
+// ── 历史详情弹窗 ───────────────────────────────────────
+const showHistoryDetail = ref(false);
+const historyDetailKey = ref('');
+const historyDetailRecord = computed(() => checkinHistory.value[historyDetailKey.value] ?? null);
+function openHistoryDetail(key: string) {
+    historyDetailKey.value = key;
+    showHistoryDetail.value = true;
+}
+
+const checkinEmojiOptions = [
+    "🌅","💧","🏃","🧘","🥗","🌙","📖","🎯","💪","🧹","🛌","☀️","🎵","✍️","🧘‍♀️","🍵"
 ];
+const showCheckinDialog = ref(false);
+const checkinForm = ref({ icon: "🎯", name: "", meta: "" });
+
+function openCheckinDialog() {
+    checkinForm.value = { icon: "🎯", name: "", meta: "" };
+    showCheckinDialog.value = true;
+}
+
+function saveCheckin() {
+    if (!checkinForm.value.name.trim()) return;
+    checkItems.value.push({
+        icon: checkinForm.value.icon || "🎯",
+        name: checkinForm.value.name.trim(),
+        meta: checkinForm.value.meta.trim(),
+        done: false,
+    });
+    showCheckinDialog.value = false;
+    saveTodayHistory();
+}
+
+function removeCheckin(idx: number) {
+    checkItems.value.splice(idx, 1);
+    saveTodayHistory();
+}
+
+function toggleCheckinItem(idx: number) {
+    checkItems.value[idx].done = !checkItems.value[idx].done;
+    saveTodayHistory();
+}
+
+const allChecksDone = computed(
+    () => checkItems.value.length > 0 && checkItems.value.every((i) => i.done),
+);
+
+function toggleAllChecks() {
+    const target = !allChecksDone.value;
+    checkItems.value.forEach((i) => { i.done = target; });
+    saveTodayHistory();
+    toast(target ? "🎉 今日打卡全部完成！" : "已取消今日全部打卡");
+}
+
+function selectMood(mood: string) {
+    selectedMood.value = mood;
+    saveTodayHistory();
+}
+
+// ── 打卡海报 ──────────────────────────────────────────
+const showPoster = ref(false);
+const posterCanvasRef = ref<HTMLCanvasElement | null>(null);
+
+function openPoster() {
+    showPoster.value = true;
+    nextTick(drawPoster);
+}
+
+function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+function drawPoster() {
+    const canvas = posterCanvasRef.value;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+
+    const W = 750;
+    const items = checkItems.value;
+    const itemH = 88;
+    const listTop = 440;
+    const H = listTop + Math.max(items.length, 1) * itemH + 160;
+    canvas.width = W;
+    canvas.height = H;
+
+    // ── 背景渐变 ──
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#e8f0e4');
+    bg.addColorStop(0.55, '#faf6ee');
+    bg.addColorStop(1, '#d5e3d0');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // 装饰圆
+    ctx.fillStyle = 'rgba(92,131,116,0.07)';
+    ctx.beginPath(); ctx.arc(680, 80, 180, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(30, H - 60, 130, 0, Math.PI * 2); ctx.fill();
+
+    // ── 顶部品牌区 ──
+    ctx.fillStyle = '#b33c2c';
+    ctx.beginPath(); ctx.arc(W / 2, 88, 44, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 38px STKaiti, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('颐', W / 2, 102);
+
+    ctx.fillStyle = '#2c3639';
+    ctx.font = 'bold 42px STKaiti, serif';
+    ctx.fillText('颐养阁', W / 2, 182);
+
+    ctx.fillStyle = '#6b7c7a';
+    ctx.font = '22px sans-serif';
+    ctx.fillText('每日打卡 · 健康生活', W / 2, 216);
+
+    // 日期
+    const now = new Date();
+    const dateStr = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日`;
+    ctx.fillStyle = '#5c8374';
+    ctx.font = '20px sans-serif';
+    ctx.fillText(dateStr, W / 2, 250);
+
+    // 分割线
+    ctx.strokeStyle = 'rgba(92,131,116,0.22)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(60, 272); ctx.lineTo(690, 272); ctx.stroke();
+
+    // ── 进度环 ──
+    const done = items.filter(i => i.done).length;
+    const total = items.length;
+    const cx = W / 2, cy = 358, r = 70;
+
+    ctx.strokeStyle = '#e4ddd2';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI * 2 - Math.PI / 2);
+    ctx.stroke();
+
+    if (total > 0) {
+        const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+        grad.addColorStop(0, '#5c8374');
+        grad.addColorStop(1, '#a8c5a0');
+        ctx.strokeStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI * 2 * (done / total) - Math.PI / 2);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = '#2c3639';
+    ctx.font = 'bold 46px STKaiti, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${done}/${total}`, cx, cy + 14);
+    ctx.fillStyle = '#6b7c7a';
+    ctx.font = '20px sans-serif';
+    ctx.fillText('今日完成', cx, cy + 42);
+
+    // 分割线
+    ctx.strokeStyle = 'rgba(92,131,116,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, 416); ctx.lineTo(690, 416); ctx.stroke();
+
+    // ── 打卡清单 ──
+    if (items.length === 0) {
+        ctx.fillStyle = '#9aaba8';
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无打卡项，快去添加吧～', W / 2, listTop + 50);
+    } else {
+        items.forEach((item, i) => {
+            const iy = listTop + i * itemH;
+
+            // 卡片底色
+            if (item.done) {
+                ctx.fillStyle = 'rgba(92,131,116,0.13)';
+            } else {
+                ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            }
+            rrect(ctx, 48, iy, W - 96, 72, 14);
+            ctx.fill();
+
+            // emoji 图标
+            ctx.font = '32px serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(item.icon, 76, iy + 46);
+
+            // 名称
+            ctx.fillStyle = item.done ? '#3d6b5e' : '#2c3639';
+            ctx.font = `${item.done ? 'bold' : '500'} 26px sans-serif`;
+            ctx.fillText(item.name, 128, iy + 36);
+
+            // 备注
+            if (item.meta) {
+                ctx.fillStyle = '#9aaba8';
+                ctx.font = '19px sans-serif';
+                ctx.fillText(item.meta, 128, iy + 58);
+            }
+
+            // 勾选圆
+            const bx = W - 76, by = iy + 36;
+            if (item.done) {
+                ctx.fillStyle = '#5c8374';
+                ctx.beginPath(); ctx.arc(bx, by, 20, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('✓', bx, by + 7);
+            } else {
+                ctx.strokeStyle = '#c8d5d2';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(bx, by, 20, 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.textAlign = 'left';
+        });
+    }
+
+    // ── 页脚 ──
+    const fy = H - 90;
+    ctx.strokeStyle = 'rgba(92,131,116,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, fy - 20); ctx.lineTo(690, fy - 20); ctx.stroke();
+
+    ctx.fillStyle = '#5c8374';
+    ctx.font = '22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🌿 健康生活，从每日打卡开始', W / 2, fy + 14);
+    ctx.fillStyle = '#9aaba8';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('颐养阁养生社区', W / 2, fy + 44);
+}
+
+function downloadPoster() {
+    const canvas = posterCanvasRef.value;
+    if (!canvas) return;
+    const now = new Date();
+    const name = `颐养阁打卡海报_${now.getMonth() + 1}月${now.getDate()}日.png`;
+    const a = document.createElement('a');
+    a.download = name;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+}
+// ─────────────────────────────────────────────────────
+
 
 const milestones = [
     {
@@ -1259,43 +1683,101 @@ const milestones = [
 ];
 
 // ---- Module 2: Lifestyle ----
-const meals = [
-    {
-        name: "早餐",
-        emoji: "🥣",
-        tag: "清淡",
-        foods: "小米南瓜粥、水煮蛋、凉拌时蔬",
-        cal: 420,
-        bg: "breakfast",
-    },
-    {
-        name: "午餐",
-        emoji: "🍲",
-        tag: "均衡",
-        foods: "糙米饭、清蒸鲈鱼、西兰花、紫菜汤",
-        cal: 610,
-        bg: "lunch",
-    },
-    {
-        name: "晚餐",
-        emoji: "🥗",
-        tag: "少油",
-        foods: "杂粮馒头、山药排骨汤、炒青菜",
-        cal: 480,
-        bg: "dinner",
-    },
-    {
-        name: "加餐 / 茶饮",
-        emoji: "＋",
-        tag: "",
-        foods: "点击记录加餐、养生茶或水果",
-        cal: 0,
-        bg: "empty",
-        empty: true,
-    },
+const meals = ref<{ name: string; emoji: string; bg: string; foods: string; cal: number; image: string }[]>([]);
+
+const mealTypes = [
+    { name: "早茶",   emoji: "🍵", bg: "mt-morning-tea" },
+    { name: "早餐",   emoji: "🥣", bg: "mt-breakfast" },
+    { name: "午餐",   emoji: "🍲", bg: "mt-lunch" },
+    { name: "下午茶", emoji: "☕", bg: "mt-tea-break" },
+    { name: "晚餐",   emoji: "🥗", bg: "mt-dinner" },
+    { name: "夜宵",   emoji: "🌙", bg: "mt-supper" },
+    { name: "加餐",   emoji: "🍎", bg: "mt-snack" },
 ];
 
+const showMealDialog = ref(false);
+const mealForm = ref({ name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" });
+const mealImgInputRef = ref<HTMLInputElement | null>(null);
+
+function openMealDialog() {
+    mealForm.value = { name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" };
+    showMealDialog.value = true;
+}
+
+function selectMealType(t: typeof mealTypes[0]) {
+    mealForm.value.name  = t.name;
+    mealForm.value.emoji = t.emoji;
+    mealForm.value.bg    = t.bg;
+}
+
+function triggerMealImgInput() {
+    mealImgInputRef.value?.click();
+}
+
+function onMealImgSelect(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { mealForm.value.image = ev.target?.result as string; };
+    reader.readAsDataURL(file);
+    (e.target as HTMLInputElement).value = "";
+}
+
+function saveMeal() {
+    if (!mealForm.value.foods.trim() && mealForm.value.cal === 0) return;
+    meals.value.push({ ...mealForm.value });
+    showMealDialog.value = false;
+}
+
+function removeMeal(idx: number) {
+    meals.value.splice(idx, 1);
+}
+
+const totalCal = computed(() =>
+    meals.value.reduce((sum, m) => sum + (m.cal || 0), 0),
+);
+const calOver = computed(() => totalCal.value > calGoal.value);
+const calPct = computed(() =>
+    Math.min(100, Math.round((totalCal.value / calGoal.value) * 100)),
+);
+const calCircleStyle = computed(() => {
+    const fill = calOver.value ? 'var(--cinnabar)' : 'var(--gold)';
+    const p = calPct.value;
+    return { background: `conic-gradient(${fill} 0% ${p}%, var(--cream) ${p}% 100%)` };
+});
+
 const waterFilled = ref(6);
+const waterGoal = ref(2000);
+const waterCupSize = ref(250);
+const waterCupCount = computed(() => Math.ceil(waterGoal.value / waterCupSize.value));
+const showWaterSettings = ref(false);
+const wsetForm = ref({ goal: 2000, cupSize: 250 });
+
+function openWaterSettings() {
+    wsetForm.value = { goal: waterGoal.value, cupSize: waterCupSize.value };
+    showWaterSettings.value = true;
+}
+
+function saveWaterSettings() {
+    waterGoal.value = wsetForm.value.goal;
+    waterCupSize.value = wsetForm.value.cupSize;
+    waterFilled.value = 0;
+    showWaterSettings.value = false;
+}
+
+const calGoal = ref(1800);
+const showCalSettings = ref(false);
+const calForm = ref({ goal: 1800 });
+
+function openCalSettings() {
+    calForm.value.goal = calGoal.value;
+    showCalSettings.value = true;
+}
+
+function saveCalSettings() {
+    calGoal.value = calForm.value.goal;
+    showCalSettings.value = false;
+}
 
 const nutrition = [
     { label: "碳水化合物", value: "192g", pct: 70, color: "var(--gold)" },
@@ -2167,6 +2649,72 @@ const badges = [
 .check-item.done .ci-icon {
     background: var(--paper);
 }
+.ci-del {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    &:hover { color: var(--cinnabar); background: var(--cinnabar-soft); }
+}
+.check-item:hover .ci-del { opacity: 1; }
+.checkin-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 32px 0;
+    margin-top: 14px;
+    border: 2px dashed var(--line);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+}
+.checkin-empty-icon { font-size: 32px; opacity: 0.5; }
+.checkin-empty-text { font-size: 13px; color: var(--ink-muted); }
+.checkin-dialog { width: min(560px, 92vw) !important; }
+.checkin-emoji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 6px;
+}
+.checkin-emoji-btn {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    background: var(--cream);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+    &.active { border-color: var(--jade); background: var(--jade-soft); }
+}
+.checkin-icon-input, .checkin-text-input {
+    width: 100%;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    box-sizing: border-box;
+    margin-top: 6px;
+    &:focus { border-color: var(--jade); }
+}
 
 // Heatmap
 .heatmap {
@@ -2184,6 +2732,23 @@ const badges = [
     aspect-ratio: 1;
     border-radius: 5px;
     background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.hm-cell-day {
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-weight: 500;
+    line-height: 1;
+}
+.hm-cell.lv1 .hm-cell-day,
+.hm-cell.lv2 .hm-cell-day,
+.hm-cell.lv3 .hm-cell-day,
+.hm-cell.lv4 .hm-cell-day {
+    color: var(--paper);
+    font-weight: 600;
 }
 .hm-cell.lv1 {
     background: #d6e5dc;
@@ -2197,8 +2762,79 @@ const badges = [
 .hm-cell.lv4 {
     background: var(--jade);
 }
-.hm-cell.muted {
-    background: transparent;
+.hm-cell.muted { background: transparent; }
+.hm-cell.hm-today {
+    outline: 2px solid var(--jade);
+    outline-offset: 1px;
+}
+.hm-cell.hm-today .hm-cell-day {
+    color: var(--jade);
+    font-weight: 700;
+    font-size: 13px;
+}
+.hm-cell.hm-clickable { cursor: pointer; &:hover { filter: brightness(0.88); } }
+.cal-nav-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--cream);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--ink-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:hover { background: var(--jade-soft); color: var(--jade); }
+}
+.cal-month-select {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper);
+    padding: 3px 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+    cursor: pointer;
+    outline: none;
+    &:focus { border-color: var(--jade); }
+}
+.history-dialog { width: min(440px, 92vw) !important; }
+.history-content { display: flex; flex-direction: column; gap: 14px; }
+.history-mood {
+    font-size: 14px;
+    color: var(--ink-muted);
+    strong { color: var(--ink); font-size: 15px; }
+}
+.history-items { display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    &.done { background: var(--jade-soft); border-color: rgba(92,131,116,0.25); }
+}
+.history-item-icon { font-size: 20px; flex-shrink: 0; }
+.history-item-name { font-size: 14px; font-weight: 600; color: var(--ink); flex: 1; }
+.history-item-meta { font-size: 12px; color: var(--ink-muted); }
+.history-item-status {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--jade);
+    flex-shrink: 0;
+    .history-item:not(.done) & { color: var(--ink-muted); }
+}
+.history-summary {
+    text-align: center;
+    font-size: 13px;
+    color: var(--jade);
+    font-weight: 600;
+    padding: 8px;
+    background: var(--jade-soft);
+    border-radius: 8px;
 }
 .hm-legend {
     display: flex;
@@ -2266,6 +2902,33 @@ const badges = [
 }
 
 // Meal Cards
+.meal-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 36px 0;
+    cursor: pointer;
+    border-radius: 12px;
+    border: 2px dashed var(--line);
+    margin-top: 14px;
+    transition: all 0.2s;
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+}
+.meal-empty-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--cream);
+    border: 2px dashed var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--ink-muted);
+}
+.meal-empty-text { font-size: 13px; color: var(--ink-muted); }
 .meal-card {
     background: var(--paper-warm);
     border: 1px solid var(--line);
@@ -2277,44 +2940,55 @@ const badges = [
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
+.meal-add-card { cursor: pointer; opacity: 0.7; &:hover { opacity: 1; } }
 .meal-img {
     height: 96px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 40px;
+    position: relative;
 }
-.meal-img.breakfast {
-    background: linear-gradient(135deg, var(--gold-soft), #efd9a8);
-}
-.meal-img.lunch {
-    background: linear-gradient(135deg, var(--jade-soft), #d5e4da);
-}
-.meal-img.dinner {
-    background: linear-gradient(135deg, var(--moon-soft), #c8d5e5);
-}
-.meal-img.empty {
+.meal-add-img {
     background: var(--cream);
     font-size: 30px;
     color: var(--ink-muted);
     border-bottom: 1px dashed var(--line);
 }
-.meal-body {
-    padding: 12px 14px;
+.mt-morning-tea   { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+.mt-breakfast     { background: linear-gradient(135deg, var(--gold-soft), #efd9a8); }
+.mt-lunch         { background: linear-gradient(135deg, var(--jade-soft), #d5e4da); }
+.mt-tea-break     { background: linear-gradient(135deg, #ede9fe, #c4b5fd44); }
+.mt-dinner        { background: linear-gradient(135deg, var(--moon-soft), #c8d5e5); }
+.mt-light-dinner  { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+.mt-supper        { background: linear-gradient(135deg, #1e293b22, #334155aa); }
+.mt-snack         { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+.meal-del {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.18);
+    border: none;
+    color: white;
+    font-size: 11px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    &:hover { background: var(--cinnabar); }
 }
+.meal-card:hover .meal-del { display: flex; }
+.meal-body { padding: 12px 14px; }
 .meal-name {
     font-size: 14px;
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-.meal-tag {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 8px;
-    background: var(--jade-soft);
-    color: var(--jade);
 }
 .meal-foods {
     font-size: 12px;
@@ -2328,23 +3002,338 @@ const badges = [
     font-weight: 600;
     margin-top: 8px;
 }
+.meal-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 6px;
+}
+.meal-type-btn {
+    padding: 8px 4px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    background: var(--cream);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+    &.active { border-color: var(--jade); background: var(--jade-soft); color: var(--jade); font-weight: 600; }
+}
+.meal-dialog {
+    width: min(700px, 92vw) !important;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+.meal-dialog-header {
+    font-size: 18px !important;
+    padding: 18px 22px !important;
+}
+.meal-dialog-body {
+    padding: 20px 22px !important;
+    gap: 20px !important;
+}
+.meal-dialog-btn {
+    height: 44px !important;
+    font-size: 15px !important;
+    padding: 0 28px !important;
+}
+.meal-field { display: flex; flex-direction: column; gap: 8px; }
+.meal-field-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.meal-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+.meal-type-btn {
+    padding: 12px 8px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    background: var(--cream);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+    &.active { border-color: var(--jade); background: var(--jade-soft); color: var(--jade); font-weight: 600; }
+}
+.meal-img-upload {
+    width: 100%;
+    height: 140px;
+    border: 2px dashed var(--line);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    background: var(--cream);
+    &:hover { border-color: var(--jade); background: var(--jade-soft); }
+    &.has-img { border-style: solid; border-color: var(--line); }
+}
+.meal-img-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.meal-img-icon { font-size: 28px; }
+.meal-img-hint { font-size: 13px; color: var(--ink-muted); }
+.meal-img-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: none;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:hover { background: var(--cinnabar); }
+}
+.meal-textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box;
+    color: var(--ink);
+    &:focus { border-color: var(--jade); }
+}
+.meal-cal-input {
+    flex: 1;
+    height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    &:focus { border-color: var(--jade); }
+}
+.meal-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
 
 // Water
 .water-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin: 8px 0 16px;
+    gap: 10px;
+    margin: 8px 0 12px;
 }
-.water-cup {
-    aspect-ratio: 1;
-    border-radius: 12px;
-    border: 2px solid var(--line);
-    background: var(--cream);
+.water-setting-btn {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink-muted);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    transition: all 0.15s;
+    &:hover { background: var(--cream); color: var(--ink); }
+}
+.wset-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(44, 54, 57, 0.4);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wset-dialog {
+    width: 320px;
+    background: var(--paper, #fffef9);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(44, 54, 57, 0.18);
+    border: 1px solid rgba(232, 223, 208, 0.9);
+    overflow: hidden;
+}
+.wset-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    font-family: "STKaiti", serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--ink-muted);
+        &:hover { color: var(--ink); }
+    }
+}
+.wset-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--ink-muted);
+    }
+}
+.wset-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    input {
+        flex: 1;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        font-size: 14px;
+        font-family: inherit;
+        color: var(--ink);
+        outline: none;
+        &:focus { border-color: var(--jade); }
+    }
+}
+.wset-unit {
+    font-size: 13px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+.wset-preview {
+    padding: 10px 12px;
+    background: var(--jade-soft, #eef5ec);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--jade);
+    strong { font-size: 16px; }
+}
+.wset-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--line);
+}
+.wset-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--ink);
+    transition: all 0.15s;
+    &:hover { border-color: var(--jade); }
+    &.primary {
+        background: var(--jade);
+        color: white;
+        border-color: var(--jade);
+        &:hover { background: #4a6f60; }
+    }
+}
+.poster-modal {
+    background: var(--paper, #fffef9);
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(44,54,57,0.22);
+    border: 1px solid rgba(232,223,208,0.9);
+    width: min(520px, 92vw);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.poster-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    font-family: "STKaiti", serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    button {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: var(--ink-muted);
+        &:hover { color: var(--ink); }
+    }
+}
+.poster-canvas-wrap {
+    padding: 16px;
+    background: #f0ebe2;
+    display: flex;
+    justify-content: center;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+.poster-canvas {
+    width: 100%;
+    max-width: 480px;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(44,54,57,0.15);
+    display: block;
+}
+.poster-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--line);
+}
+.wset-modal-enter-active, .wset-modal-leave-active {
+    transition: opacity 0.18s ease;
+    .wset-dialog { transition: transform 0.18s ease, opacity 0.18s ease; }
+}
+.wset-modal-enter-from, .wset-modal-leave-to {
+    opacity: 0;
+    .wset-dialog { transform: translateY(10px) scale(0.97); opacity: 0; }
+}
+.water-cup {
+    aspect-ratio: 1;
+    border-radius: 14px;
+    border: 2.5px solid var(--line);
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     cursor: pointer;
     transition: all 0.2s;
     opacity: 0.45;
@@ -2352,10 +3341,24 @@ const badges = [
 .water-cup.filled {
     background: var(--moon-soft);
     border-color: var(--moon);
+    border-width: 2.5px;
     opacity: 1;
 }
-.water-cup:hover {
-    transform: scale(1.05);
+.water-cup:hover { transform: scale(1.05); }
+.wc-emoji { font-size: clamp(30px, 4.5vw, 46px); line-height: 1; }
+.wc-label { font-size: 10px; color: var(--ink-muted); line-height: 1; letter-spacing: 0.2px; }
+.water-cup.filled .wc-label { color: var(--moon); font-weight: 600; }
+.wset-inline-btn {
+    font-size: 12px;
+    color: var(--jade);
+    background: var(--jade-soft, #eef5ec);
+    border: 1px solid rgba(92,131,116,0.3);
+    border-radius: 5px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    &:hover { background: var(--jade); color: white; }
 }
 
 // Nutrition
@@ -2365,18 +3368,29 @@ const badges = [
     gap: 18px;
 }
 .cal-circle {
-    width: 110px;
-    height: 110px;
+    width: min(260px, 100%);
+    aspect-ratio: 1;
     border-radius: 50%;
     flex-shrink: 0;
-    background: conic-gradient(var(--gold) 0% 72%, var(--cream) 72% 100%);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.4s ease;
+}
+.cal-over-tip {
+    margin-top: 10px;
+    text-align: center;
+    padding: 8px 14px;
+    background: var(--cinnabar-soft, #fae5e0);
+    border: 1px solid rgba(179, 60, 44, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--cinnabar);
+    strong { font-size: 15px; }
 }
 .cal-circle .inner {
-    width: 84px;
-    height: 84px;
+    width: 76%;
+    aspect-ratio: 1;
     border-radius: 50%;
     background: var(--paper);
     display: flex;
@@ -2386,13 +3400,14 @@ const badges = [
 }
 .cal-circle .inner .num {
     font-family: "STKaiti", serif;
-    font-size: 24px;
+    font-size: clamp(24px, 4vw, 38px);
     font-weight: 600;
     color: var(--ink);
 }
 .cal-circle .inner .unit {
-    font-size: 11px;
+    font-size: clamp(11px, 1.2vw, 15px);
     color: var(--ink-muted);
+    margin-top: 2px;
 }
 .nutri-bar {
     margin-bottom: 12px;
