@@ -2,7 +2,7 @@
 <template>
     <nav class="navbar">
         <div class="navbar-inner" :class="{ scrolled }">
-            <a class="nav-logo" href="/landing">
+            <a class="nav-logo" href="#" @click.prevent>
                 <div class="nav-logo-blob">颐</div>
                 <span class="nav-logo-name">颐养阁</span>
             </a>

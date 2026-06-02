@@ -1,7 +1,7 @@
 <!-- src/components/landing/LandingScene.vue -->
 <template>
     <div class="scene" aria-hidden="true">
-        <div class="scene-bg" />
+        <div class="scene-bg" :style="bgStyle" />
         <div class="scene-vignette" />
 
         <!-- God Rays -->
@@ -17,7 +17,12 @@
     </div>
 </template>
 
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+// 本地图片不存在时回退到 Unsplash CDN；同时正确处理 Vite base 路径（/e-commerce）
+const localImg = `${import.meta.env.BASE_URL}assets/images/forest-bg.jpg`
+const fallbackImg = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=85&auto=format&fit=crop'
+const bgStyle = { backgroundImage: `url('${localImg}'), url('${fallbackImg}')` }
+</script>
 
 <style lang="scss" scoped>
 .scene {
@@ -31,7 +36,7 @@
 .scene-bg {
     position: absolute;
     inset: -8%;
-    background-image: url("/assets/images/forest-bg.jpg");
+    /* background-image 由 :style="bgStyle" 内联注入，同时支持 base 路径和 CDN 回退 */
     background-size: cover;
     background-position: center 30%;
     animation: kenBurns 28s ease-in-out infinite alternate;
