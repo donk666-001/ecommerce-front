@@ -239,7 +239,6 @@ interface Order {
 interface Agent {
     id: string;
     name: string;
-    desc: string;
     tag: string;
     status: string;
     avatar: string;
@@ -263,16 +262,14 @@ const agents: Agent[] = [
     {
         id: "cs1",
         name: "小翠",
-        desc: "售前 · 商品咨询 / 配送 / 退换货",
-        tag: "售前客服",
+        tag: "在线客服",
         status: "online",
         avatar: "客一",
     },
     {
         id: "cs2",
         name: "阿岚",
-        desc: "售后 · 退款 / 物流异常 / 投诉处理",
-        tag: "售后客服",
+        tag: "在线客服",
         status: "online",
         avatar: "客二",
     },
@@ -280,13 +277,13 @@ const agents: Agent[] = [
 
 const presetReplies: Record<string, string[]> = {
     cs1: [
-        "您好，这边是颐养阁售前客服小翠，很高兴为您服务～",
-        "请问您想了解哪款商品呢？我可以帮您查询库存、规格、配送时效。",
+        "您好，我是颐养阁客服小翠，请问有什么可以帮您？",
+        "请问您想了解哪款商品？我可以帮您查询库存、规格及配送时效。",
         "满 88 元包邮，江浙沪次日达。",
     ],
     cs2: [
-        "您好，售后客服阿岚为您服务～",
-        "商品有任何质量问题 7 天无理由退换，物流异常我可以帮您催件。",
+        "您好，我是颐养阁客服阿岚，请问有什么可以帮您？",
+        "商品支持 7 天无理由退换，如有物流异常可提供订单编号，我帮您跟进。",
     ],
 };
 
@@ -322,7 +319,7 @@ const chatHistory = ref<Record<string, ChatMsg[]>>({
     cs1: [
         {
             from: "agent",
-            text: "您好，这边是颐养阁售前客服小翠，很高兴为您服务～",
+            text: "您好，我是颐养阁客服小翠，请问有什么可以帮您？",
             time: "10:01",
         },
         {
@@ -339,7 +336,7 @@ const chatHistory = ref<Record<string, ChatMsg[]>>({
     cs2: [
         {
             from: "agent",
-            text: "您好，售后客服阿岚为您服务～若有订单问题请告知订单编号。",
+            text: "您好，我是颐养阁客服阿岚，请问有什么可以帮您？",
             time: "09:30",
         },
     ],

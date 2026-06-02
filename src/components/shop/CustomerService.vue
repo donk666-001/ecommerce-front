@@ -36,9 +36,6 @@
                     </div>
                     <div>
                         <h4>客服 · {{ currentAgentObj.name }}</h4>
-                        <div class="desc">
-                            {{ currentAgentObj.desc }}
-                        </div>
                     </div>
                     <div class="chat-header-tip">
                         为保护用户体验，同一客服不会同时回复多用户
@@ -139,7 +136,6 @@ import { ref, computed, nextTick, watch, onUnmounted } from "vue";
 interface Agent {
     id: string;
     name: string;
-    desc: string;
     tag: string;
     status: string;
     avatar: string;
