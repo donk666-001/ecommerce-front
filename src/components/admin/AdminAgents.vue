@@ -446,7 +446,6 @@ function saveAgent() {
         if (a)
             Object.assign(a, {
                 name: form.value.name,
-                role: form.value.role,
                 maxLoad: form.value.maxLoad,
                 workHours: form.value.workHours,
                 welcome: form.value.welcome,
@@ -459,7 +458,6 @@ function saveAgent() {
         agents.value.push({
             account: form.value.account,
             name: form.value.name,
-            role: form.value.role,
             maxLoad: form.value.maxLoad,
             currentLoad: 0,
             status: "off",
