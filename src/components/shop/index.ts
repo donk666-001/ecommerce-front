@@ -6,3 +6,5 @@ export { default as ProductDetailModal } from "./ProductDetailModal.vue";
 export { default as PaymentModal } from "./PaymentModal.vue";
 export { default as LogisticsModal } from "./LogisticsModal.vue";
 export { default as RefundModal } from "./RefundModal.vue";
+export { default as AddressModal } from "./AddressModal.vue";
+export type { AddressFormData } from "./AddressModal.vue";
