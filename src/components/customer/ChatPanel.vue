@@ -396,6 +396,7 @@ import {
 import { useQuickReplies } from "@/composables/useQuickReplies";
 import { customerWS } from "@/network/customer.ws";
 import { ElMessage } from "element-plus";
+import { bridgeAgentSend, bridgeEndSession } from "@/network/chatBridge";
 
 interface Session extends CustomerSession {
     // 扩展类型以兼容现有代码
@@ -407,6 +408,7 @@ const emit = defineEmits<{
     "switch-to-queue": [];
     "count-update": [count: number];
     "session-ended": [record: HistorySession];
+    "msg-count-update": [delta: number];
 }>();
 
 const sessions = ref<Session[]>([]);
@@ -590,6 +592,9 @@ function endSession(session: Session, reason: "manual" | "timeout") {
     const record = buildHistoryRecord(session, reason);
     emit("session-ended", record);
     waitingForCustomerSince.delete(session.id);
+    if (session.id.startsWith("bridge_")) {
+        bridgeEndSession(session.id);
+    }
     sessions.value = sessions.value.filter((s) => s.id !== session.id);
     if (currentSessionId.value === session.id) {
         currentSessionId.value = sessions.value[0]?.id || "";
@@ -679,14 +684,19 @@ async function sendMessage() {
             currentSession.value.messages.push({ from: "me", text, time });
             currentSession.value.lastMsg = text;
             markWaitingForCustomer(currentSession.value.id);
+            emit("msg-count-update", 1);
             inputText.value = "";
 
-            // 通过WebSocket发送消息
-            customerWS.send({
-                type: "send_message",
-                sessionId: currentSession.value.id,
-                message: { text, time },
-            });
+            // 桥会话直接同步到 bridge，不走 WS 模拟回复
+            if (currentSession.value.id.startsWith("bridge_")) {
+                bridgeAgentSend(currentSession.value.id, text);
+            } else {
+                customerWS.send({
+                    type: "send_message",
+                    sessionId: currentSession.value.id,
+                    message: { text, time },
+                });
+            }
         } else {
             ElMessage.error("发送失败");
         }
@@ -710,6 +720,7 @@ function handleWSMessage(data: any) {
                 if (data.message.from === "customer") {
                     markCustomerReplied(data.sessionId);
                 }
+                emit("msg-count-update", 1);
                 if (currentSessionId.value !== data.sessionId) {
                     session.unread++;
                 }
@@ -806,6 +817,7 @@ async function sendProduct(p: (typeof productList.value)[0]) {
         });
         currentSession.value.lastMsg = `[商品] ${p.name}`;
         markWaitingForCustomer(currentSession.value.id);
+        emit("msg-count-update", 1);
         showProductPicker.value = false;
         scrollToBottom();
     }
@@ -850,6 +862,7 @@ async function sendOrder(o: (typeof orderList.value)[0]) {
         });
         currentSession.value.lastMsg = `[订单] ${o.id}`;
         markWaitingForCustomer(currentSession.value.id);
+        emit("msg-count-update", 1);
         showOrderPicker.value = false;
         scrollToBottom();
     }
@@ -914,6 +927,7 @@ function handleImageSelect(e: Event) {
     });
     currentSession.value.lastMsg = "[图片]";
     markWaitingForCustomer(currentSession.value.id);
+    emit("msg-count-update", 1);
 
     // 重置 input，允许重复选同一文件
     input.value = "";

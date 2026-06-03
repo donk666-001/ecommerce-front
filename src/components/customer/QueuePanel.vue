@@ -31,7 +31,7 @@
                     <tbody>
                         <tr
                             v-for="(item, index) in paginatedList"
-                            :key="item.queueNum"
+                            :key="item.bridgeId ?? item.queueNum"
                         >
                             <td class="queue-num">
                                 {{ (currentPage - 1) * pageSize + index + 1 }}
@@ -54,7 +54,7 @@
                             <td>
                                 <button
                                     class="btn btn-jade"
-                                    @click="handleAccept(item.queueNum)"
+                                    @click="handleAccept(item)"
                                 >
                                     接入
                                 </button>
@@ -86,6 +86,14 @@ import {
     type CustomerSession,
 } from "@/network/customer";
 import { ElMessage } from "element-plus";
+import {
+    bridgeSessions,
+    bridgeAgentAccept,
+} from "@/network/chatBridge";
+
+interface QueueItem extends QueuedCustomer {
+    bridgeId?: string;
+}
 
 const emit = defineEmits<{
     "switch-to-chat": [session: CustomerSession];
@@ -98,12 +106,30 @@ const now = ref(Date.now());
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+// 桥中的真实排队（来自商城端）排在前面
+const mergedQueueList = computed<QueueItem[]>(() => [
+    ...bridgeSessions
+        .filter((s) => s.status === "queued")
+        .map((s, i) => ({
+            queueNum: -(i + 1),
+            custName: s.custName,
+            source: s.source,
+            sourceTag: "general" as const,
+            firstMsg: s.firstMsg,
+            startedAt: s.startedAt,
+            roleType: "presale" as const,
+            bridgeId: s.id,
+        })),
+    ...queueList.value.map((q) => ({ ...q, bridgeId: undefined })),
+]);
+
 const paginatedList = computed(() => {
     const start = (currentPage.value - 1) * pageSize.value;
-    return queueList.value.slice(start, start + pageSize.value);
+    return mergedQueueList.value.slice(start, start + pageSize.value);
 });
 
 let timerInterval: ReturnType<typeof setInterval>;
+let queuePollInterval: ReturnType<typeof setInterval>;
 
 function formatWaitTime(startedAt: string): string {
     const ms = now.value - new Date(startedAt).getTime();
@@ -129,26 +155,71 @@ async function loadQueue() {
     }
 }
 
-async function handleAccept(queueNum: number) {
-    try {
-        const session = await ApiCustomer.acceptFromQueue(queueNum);
-        if (session) {
-            ElMessage.success("已成功接入，正在跳转接待中...");
-            queueList.value = queueList.value.filter(
-                (item) => item.queueNum !== queueNum,
-            );
-            emit("switch-to-chat", session);
-        } else {
+async function handleAccept(item: QueueItem) {
+    if (item.bridgeId) {
+        // 来自商城端的真实排队
+        const bridgeSession = bridgeAgentAccept(item.bridgeId);
+        if (!bridgeSession) {
             ElMessage.error("接入失败");
+            return;
         }
-    } catch (error) {
-        console.error("接入客户失败:", error);
-        ElMessage.error("接入客户失败");
+        const t = new Date();
+        const time = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+        const session: CustomerSession = {
+            id: bridgeSession.id,
+            custId: bridgeSession.custId,
+            custName: bridgeSession.custName,
+            avatar: bridgeSession.custName.slice(-1),
+            source: bridgeSession.source,
+            sourceTag: "general",
+            startedAt: bridgeSession.startedAt,
+            unread: bridgeSession.messages.filter(
+                (m) => m.from === "customer",
+            ).length,
+            lastMsg: bridgeSession.firstMsg,
+            custTags: [],
+            custCity: "",
+            custReg: "",
+            custSpent: "¥0",
+            custOrderCount: 0,
+            custCart: [],
+            cartTotal: 0,
+            messages: [
+                { from: "sys", text: `会话开始 · ${time}`, time: "" },
+                ...bridgeSession.messages.map((m) => ({
+                    from:
+                        m.from === "customer"
+                            ? ("customer" as const)
+                            : ("me" as const),
+                    text: m.text,
+                    time: m.time,
+                })),
+            ],
+        };
+        ElMessage.success("已成功接入，正在跳转接待中...");
+        emit("switch-to-chat", session);
+    } else {
+        // 原有 mock 排队
+        try {
+            const session = await ApiCustomer.acceptFromQueue(item.queueNum);
+            if (session) {
+                ElMessage.success("已成功接入，正在跳转接待中...");
+                queueList.value = queueList.value.filter(
+                    (q) => q.queueNum !== item.queueNum,
+                );
+                emit("switch-to-chat", session);
+            } else {
+                ElMessage.error("接入失败");
+            }
+        } catch (error) {
+            console.error("接入客户失败:", error);
+            ElMessage.error("接入客户失败");
+        }
     }
 }
 
 watch(
-    () => queueList.value.length,
+    () => mergedQueueList.value.length,
     (count) => emit("count-update", count),
 );
 
@@ -157,10 +228,12 @@ onMounted(() => {
     timerInterval = setInterval(() => {
         now.value = Date.now();
     }, 1000);
+    queuePollInterval = setInterval(loadQueue, 8000);
 });
 
 onUnmounted(() => {
     clearInterval(timerInterval);
+    clearInterval(queuePollInterval);
 });
 </script>
 

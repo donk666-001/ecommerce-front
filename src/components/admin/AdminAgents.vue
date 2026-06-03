@@ -52,7 +52,6 @@
                     <tr>
                         <th>客服</th>
                         <th>工号</th>
-                        <th>职能</th>
                         <th>接待上限</th>
                         <th>在线状态</th>
                         <th>今日接待</th>
@@ -64,7 +63,7 @@
                 <tbody>
                     <tr v-if="filtered.length === 0">
                         <td
-                            colspan="9"
+                            colspan="8"
                             style="
                                 text-align: center;
                                 padding: 48px;
@@ -84,21 +83,6 @@
                             </div>
                         </td>
                         <td style="color: var(--ink-muted)">{{ a.account }}</td>
-                        <td>
-                            <span
-                                class="tag"
-                                :class="
-                                    a.role === 'presale'
-                                        ? 'tag-jade'
-                                        : 'tag-cinnabar'
-                                "
-                                >{{
-                                    a.role === "presale"
-                                        ? "售前客服"
-                                        : "售后客服"
-                                }}</span
-                            >
-                        </td>
                         <td>{{ a.currentLoad }} / {{ a.maxLoad }}</td>
                         <td>
                             <span
@@ -201,21 +185,6 @@
                             />
                         </div>
                         <div>
-                            <label>职能角色</label>
-                            <select
-                                v-model="form.role"
-                                class="sel"
-                                style="
-                                    width: 100%;
-                                    padding: 10px 12px;
-                                    font-size: 14px;
-                                "
-                            >
-                                <option value="presale">售前客服</option>
-                                <option value="aftersale">售后客服</option>
-                            </select>
-                        </div>
-                        <div>
                             <label>同时接待上限</label
                             ><input
                                 v-model.number="form.maxLoad"
@@ -297,7 +266,6 @@ import { ref, computed } from "vue";
 interface Agent {
     account: string;
     name: string;
-    role: string;
     maxLoad: number;
     currentLoad: number;
     status: string;
@@ -312,7 +280,6 @@ const agents = ref<Agent[]>([
     {
         account: "CS001",
         name: "小翠",
-        role: "presale",
         maxLoad: 5,
         currentLoad: 3,
         status: "online",
@@ -325,7 +292,6 @@ const agents = ref<Agent[]>([
     {
         account: "CS002",
         name: "阿岚",
-        role: "aftersale",
         maxLoad: 5,
         currentLoad: 2,
         status: "online",
@@ -338,7 +304,6 @@ const agents = ref<Agent[]>([
     {
         account: "CS003",
         name: "暮雨",
-        role: "presale",
         maxLoad: 5,
         currentLoad: 0,
         status: "break",
@@ -351,7 +316,6 @@ const agents = ref<Agent[]>([
     {
         account: "CS004",
         name: "青霜",
-        role: "aftersale",
         maxLoad: 5,
         currentLoad: 0,
         status: "off",
@@ -364,7 +328,6 @@ const agents = ref<Agent[]>([
     {
         account: "CS005",
         name: "松风",
-        role: "presale",
         maxLoad: 8,
         currentLoad: 0,
         status: "online",
@@ -443,7 +406,6 @@ const form = ref({
     account: "",
     name: "",
     pwd: "",
-    role: "presale",
     maxLoad: 5,
     workHours: "09:00-18:00",
     welcome: "您好，这边是颐养阁官方客服，很高兴为您服务～",
@@ -457,7 +419,6 @@ function openEdit(account: string | null) {
             account: a.account,
             name: a.name,
             pwd: "",
-            role: a.role,
             maxLoad: a.maxLoad,
             workHours: a.workHours,
             welcome: a.welcome,
@@ -467,7 +428,6 @@ function openEdit(account: string | null) {
             account: "",
             name: "",
             pwd: "",
-            role: "presale",
             maxLoad: 5,
             workHours: "09:00-18:00",
             welcome: "您好，这边是颐养阁官方客服，很高兴为您服务～",
@@ -486,7 +446,6 @@ function saveAgent() {
         if (a)
             Object.assign(a, {
                 name: form.value.name,
-                role: form.value.role,
                 maxLoad: form.value.maxLoad,
                 workHours: form.value.workHours,
                 welcome: form.value.welcome,
@@ -499,7 +458,6 @@ function saveAgent() {
         agents.value.push({
             account: form.value.account,
             name: form.value.name,
-            role: form.value.role,
             maxLoad: form.value.maxLoad,
             currentLoad: 0,
             status: "off",

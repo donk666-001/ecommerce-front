@@ -67,10 +67,19 @@
                     <template #header>
                         <div class="card-header">
                             <h4>💧 饮水追踪</h4>
-                            <el-tag type="primary">
-                                {{ waterIntake.current }} /
-                                {{ waterIntake.target }} ml
-                            </el-tag>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <el-tag type="primary">
+                                    {{ waterCurrent }} / {{ waterTarget }} ml
+                                </el-tag>
+                                <el-button
+                                    circle
+                                    size="small"
+                                    title="设置"
+                                    @click="openWaterSettings"
+                                >
+                                    <el-icon><Setting /></el-icon>
+                                </el-button>
+                            </div>
                         </div>
                     </template>
 
@@ -80,13 +89,6 @@
                             :color="waterColor"
                             :stroke-width="20"
                         />
-                        <div class="water-remaining">
-                            还差
-                            <strong>{{
-                                waterIntake.target - waterIntake.current
-                            }}</strong>
-                            ml 达到目标
-                        </div>
                     </div>
 
                     <div class="water-cups">
@@ -98,10 +100,45 @@
                             @click="toggleWaterCup(index)"
                         >
                             <el-icon v-if="cup.filled"><Check /></el-icon>
-                            <span class="cup-label">{{ cup.label }}</span>
+                            <span class="cup-label">{{ (index + 1) * cupSize }}ml</span>
                         </div>
                     </div>
                 </el-card>
+
+                <!-- 饮水设置弹窗 -->
+                <el-dialog
+                    v-model="showWaterSettings"
+                    title="饮水目标设置"
+                    width="360px"
+                    align-center
+                >
+                    <el-form :model="waterSettingsForm" label-width="90px">
+                        <el-form-item label="每日总量">
+                            <el-input-number
+                                v-model="waterSettingsForm.target"
+                                :min="500"
+                                :max="5000"
+                                :step="100"
+                                style="width:100%"
+                            />
+                            <span style="margin-left:8px;color:var(--ink-muted);font-size:13px">ml</span>
+                        </el-form-item>
+                        <el-form-item label="水杯大小">
+                            <el-input-number
+                                v-model="waterSettingsForm.cupSize"
+                                :min="50"
+                                :max="1000"
+                                :step="50"
+                                style="width:100%"
+                            />
+                            <span style="margin-left:8px;color:var(--ink-muted);font-size:13px">ml / 杯</span>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <el-button @click="showWaterSettings = false">取消</el-button>
+                        <el-button type="primary" @click="saveWaterSettings">保存</el-button>
+                    </template>
+                </el-dialog>
             </el-col>
 
             <!-- 右侧：作息记录 + 健康小结 -->
@@ -300,6 +337,7 @@ import {
     Moon,
     Coffee,
     Food,
+    Setting,
 } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 
@@ -358,23 +396,34 @@ const mealForm = ref({
 });
 
 // 饮水数据
-const waterIntake = ref({
-    current: 900,
-    target: 2000,
-});
+const waterTarget = ref(2000);
+const cupSize = ref(200);
 
-const waterCups = ref([
-    { label: "200ml", filled: true },
-    { label: "400ml", filled: true },
-    { label: "600ml", filled: true },
-    { label: "800ml", filled: false },
-    { label: "1000ml", filled: false },
-    { label: "1200ml", filled: false },
-    { label: "1400ml", filled: false },
-    { label: "1600ml", filled: false },
-    { label: "1800ml", filled: false },
-    { label: "2000ml", filled: false },
-]);
+function buildCups(count: number, filledCount = 0) {
+    return Array.from({ length: count }, (_, i) => ({ filled: i < filledCount }));
+}
+
+const waterCups = ref(buildCups(Math.ceil(2000 / 200), 3));
+
+const waterCurrent = computed(
+    () => waterCups.value.filter((c) => c.filled).length * cupSize.value,
+);
+
+// 饮水设置弹窗
+const showWaterSettings = ref(false);
+const waterSettingsForm = ref({ target: 2000, cupSize: 200 });
+
+function openWaterSettings() {
+    waterSettingsForm.value = { target: waterTarget.value, cupSize: cupSize.value };
+    showWaterSettings.value = true;
+}
+
+function saveWaterSettings() {
+    waterTarget.value = waterSettingsForm.value.target;
+    cupSize.value = waterSettingsForm.value.cupSize;
+    waterCups.value = buildCups(Math.ceil(waterTarget.value / cupSize.value));
+    showWaterSettings.value = false;
+}
 
 // 作息数据
 const schedule = ref({
@@ -395,12 +444,9 @@ const totalCalories = computed(() => {
     return meals.value.reduce((sum, meal) => sum + (meal.calories || 0), 0);
 });
 
-const waterPercentage = computed(() => {
-    return Math.min(
-        100,
-        (waterIntake.value.current / waterIntake.value.target) * 100,
-    );
-});
+const waterPercentage = computed(() =>
+    Math.min(100, (waterCurrent.value / waterTarget.value) * 100),
+);
 
 const waterColor = computed(() => {
     if (waterPercentage.value >= 100) return "#67c23a";
@@ -428,7 +474,7 @@ const healthTips = computed(() => {
         tips.push("今日摄入热量偏高，建议控制饮食并增加运动");
     }
 
-    if (waterIntake.value.current < waterIntake.value.target * 0.5) {
+    if (waterCurrent.value < waterTarget.value * 0.5) {
         tips.push("饮水量不足，记得多喝水哦");
     }
 
@@ -509,9 +555,6 @@ function toggleWaterCup(index: number) {
         }
     }
 
-    // 计算当前饮水量
-    const filledCount = waterCups.value.filter((cup) => cup.filled).length;
-    waterIntake.value.current = filledCount * 200;
 }
 
 // 记录起床时间
