@@ -60,7 +60,7 @@
                                 letter-spacing: 2px;
                             "
                         >
-                            TODAY · 2026 年 5 月 20 日 · 小满
+                            TODAY · {{ todayDisplay }}
                         </div>
                         <div class="ring-wrap">
                             <svg viewBox="0 0 184 184">
@@ -230,7 +230,7 @@
                             <div class="card-title" style="margin:0;display:flex;align-items:center;gap:8px">
                                 <span class="dot"></span>打卡日历
                                 <select class="cal-month-select" v-model.number="calMonth">
-                                    <option v-for="(m, i) in 12" :key="i" :value="i">{{ i + 1 }} 月</option>
+                                    <option v-for="i in 12" :key="i" :value="i - 1">{{ i }} 月</option>
                                 </select>
                                 <select class="cal-month-select" v-model.number="calYear">
                                     <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
@@ -528,7 +528,7 @@
                                 :key="i"
                                 class="water-cup"
                                 :class="{ filled: i <= waterFilled }"
-                                @click="waterFilled = i <= waterFilled ? i - 1 : i"
+                                @click="setWaterFilled(i <= waterFilled ? i - 1 : i)"
                             >
                                 <span class="wc-emoji">💧</span>
                                 <span class="wc-label">{{ waterCupSize }}ml</span>
@@ -649,7 +649,7 @@
                                 <div class="exp-cat-name">{{ cat }}</div>
                                 <div class="exp-cat-count">{{ (postsByCategory[cat] || []).length }} 篇经验</div>
                                 <div class="exp-cat-preview" v-if="(postsByCategory[cat] || []).length > 0">
-                                    {{ postsByCategory[cat][postsByCategory[cat].length - 1].text.slice(0, 30) }}{{ postsByCategory[cat][0].text.length > 30 ? '…' : '' }}
+                                    {{ getCategoryPreview(cat) }}
                                 </div>
                                 <div class="exp-cat-preview muted" v-else>还没有经验，快来分享吧</div>
                             </div>
@@ -849,7 +849,7 @@
                                 <div class="side-name"># {{ topic.name }}</div>
                                 <div class="side-meta">{{ topic.meta }}</div>
                             </div>
-                            <button class="btn btn-ghost btn-sm">参与</button>
+                            <button class="btn btn-ghost btn-sm" @click="joinTopic(topic)">参与</button>
                         </div>
                     </div>
 
@@ -907,7 +907,7 @@
                                     :class="{ active: selectedFeedFilter === f }"
                                     @click="selectedFeedFilter = f"
                                 >{{ f }}</span>
-                                <span class="pick-chip" style="cursor:pointer" @click="openCommunityPublish">＋</span>
+                                <span class="pick-chip" style="cursor:pointer" @click="openCommunityPublish()">＋</span>
                             </div>
                         </div>
 
@@ -1088,15 +1088,15 @@
                                                     <button @click="showNotifPanel = false">✕</button>
                                                 </div>
                                                 <div class="notif-panel-tabs">
-                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'like' }" @click="notifPanelType = 'like'">
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'like' }" @click="selectNotifPanel('like')">
                                                         ❤️ 赞与收藏
                                                         <span v-if="unreadByType.like > 0" class="npt-badge">{{ unreadByType.like }}</span>
                                                     </button>
-                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'comment' }" @click="notifPanelType = 'comment'">
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'comment' }" @click="selectNotifPanel('comment')">
                                                         💬 评论
                                                         <span v-if="unreadByType.comment > 0" class="npt-badge">{{ unreadByType.comment }}</span>
                                                     </button>
-                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'follow' }" @click="notifPanelType = 'follow'">
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'follow' }" @click="selectNotifPanel('follow')">
                                                         👥 关注
                                                         <span v-if="unreadByType.follow > 0" class="npt-badge">{{ unreadByType.follow }}</span>
                                                     </button>
@@ -1196,6 +1196,7 @@
                                             ? 'btn-sm'
                                             : 'btn-ghost btn-sm'
                                     "
+                                    @click="toggleGroupJoin(group.name)"
                                 >
                                     {{ group.joined ? "已加入" : "加入" }}
                                 </button>
@@ -1237,25 +1238,24 @@
             <!-- ===== Module 5: 健康挑战活动 ===== -->
             <section v-show="activeTab === 'challenge'" class="panel">
                 <div class="challenge-hero">
-                    <span class="ch-tag">进行中 · 我已参加</span>
-                    <h2>21 天早睡养肝挑战</h2>
+                    <span class="ch-tag">{{ heroChallenge?.joined ? '进行中 · 我已参加' : '推荐挑战' }}</span>
+                    <h2>{{ heroChallenge?.name || '21 天早睡养肝挑战' }}</h2>
                     <div style="opacity: 0.9; font-size: 14px; margin-top: 4px">
-                        每晚 23:00 前入睡并打卡，养肝血、调气色，21
-                        天养成早睡习惯
+                        {{ heroChallenge?.desc || '每晚 23:00 前入睡并打卡，养肝血、调气色，21 天养成早睡习惯' }}
                     </div>
                     <div class="ch-stats">
-                        <div class="cs"><strong>3,254</strong>人参与</div>
+                        <div class="cs"><strong>{{ heroChallenge?.participants || '3,254' }}</strong>人参与</div>
                         <div class="cs">
-                            <strong>第 8 / 21 天</strong>我的进度
+                            <strong>第 {{ heroChallenge?.progressDay || 0 }} / {{ heroChallenge?.days || 21 }} 天</strong>我的进度
                         </div>
-                        <div class="cs"><strong>92%</strong>我的完成率</div>
-                        <div class="cs"><strong>D-13</strong>距结束</div>
+                        <div class="cs"><strong>{{ heroChallengeRate }}%</strong>我的完成率</div>
+                        <div class="cs"><strong>D-{{ heroChallengeDaysLeft }}</strong>距结束</div>
                     </div>
                     <div class="ch-progress-track">
-                        <div class="ch-progress-fill" style="width: 38%"></div>
+                        <div class="ch-progress-fill" :style="{ width: heroChallengeProgress + '%' }"></div>
                     </div>
                     <div style="margin-top: 16px">
-                        <button class="btn btn-gold">今日去打卡</button>
+                        <button class="btn btn-gold" @click="checkinHeroChallenge">今日去打卡</button>
                         <button
                             class="btn btn-ghost"
                             style="
@@ -1263,6 +1263,7 @@
                                 color: white;
                                 border-color: rgba(255, 255, 255, 0.6);
                             "
+                            @click="heroChallenge && openChallengeDetail(heroChallenge.name)"
                         >
                             查看挑战详情
                         </button>
@@ -1289,9 +1290,10 @@
                     </div>
                     <div class="grid-3">
                         <div
-                            v-for="ch in challenges"
+                            v-for="ch in filteredChallenges"
                             :key="ch.name"
                             class="challenge-card"
+                            @click="openChallengeDetail(ch.name)"
                         >
                             <div
                                 class="cc-cover"
@@ -1323,6 +1325,7 @@
                                     <button
                                         class="btn btn-sm"
                                         :class="{ 'btn-ghost': !ch.joined }"
+                                        @click.stop="toggleChallengeJoin(ch.name)"
                                     >
                                         {{ ch.joined ? "已参加" : "报名" }}
                                     </button>
@@ -1332,6 +1335,54 @@
                     </div>
                 </div>
 
+                <!-- 挑战详情弹窗 -->
+                <Teleport to="body">
+                    <Transition name="wset-modal">
+                        <div v-if="challengeDetail" class="wset-mask" @click.self="challengeDetail = null">
+                            <div class="wset-dialog challenge-detail-dialog">
+                                <div class="wset-header" style="font-size:17px;padding:16px 22px">
+                                    <span>{{ challengeDetail.name }}</span>
+                                    <button @click="challengeDetail = null">✕</button>
+                                </div>
+                                <div class="challenge-detail-body">
+                                    <div class="challenge-detail-hero" :style="{ background: challengeDetail.bg }">
+                                        <div class="challenge-detail-emoji">{{ challengeDetail.emoji }}</div>
+                                        <div>
+                                            <div class="challenge-detail-status">{{ challengeDetail.joined ? '已参加' : challengeDetail.statusLabel }}</div>
+                                            <div class="challenge-detail-desc">{{ challengeDetail.desc }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="challenge-detail-grid">
+                                        <div>
+                                            <strong>{{ challengeDetail.days }}</strong>
+                                            <span>挑战天数</span>
+                                        </div>
+                                        <div>
+                                            <strong>{{ challengeDetail.progressDay }}</strong>
+                                            <span>我的进度</span>
+                                        </div>
+                                        <div>
+                                            <strong>{{ getChallengeRate(challengeDetail) }}%</strong>
+                                            <span>完成率</span>
+                                        </div>
+                                        <div>
+                                            <strong>{{ challengeDetail.points }}</strong>
+                                            <span>可得积分</span>
+                                        </div>
+                                    </div>
+                                    <div class="challenge-detail-actions">
+                                        <button class="wset-btn" @click="challengeDetail = null">关闭</button>
+                                        <button class="wset-btn" @click="toggleChallengeJoin(challengeDetail.name)">
+                                            {{ challengeDetail.joined ? '退出挑战' : '报名参加' }}
+                                        </button>
+                                        <button class="wset-btn primary" :disabled="!challengeDetail.joined" @click="checkinChallenge(challengeDetail.name)">今日打卡</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </Teleport>
+
                 <div class="grid-2" style="margin-top: 20px">
                     <div class="card">
                         <div class="row">
@@ -1339,12 +1390,20 @@
                                 <span class="dot"></span>「早睡养肝」挑战排行榜
                             </div>
                             <div class="chip-row">
-                                <span class="pick-chip active">好友榜</span>
-                                <span class="pick-chip">总榜</span>
+                                <span
+                                    class="pick-chip"
+                                    :class="{ active: selectedChallengeRankScope === '好友榜' }"
+                                    @click="selectedChallengeRankScope = '好友榜'"
+                                >好友榜</span>
+                                <span
+                                    class="pick-chip"
+                                    :class="{ active: selectedChallengeRankScope === '总榜' }"
+                                    @click="selectedChallengeRankScope = '总榜'"
+                                >总榜</span>
                             </div>
                         </div>
                         <div
-                            v-for="(r, idx) in challengeRanks"
+                            v-for="(r, idx) in displayedChallengeRanks"
                             :key="r.name"
                             class="rank-row"
                             :class="{ me: r.isMe }"
@@ -1444,9 +1503,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick, onMounted } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
+import {
+    ApiCircle,
+    type CheckInMilestoneVO,
+    type CheckInMonthVO,
+    type CheckInTodayOverviewVO,
+    type CheckInWeekVO,
+    type DietDailyCalorieSummaryVO,
+    type DietRecordVO,
+    type PageResult,
+    type WaterTodayOverviewVO,
+    type WellnessDynamicCommentVO,
+    type WellnessDynamicVO,
+    type WellnessNoteCommentVO,
+    type WellnessNoteVO,
+} from "@/network";
+import { useUserStore } from "@/store/user";
 
 const activeTab = ref("checkin");
 
@@ -1458,6 +1533,17 @@ const tabs = [
     { name: "challenge", icon: "🏆", label: "健康挑战" },
 ];
 
+const userStore = useUserStore();
+const apiUserId = computed(() => {
+    const loginId = Number(userStore.G_LoginInfo.id);
+    const profileId = Number(userStore.G_UserInfo.id);
+    return Number.isFinite(loginId)
+        ? loginId
+        : Number.isFinite(profileId)
+          ? profileId
+          : 1;
+});
+
 function switchTab(name: string) {
     activeTab.value = name;
     window.scrollTo({
@@ -1468,6 +1554,55 @@ function switchTab(name: string) {
         behavior: "smooth",
     });
 }
+
+const STORAGE_KEYS = {
+    checkin: "yiyangge_community_checkin_v2",
+    lifestyle: "yiyangge_community_lifestyle_v2",
+    sharingReactions: "yiyangge_community_sharing_reactions_v1",
+    groups: "yiyangge_community_groups_v1",
+    challenges: "yiyangge_community_challenges_v1",
+};
+
+function readStorage<T>(key: string, fallback: T): T {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function writeStorage<T>(key: string, value: T) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        toast("本地存储空间不足，图片或视频过大时可先删除部分内容");
+    }
+}
+
+function responseData<T>(response: unknown): T | undefined {
+    return (response as { data?: { data?: T } }).data?.data;
+}
+
+function getBackendId(id: string | number) {
+    if (typeof id === "number") return Number.isFinite(id) ? id : null;
+    const match = id.match(/\d+/);
+    if (!match) return null;
+    const value = Number(match[0]);
+    return Number.isFinite(value) ? value : null;
+}
+
+const noteTypeByCategory: Record<string, number> = {
+    食疗药膳: 1,
+    作息调理: 2,
+    运动养生: 3,
+    情志疏导: 4,
+    节气养生: 5,
+    中医妙招: 6,
+};
+const categoryByNoteType = Object.fromEntries(
+    Object.entries(noteTypeByCategory).map(([key, value]) => [value, key]),
+) as Record<number, string>;
 
 // ---- Toast ----
 const toastVisible = ref(false);
@@ -1492,7 +1627,9 @@ const activeChallenges = ref(2);
 const RING_C = 502;
 const ringOffset = computed(() => {
     const done = checkItems.value.filter((i) => i.done).length;
-    return RING_C * (1 - done / checkItems.value.length);
+    return checkItems.value.length > 0
+        ? RING_C * (1 - done / checkItems.value.length)
+        : RING_C;
 });
 
 // ── 日期工具 ──────────────────────────────────────────
@@ -1500,11 +1637,43 @@ function fmtDate(d: Date) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 const todayKey = computed(() => fmtDate(new Date()));
+const todayDisplay = computed(() => {
+    const d = new Date();
+    const week = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+    return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日 · 周${week}`;
+});
 
 // ── 先声明打卡项和心情（watch 依赖它们）──────────────────
+interface CheckItem {
+    name: string;
+    icon: string;
+    meta: string;
+    done: boolean;
+}
+
+interface CheckinState {
+    todayKey: string;
+    items: CheckItem[];
+    mood: string;
+    history: Record<string, DayRecord>;
+}
+
 const moods = ["😔 疲惫", "😐 平常", "🙂 轻松", "😄 元气满满"];
 const selectedMood = ref('');
-const checkItems = ref<{ name: string; icon: string; meta: string; done: boolean }[]>([]);
+const checkItems = ref<CheckItem[]>([]);
+const serverStreakDays = ref<number | null>(null);
+const serverMilestoneData = ref<CheckInMilestoneVO | null>(null);
+
+function getDefaultCheckItems(): CheckItem[] {
+    return [
+        { icon: "🌅", name: "晨起温水", meta: "起床后 300ml", done: false },
+        { icon: "🧘", name: "静心呼吸", meta: "5 分钟", done: false },
+        { icon: "🥗", name: "清淡一餐", meta: "少油少糖", done: false },
+        { icon: "💧", name: "饮水达标", meta: "按今日目标完成", done: false },
+        { icon: "🏃", name: "轻运动", meta: "散步或拉伸 20 分钟", done: false },
+        { icon: "🌙", name: "早睡准备", meta: "23:00 前放下手机", done: false },
+    ];
+}
 
 // ── 历史打卡存档 ──────────────────────────────────────
 interface DayRecord {
@@ -1514,11 +1683,161 @@ interface DayRecord {
 const checkinHistory = ref<Record<string, DayRecord>>({});
 
 function saveTodayHistory() {
-    if (checkItems.value.length === 0) return;
-    checkinHistory.value[todayKey.value] = {
-        items: checkItems.value.map(i => ({ ...i })),
+    if (checkItems.value.length === 0) {
+        delete checkinHistory.value[todayKey.value];
+    } else {
+        checkinHistory.value[todayKey.value] = {
+            items: checkItems.value.map(i => ({ ...i })),
+            mood: selectedMood.value,
+        };
+    }
+    writeStorage<CheckinState>(STORAGE_KEYS.checkin, {
+        todayKey: todayKey.value,
+        items: checkItems.value.map((i) => ({ ...i })),
         mood: selectedMood.value,
-    };
+        history: checkinHistory.value,
+    });
+}
+
+function loadCheckinState() {
+    const saved = readStorage<CheckinState | null>(STORAGE_KEYS.checkin, null);
+    if (saved?.history && typeof saved.history === "object") {
+        checkinHistory.value = saved.history;
+    }
+
+    const record = checkinHistory.value[todayKey.value];
+    if (saved?.todayKey === todayKey.value && Array.isArray(saved.items)) {
+        checkItems.value = saved.items.map((i) => ({ ...i, done: !!i.done }));
+        selectedMood.value = saved.mood || "";
+        return;
+    }
+    if (record) {
+        checkItems.value = record.items.map((i) => ({ ...i, done: !!i.done }));
+        selectedMood.value = record.mood || "";
+        return;
+    }
+
+    checkItems.value = getDefaultCheckItems();
+    selectedMood.value = "";
+    saveTodayHistory();
+}
+
+function moodLabelToCode(mood: string) {
+    if (mood.includes("元气") || mood.includes("愉悦")) return 1;
+    if (mood.includes("轻松") || mood.includes("平静")) return 2;
+    if (mood.includes("平常") || mood.includes("一般")) return 3;
+    if (mood.includes("疲惫")) return 4;
+    if (mood.includes("低落")) return 5;
+    return 3;
+}
+
+function moodCodeToLabel(code?: number, text?: string) {
+    if (text) {
+        if (text.includes("愉悦")) return "😄 元气满满";
+        if (text.includes("平静")) return "🙂 轻松";
+        if (text.includes("一般")) return "😐 平常";
+        if (text.includes("疲惫") || text.includes("低落")) return "😔 疲惫";
+    }
+    return (
+        {
+            1: "😄 元气满满",
+            2: "🙂 轻松",
+            3: "😐 平常",
+            4: "😔 疲惫",
+            5: "😔 疲惫",
+        }[code || 3] || "😐 平常"
+    );
+}
+
+function applyCheckinToday(data?: CheckInTodayOverviewVO) {
+    if (!data) return;
+    if (typeof data.streakDays === "number") {
+        serverStreakDays.value = data.streakDays;
+    }
+    if (data.mood || data.moodText) {
+        selectedMood.value = moodCodeToLabel(data.mood, data.moodText);
+    }
+    if (Array.isArray(data.dailyContents) && data.dailyContents.length > 0) {
+        checkItems.value = data.dailyContents.map((item) => ({
+            icon: item.status === 1 ? "✅" : "🎯",
+            name: item.targetTitle || "今日打卡",
+            meta: item.content || "",
+            done: item.status === 1,
+        }));
+    }
+    saveTodayHistory();
+}
+
+function applyCheckinWeek(data?: CheckInWeekVO) {
+    if (!Array.isArray(data?.days)) return;
+    data.days.forEach((day) => {
+        if (!day.date || !day.hasRecord) return;
+        checkinHistory.value[day.date] = {
+            mood: moodCodeToLabel(day.mood, day.moodText),
+            items: [
+                {
+                    icon: day.completed ? "✅" : "🎯",
+                    name: "每日打卡",
+                    meta: day.completedText || `总分 ${day.totalScore || 0}`,
+                    done: !!day.completed,
+                },
+            ],
+        };
+    });
+}
+
+function applyCheckinMonth(data?: CheckInMonthVO) {
+    if (!Array.isArray(data?.days)) return;
+    data.days.forEach((day) => {
+        if (!day.date || !day.hasRecord) return;
+        checkinHistory.value[day.date] = {
+            mood: moodCodeToLabel(day.mood, day.moodText),
+            items: [
+                {
+                    icon: day.completed ? "✅" : "🎯",
+                    name: "每日打卡",
+                    meta: day.completedText || `总分 ${day.totalScore || 0}`,
+                    done: !!day.completed,
+                },
+            ],
+        };
+    });
+}
+
+function applyCheckinMilestones(data?: CheckInMilestoneVO) {
+    if (!data) return;
+    serverMilestoneData.value = data;
+    if (typeof data.streakDays === "number") {
+        serverStreakDays.value = data.streakDays;
+    }
+}
+
+async function loadCheckinApiState() {
+    const userId = apiUserId.value;
+    try {
+        const [today, week, month, milestone] = await Promise.allSettled([
+            ApiCircle.getCheckinToday(userId),
+            ApiCircle.getCheckinWeek({ userId, date: todayKey.value }),
+            ApiCircle.getCheckinMonth({ userId, month: todayKey.value }),
+            ApiCircle.getCheckinMilestones(userId),
+        ]);
+        if (today.status === "fulfilled") applyCheckinToday(responseData(today.value));
+        if (week.status === "fulfilled") applyCheckinWeek(responseData(week.value));
+        if (month.status === "fulfilled") applyCheckinMonth(responseData(month.value));
+        if (milestone.status === "fulfilled") applyCheckinMilestones(responseData(milestone.value));
+        saveTodayHistory();
+    } catch {
+        // 后端未启动时保留本地打卡数据。
+    }
+}
+
+async function refreshMilestonesFromApi() {
+    try {
+        const response = await ApiCircle.refreshCheckinMilestones(apiUserId.value);
+        applyCheckinMilestones(responseData(response));
+    } catch {
+        // 无后端时跳过，不影响本地状态。
+    }
 }
 
 // ── 本周打卡（以周一为起点）────────────────────────────
@@ -1553,8 +1872,6 @@ const yearOptions = computed(() => {
     const y = new Date().getFullYear();
     return [y - 1, y, y + 1];
 });
-
-const calTitle = computed(() => `打卡日历 · ${calMonth.value + 1} 月`);
 
 const calendarCells = computed(() => {
     const h = checkinHistory.value;
@@ -1620,7 +1937,9 @@ function removeCheckin(idx: number) {
 }
 
 function toggleCheckinItem(idx: number) {
-    checkItems.value[idx].done = !checkItems.value[idx].done;
+    const item = checkItems.value[idx];
+    if (!item) return;
+    item.done = !item.done;
     saveTodayHistory();
 }
 
@@ -1636,12 +1955,18 @@ function toggleAllChecks() {
     const target = !allChecksDone.value;
     checkItems.value.forEach((i) => { i.done = target; });
     saveTodayHistory();
+    if (target) void refreshMilestonesFromApi();
     toast(target ? "🎉 今日打卡全部完成！" : "已取消今日全部打卡");
 }
 
 function selectMood(mood: string) {
     selectedMood.value = mood;
     saveTodayHistory();
+    ApiCircle.saveCheckinMood({
+        userId: apiUserId.value,
+        checkinDate: todayKey.value,
+        mood: moodLabelToCode(mood),
+    }).catch(() => {});
 }
 
 // ── 打卡海报 ──────────────────────────────────────────
@@ -1857,6 +2182,7 @@ function sharePosterToCommunity() {
 
 // 连续打卡天数：从今天往前数，有打卡记录且至少一项完成的连续天数
 const streakDays = computed(() => {
+    if (serverStreakDays.value !== null) return serverStreakDays.value;
     let days = 0;
     const d = new Date();
     for (let i = 0; i < 365; i++) {
@@ -1881,8 +2207,24 @@ const milestoneDefs = [
 ];
 
 const milestones = computed(() => {
+    if (serverMilestoneData.value?.milestones?.length) {
+        return serverMilestoneData.value.milestones.map((m) => ({
+            name: `${m.milestoneName || "里程碑"} · 连续 ${m.milestoneDays || 0} 天`,
+            emoji: m.unlocked ? "🏅" : "🔒",
+            require: m.milestoneDays || 0,
+            unlocked: !!m.unlocked,
+            progress: m.progressPercent || 0,
+            doneOrRemaining: m.remainingDays || 0,
+            desc: m.rewardContent || (m.unlocked ? "已达成" : "继续坚持"),
+            statusLabel: m.unlocked
+                ? "已获得"
+                : (m.remainingDays || 0) <= 1
+                  ? "1 天后"
+                  : `${m.remainingDays || 0} 天后`,
+        }));
+    }
     const s = streakDays.value;
-    return milestoneDefs.map((m, i) => {
+    return milestoneDefs.map((m) => {
         const unlocked = s >= m.require;
         const pct = Math.min(100, Math.round((s / m.require) * 100));
         const remain = m.require - s;
@@ -1904,7 +2246,27 @@ const milestones = computed(() => {
 });
 
 // ---- Module 2: Lifestyle ----
-const meals = ref<{ name: string; emoji: string; bg: string; foods: string; cal: number; image: string }[]>([]);
+interface MealRecord {
+    id?: number | undefined;
+    mealType?: number | undefined;
+    dietType?: number | undefined;
+    name: string;
+    emoji: string;
+    bg: string;
+    foods: string;
+    cal: number;
+    image: string;
+}
+
+interface LifestyleState {
+    meals: MealRecord[];
+    waterFilled: number;
+    waterGoal: number;
+    waterCupSize: number;
+    calGoal: number;
+}
+
+const meals = ref<MealRecord[]>([]);
 
 const mealTypes = [
     { name: "早茶",   emoji: "🍵", bg: "mt-morning-tea" },
@@ -1915,6 +2277,49 @@ const mealTypes = [
     { name: "夜宵",   emoji: "🌙", bg: "mt-supper" },
     { name: "加餐",   emoji: "🍎", bg: "mt-snack" },
 ];
+
+const mealTypeCodeByName: Record<string, number> = {
+    早茶: 1,
+    早餐: 1,
+    午餐: 2,
+    下午茶: 4,
+    晚餐: 3,
+    夜宵: 5,
+    加餐: 4,
+};
+
+function getMealTypeMeta(mealType?: number, mealTypeText?: string) {
+    const text = mealTypeText || "";
+    if (text.includes("早")) return { name: "早餐", emoji: "🥣", bg: "mt-breakfast" };
+    if (text.includes("午")) return { name: "午餐", emoji: "🍲", bg: "mt-lunch" };
+    if (text.includes("晚")) return { name: "晚餐", emoji: "🥗", bg: "mt-dinner" };
+    if (text.includes("茶")) return { name: "下午茶", emoji: "☕", bg: "mt-tea-break" };
+    if (text.includes("夜")) return { name: "夜宵", emoji: "🌙", bg: "mt-supper" };
+    return (
+        {
+            1: { name: "早餐", emoji: "🥣", bg: "mt-breakfast" },
+            2: { name: "午餐", emoji: "🍲", bg: "mt-lunch" },
+            3: { name: "晚餐", emoji: "🥗", bg: "mt-dinner" },
+            4: { name: "加餐", emoji: "🍎", bg: "mt-snack" },
+            5: { name: "夜宵", emoji: "🌙", bg: "mt-supper" },
+        }[mealType || 0] || { name: "加餐", emoji: "🍎", bg: "mt-snack" }
+    );
+}
+
+function mapDietRecordToMeal(record: DietRecordVO): MealRecord {
+    const meta = getMealTypeMeta(record.mealType, record.mealTypeText);
+    return {
+        id: record.id,
+        mealType: record.mealType,
+        dietType: record.dietType,
+        name: meta.name,
+        emoji: meta.emoji,
+        bg: meta.bg,
+        foods: record.content || "",
+        cal: record.calories || 0,
+        image: "",
+    };
+}
 
 const showMealDialog = ref(false);
 const mealForm = ref({ name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" });
@@ -1944,14 +2349,41 @@ function onMealImgSelect(e: Event) {
     (e.target as HTMLInputElement).value = "";
 }
 
-function saveMeal() {
+async function saveMeal() {
     if (!mealForm.value.foods.trim() && mealForm.value.cal === 0) return;
-    meals.value.push({ ...mealForm.value });
+    const fallbackMeal = {
+        ...mealForm.value,
+        foods: mealForm.value.foods.trim(),
+        cal: Math.max(0, Number(mealForm.value.cal) || 0),
+        mealType: mealTypeCodeByName[mealForm.value.name] || 4,
+        dietType: 2,
+    };
+    try {
+        const payload = {
+            userId: apiUserId.value,
+            recordDate: todayKey.value,
+            mealType: fallbackMeal.mealType,
+            content: fallbackMeal.foods,
+            dietType: fallbackMeal.dietType,
+            calories: fallbackMeal.cal,
+        };
+        const response = await ApiCircle.saveDietRoutineRecord(payload).catch(() =>
+            ApiCircle.saveDietRecord(payload),
+        );
+        const saved = responseData<DietRecordVO>(response);
+        meals.value.push(saved ? mapDietRecordToMeal(saved) : fallbackMeal);
+        void loadCalorieApiState();
+    } catch {
+        meals.value.push(fallbackMeal);
+    }
     showMealDialog.value = false;
+    saveLifestyleState();
+    toast("饮食记录已保存");
 }
 
 function removeMeal(idx: number) {
     meals.value.splice(idx, 1);
+    saveLifestyleState();
 }
 
 const totalCal = computed(() =>
@@ -1970,7 +2402,7 @@ const calCircleStyle = computed(() => {
 const waterFilled = ref(6);
 const waterGoal = ref(2000);
 const waterCupSize = ref(250);
-const waterCupCount = computed(() => Math.ceil(waterGoal.value / waterCupSize.value));
+const waterCupCount = computed(() => Math.ceil(waterGoal.value / Math.max(waterCupSize.value, 1)));
 const showWaterSettings = ref(false);
 const wsetForm = ref({ goal: 2000, cupSize: 250 });
 
@@ -1980,10 +2412,42 @@ function openWaterSettings() {
 }
 
 function saveWaterSettings() {
-    waterGoal.value = wsetForm.value.goal;
-    waterCupSize.value = wsetForm.value.cupSize;
-    waterFilled.value = 0;
+    const currentMl = waterFilled.value * waterCupSize.value;
+    waterGoal.value = Math.min(5000, Math.max(500, Number(wsetForm.value.goal) || 2000));
+    waterCupSize.value = Math.min(1000, Math.max(50, Number(wsetForm.value.cupSize) || 250));
+    waterFilled.value = Math.min(
+        waterCupCount.value,
+        Math.max(0, Math.round(currentMl / waterCupSize.value)),
+    );
     showWaterSettings.value = false;
+    saveLifestyleState();
+    ApiCircle.updateWaterTarget({
+        userId: apiUserId.value,
+        statDate: todayKey.value,
+        targetMl: waterGoal.value,
+        cupMl: waterCupSize.value,
+    })
+        .then((response) => {
+            applyWaterOverview(responseData(response));
+            saveLifestyleState();
+        })
+        .catch(() => {});
+    toast("饮水目标已保存");
+}
+
+function setWaterFilled(count: number) {
+    waterFilled.value = Math.min(waterCupCount.value, Math.max(0, count));
+    saveLifestyleState();
+    ApiCircle.updateWaterCups({
+        userId: apiUserId.value,
+        statDate: todayKey.value,
+        currentCups: waterFilled.value,
+    })
+        .then((response) => {
+            applyWaterOverview(responseData(response));
+            saveLifestyleState();
+        })
+        .catch(() => {});
 }
 
 const calGoal = ref(1800);
@@ -1996,16 +2460,119 @@ function openCalSettings() {
 }
 
 function saveCalSettings() {
-    calGoal.value = calForm.value.goal;
+    calGoal.value = Math.min(5000, Math.max(500, Number(calForm.value.goal) || 1800));
     showCalSettings.value = false;
+    saveLifestyleState();
+    ApiCircle.setCalorieLimit({
+        userId: apiUserId.value,
+        limitDate: todayKey.value,
+        calorieLimit: calGoal.value,
+    })
+        .then((response) => {
+            applyCalorieSummary(responseData(response));
+            saveLifestyleState();
+        })
+        .catch(() => {});
+    toast("热量目标已保存");
 }
 
-const nutrition = [
-    { label: "碳水化合物", value: "192g", pct: 70, color: "var(--gold)" },
-    { label: "蛋白质", value: "76g", pct: 62, color: "var(--jade)" },
-    { label: "脂肪", value: "44g", pct: 48, color: "var(--cinnabar)" },
-    { label: "膳食纤维", value: "21g", pct: 84, color: "var(--moon)" },
-];
+function applyCalorieSummary(data?: DietDailyCalorieSummaryVO) {
+    if (!data) return;
+    if (typeof data.calorieLimit === "number") {
+        calGoal.value = data.calorieLimit;
+    }
+}
+
+function applyWaterOverview(data?: WaterTodayOverviewVO) {
+    if (!data) return;
+    waterGoal.value = Math.min(5000, Math.max(500, Number(data.targetMl) || waterGoal.value));
+    waterCupSize.value = Math.min(1000, Math.max(50, Number(data.cupMl) || waterCupSize.value));
+    waterFilled.value = Math.min(
+        waterCupCount.value,
+        Math.max(0, Number(data.currentCups) || 0),
+    );
+}
+
+async function loadDietRecordsApiState() {
+    try {
+        const response = await ApiCircle.getTodayDietRecords(apiUserId.value);
+        let records = responseData<DietRecordVO[]>(response);
+        if (!records?.length) {
+            const fallback = await ApiCircle.getDietRecordList({
+                userId: apiUserId.value,
+                date: todayKey.value,
+            });
+            records = responseData<DietRecordVO[]>(fallback);
+        }
+        if (Array.isArray(records)) {
+            meals.value = records.map(mapDietRecordToMeal);
+            saveLifestyleState();
+        }
+    } catch {
+        // 后端未启动时沿用本地饮食记录。
+    }
+}
+
+async function loadCalorieApiState() {
+    try {
+        const response = await ApiCircle.getTodayCalorie(apiUserId.value);
+        applyCalorieSummary(responseData(response));
+        saveLifestyleState();
+    } catch {
+        // 后端未启动时沿用本地热量目标。
+    }
+}
+
+async function loadWaterApiState() {
+    try {
+        const response = await ApiCircle.getWaterToday(apiUserId.value);
+        applyWaterOverview(responseData(response));
+        saveLifestyleState();
+    } catch {
+        // 后端未启动时沿用本地饮水数据。
+    }
+}
+
+async function loadLifestyleApiState() {
+    await Promise.allSettled([
+        ApiCircle.getDietRoutineToday(apiUserId.value),
+        loadDietRecordsApiState(),
+        loadCalorieApiState(),
+        loadWaterApiState(),
+    ]);
+}
+
+function saveLifestyleState() {
+    writeStorage<LifestyleState>(STORAGE_KEYS.lifestyle, {
+        meals: meals.value,
+        waterFilled: waterFilled.value,
+        waterGoal: waterGoal.value,
+        waterCupSize: waterCupSize.value,
+        calGoal: calGoal.value,
+    });
+}
+
+function loadLifestyleState() {
+    const saved = readStorage<LifestyleState | null>(STORAGE_KEYS.lifestyle, null);
+    if (!saved) return;
+    meals.value = Array.isArray(saved.meals)
+        ? saved.meals.map((m) => ({
+            name: m.name || "加餐",
+            emoji: m.emoji || "🍎",
+            bg: m.bg || "mt-snack",
+            foods: m.foods || "",
+            cal: Math.max(0, Number(m.cal) || 0),
+            image: m.image || "",
+        }))
+        : [];
+    waterGoal.value = Math.min(5000, Math.max(500, Number(saved.waterGoal) || 2000));
+    waterCupSize.value = Math.min(1000, Math.max(50, Number(saved.waterCupSize) || 250));
+    waterFilled.value = Math.min(
+        waterCupCount.value,
+        Math.max(0, Number(saved.waterFilled) || 0),
+    );
+    calGoal.value = Math.min(5000, Math.max(500, Number(saved.calGoal) || 1800));
+}
 
 // ---- Module 3: Sharing ----
 const shareCategories = [
@@ -2074,6 +2641,7 @@ function saveDrafts() {
 }
 function editDraft(idx: number) {
     const d = drafts.value[idx];
+    if (!d) return;
     shareForm.value = { text: d.text, images: [...(d.images || [])], video: d.video || "", category: d.category };
     editingDraftIdx.value = idx;
     showShareDialog.value = true;
@@ -2081,7 +2649,12 @@ function editDraft(idx: number) {
 
 function saveDraft() {
     if (editingDraftIdx.value !== null) {
-        drafts.value[editingDraftIdx.value] = { ...shareForm.value };
+        const idx = editingDraftIdx.value;
+        if (drafts.value[idx]) {
+            drafts.value[idx] = { ...shareForm.value };
+        } else {
+            drafts.value.push({ ...shareForm.value });
+        }
     } else {
         drafts.value.push({ ...shareForm.value });
     }
@@ -2114,10 +2687,118 @@ interface Post {
 const publishedPosts = ref<Post[]>([]);
 const catEmojis: Record<string, string> = { "食疗药膳":"🍲","作息调理":"🌙","运动养生":"🧘","情志疏导":"🌸","节气养生":"💧","中医妙招":"🫖" };
 
+function mapNoteCommentToComment(comment: WellnessNoteCommentVO): CommentItem {
+    return {
+        _cid: `note_comment_${comment.id}`,
+        author: `用户${comment.userId || ""}`,
+        text: comment.content || "",
+        time: comment.createdAt || "",
+        replies: [],
+    };
+}
+
+function mapNoteToPost(note: WellnessNoteVO): Post {
+    const category = categoryByNoteType[note.noteType] || note.noteTypeText || "中医妙招";
+    const resources = Array.isArray(note.resources) ? note.resources : [];
+    return {
+        _id: `note_${note.id}`,
+        text: note.content || note.title || "",
+        images: resources
+            .filter((r) => (r.resourceType || 1) === 1 && r.url)
+            .map((r) => r.url),
+        video: resources.find((r) => r.resourceType === 2)?.url || "",
+        category,
+        author: note.userId === apiUserId.value ? currentUser.value : `用户${note.userId}`,
+        time: note.createdAt || "",
+        likes: 0,
+        comments: 0,
+        stars: 0,
+        commentList: [],
+        emoji: catEmojis[category] || "📝",
+    };
+}
+
+async function hydrateNoteComments(post: Post) {
+    const noteId = getBackendId(post._id);
+    if (!noteId) return;
+    try {
+        const response = await ApiCircle.getNoteCommentPage({
+            noteId,
+            page: 1,
+            size: 50,
+        });
+        const page = responseData<PageResult<WellnessNoteCommentVO>>(response);
+        const comments = page?.records || [];
+        const roots = comments.filter((c) => !c.parentId);
+        post.commentList = roots.map((comment) => ({
+            ...mapNoteCommentToComment(comment),
+            replies: comments
+                .filter((reply) => reply.parentId === comment.id)
+                .map(mapNoteCommentToComment),
+        }));
+        post.comments = countAllComments(post.commentList);
+        savePublished();
+    } catch {
+        // 后端未启动时沿用本地评论。
+    }
+}
+
+function getSeededPublishedPosts(): Post[] {
+    return [
+        {
+            _id: "exp_seed_1",
+            text: "小满后湿气重，我这周把晚餐换成山药小米粥配清炒时蔬，胃口稳了很多，晚上也不容易口渴。",
+            images: [],
+            video: "",
+            category: "食疗药膳",
+            author: "林清欢",
+            time: "昨天 20:20",
+            likes: 18,
+            comments: 2,
+            stars: 7,
+            commentList: [
+                { _cid: "exp_c_1", author: "禾木", text: "山药小米粥真的舒服，我也试试。", time: "昨天", replies: [] },
+                { _cid: "exp_c_2", author: "松风", text: "晚餐清一点，睡眠也会变稳。", time: "今天", replies: [] },
+            ],
+            emoji: catEmojis["食疗药膳"] || "🍲",
+        },
+        {
+            _id: "exp_seed_2",
+            text: "最近用 10 分钟整理入睡仪式：热水泡脚、关掉短视频、读两页书。坚持五天后，入睡速度明显快了。",
+            images: [],
+            video: "",
+            category: "作息调理",
+            author: "苏小养",
+            time: "今天 08:45",
+            likes: 24,
+            comments: 1,
+            stars: 12,
+            commentList: [
+                { _cid: "exp_c_3", author: "小翠", text: "这个流程很适合晚上执行，收藏了。", time: "09:30", replies: [] },
+            ],
+            emoji: catEmojis["作息调理"] || "🌙",
+        },
+        {
+            _id: "exp_seed_3",
+            text: "八段锦不一定要练很久，晨起完整做一遍再出门，肩颈松开后整个人会清醒很多。",
+            images: [],
+            video: "",
+            category: "运动养生",
+            author: "陈一山",
+            time: "今天 10:12",
+            likes: 15,
+            comments: 0,
+            stars: 5,
+            commentList: [],
+            emoji: catEmojis["运动养生"] || "🧘",
+        },
+    ];
+}
+
 function loadPublished() {
     try {
         const raw = localStorage.getItem('yiyangge_published');
-        publishedPosts.value = raw ? JSON.parse(raw) : [];
+        publishedPosts.value = raw ? JSON.parse(raw) : getSeededPublishedPosts();
         // 兼容旧数据
         publishedPosts.value.forEach(p => {
             if (!p._id) p._id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -2128,7 +2809,22 @@ function loadPublished() {
             });
             p.comments = countAllComments(p.commentList);
         });
+        if (!raw) savePublished();
     } catch { publishedPosts.value = []; }
+}
+
+async function loadPublishedApiState() {
+    try {
+        const response = await ApiCircle.getNotePage({ page: 1, size: 50 });
+        const page = responseData<PageResult<WellnessNoteVO>>(response);
+        const records = page?.records || [];
+        if (records.length === 0) return;
+        publishedPosts.value = records.map(mapNoteToPost);
+        await Promise.allSettled(publishedPosts.value.map((post) => hydrateNoteComments(post)));
+        savePublished();
+    } catch {
+        // 后端未启动时沿用本地经验数据。
+    }
 }
 function countAllComments(list: CommentItem[]): number {
     let n = list.length;
@@ -2139,27 +2835,43 @@ function savePublished() {
     localStorage.setItem('yiyangge_published', JSON.stringify(publishedPosts.value));
 }
 
-const authorNames = ["小翠","阿岚","暮雨","青霜","松风","林清欢","苏小养","禾木"];
-
-function publishPost() {
+async function publishPost() {
     const f = shareForm.value;
     if (!f.text.trim()) { toast('请输入内容，内容不能为空'); return; }
     const now = new Date();
     const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    publishedPosts.value.unshift({
+    const fallbackPost: Post = {
         _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         text: f.text,
         images: [...f.images],
         video: f.video,
         category: f.category,
-        author: authorNames[Math.floor(Math.random() * authorNames.length)],
+        author: currentUser.value,
         time: t,
         likes: 0,
         comments: 0,
         stars: 0,
         commentList: [],
         emoji: catEmojis[f.category] || "📝",
-    });
+    };
+    try {
+        const resources = [
+            ...f.images.map((url) => ({ resourceType: 1, url })),
+            ...(f.video ? [{ resourceType: 2, url: f.video }] : []),
+        ];
+        const response = await ApiCircle.publishNote({
+            userId: apiUserId.value,
+            title: f.text.slice(0, 24) || f.category,
+            content: f.text,
+            coverUrl: f.images[0] || "",
+            noteType: noteTypeByCategory[f.category] || 6,
+            resources,
+        });
+        const saved = responseData<WellnessNoteVO>(response);
+        publishedPosts.value.unshift(saved ? mapNoteToPost(saved) : fallbackPost);
+    } catch {
+        publishedPosts.value.unshift(fallbackPost);
+    }
     savePublished();
     closeShareDialog();
     showDraftsPanel.value = false;
@@ -2167,24 +2879,43 @@ function publishPost() {
 }
 
 // 发布草稿
-function publishDraft(idx: number) {
+async function publishDraft(idx: number) {
     const d = drafts.value[idx];
+    if (!d) return;
     const now = new Date();
     const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    publishedPosts.value.unshift({
+    const fallbackPost: Post = {
         _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         text: d.text,
         images: d.images || [],
         video: d.video || "",
         category: d.category,
-        author: authorNames[Math.floor(Math.random() * authorNames.length)],
+        author: currentUser.value,
         time: t,
         likes: 0,
         comments: 0,
         stars: 0,
         commentList: [],
         emoji: catEmojis[d.category] || "📝",
-    });
+    };
+    try {
+        const resources = [
+            ...(d.images || []).map((url) => ({ resourceType: 1, url })),
+            ...(d.video ? [{ resourceType: 2, url: d.video }] : []),
+        ];
+        const response = await ApiCircle.publishNote({
+            userId: apiUserId.value,
+            title: d.text.slice(0, 24) || d.category,
+            content: d.text,
+            coverUrl: d.images?.[0] || "",
+            noteType: noteTypeByCategory[d.category] || 6,
+            resources,
+        });
+        const saved = responseData<WellnessNoteVO>(response);
+        publishedPosts.value.unshift(saved ? mapNoteToPost(saved) : fallbackPost);
+    } catch {
+        publishedPosts.value.unshift(fallbackPost);
+    }
     savePublished();
     drafts.value.splice(idx, 1);
     saveDrafts();
@@ -2196,7 +2927,10 @@ function removePost(postId: string) {
     const idx = publishedPosts.value.findIndex(p => p._id === postId);
     if (idx !== -1) {
         publishedPosts.value.splice(idx, 1);
+        delete likesState.value[postId];
+        delete starsState.value[postId];
         savePublished();
+        saveSharingReactions();
         toast('已删除');
     }
 }
@@ -2206,12 +2940,30 @@ const likesState = ref<Record<string, boolean>>({});
 const starsState = ref<Record<string, boolean>>({});
 const showCommentInputId = ref('');
 
+function loadSharingReactions() {
+    const saved = readStorage<{ likes?: Record<string, boolean>; stars?: Record<string, boolean> }>(
+        STORAGE_KEYS.sharingReactions,
+        {},
+    );
+    likesState.value = saved.likes || {};
+    starsState.value = saved.stars || {};
+}
+
+function saveSharingReactions() {
+    writeStorage(STORAGE_KEYS.sharingReactions, {
+        likes: likesState.value,
+        stars: starsState.value,
+    });
+}
+
 function toggleLike(postId: string) {
     const p = publishedPosts.value.find(x => x._id === postId);
     if (!p) return;
     likesState.value[postId] = !likesState.value[postId];
     p.likes += likesState.value[postId] ? 1 : -1;
+    if (p.likes < 0) p.likes = 0;
     savePublished();
+    saveSharingReactions();
 }
 
 function toggleStar(postId: string) {
@@ -2219,7 +2971,9 @@ function toggleStar(postId: string) {
     if (!p) return;
     starsState.value[postId] = !starsState.value[postId];
     p.stars += starsState.value[postId] ? 1 : -1;
+    if (p.stars < 0) p.stars = 0;
     savePublished();
+    saveSharingReactions();
 }
 
 const commentText = ref<Record<string, string>>({});
@@ -2228,6 +2982,10 @@ const replyTarget = ref<{ postId: string; cid: string; author: string } | null>(
 function toggleCommentInput(postId: string) {
     showCommentInputId.value = showCommentInputId.value === postId ? '' : postId;
     replyTarget.value = null;
+    if (showCommentInputId.value) {
+        const post = publishedPosts.value.find((p) => p._id === postId);
+        if (post) void hydrateNoteComments(post);
+    }
 }
 
 function setReplyTarget(postId: string, cid: string, author: string) {
@@ -2235,7 +2993,7 @@ function setReplyTarget(postId: string, cid: string, author: string) {
     replyTarget.value = { postId, cid, author };
 }
 
-function submitComment(postId: string) {
+async function submitComment(postId: string) {
     const text = (commentText.value[postId] || '').trim();
     if (!text) return;
     const p = publishedPosts.value.find(x => x._id === postId);
@@ -2244,21 +3002,40 @@ function submitComment(postId: string) {
 
     const now = new Date().toLocaleTimeString().slice(0, 5);
 
-    if (replyTarget.value && replyTarget.value.postId === postId) {
+    const target = replyTarget.value;
+    const noteId = getBackendId(postId);
+    const parentBackendId = target ? getBackendId(target.cid) : null;
+    let apiSaved = false;
+    try {
+        if (noteId) {
+            await ApiCircle.publishNoteComment({
+                noteId,
+                userId: apiUserId.value,
+                ...(parentBackendId ? { parentId: parentBackendId } : {}),
+                content: text,
+            });
+            apiSaved = true;
+            await hydrateNoteComments(p);
+        }
+    } catch {
+        // 后端未启动时走本地评论。
+    }
+
+    if (target && target.postId === postId && !apiSaved) {
         // 回复某条评论
-        const parent = p.commentList.find(c => c._cid === replyTarget.value.cid);
+        const parent = p.commentList.find(c => c._cid === target.cid);
         if (parent) {
             if (!parent.replies) parent.replies = [];
             parent.replies.push({
                 author: currentUser.value,
                 text,
-                replyTo: replyTarget.value.author,
+                replyTo: target.author,
                 time: now,
                 replies: [],
                 _cid: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             });
         }
-    } else {
+    } else if (!apiSaved) {
         p.commentList.unshift({
             author: currentUser.value,
             text,
@@ -2299,10 +3076,18 @@ const postsByCategory = computed(() => {
     const map: Record<string, typeof publishedPosts.value> = {};
     shareCategories.forEach(c => { map[c] = []; });
     publishedPosts.value.forEach(p => {
-        if (map[p.category]) map[p.category].push(p);
+        const bucket = map[p.category];
+        if (bucket) bucket.push(p);
     });
     return map;
 });
+
+function getCategoryPreview(cat: string) {
+    const list = postsByCategory.value[cat] || [];
+    const latest = list[list.length - 1];
+    if (!latest) return "";
+    return `${latest.text.slice(0, 30)}${latest.text.length > 30 ? "…" : ""}`;
+}
 
 function openCategoryDialog(cat: string) {
     catDialogName.value = cat;
@@ -2348,6 +3133,26 @@ const hotTopics = [
     },
 ];
 
+function getCategoryByTopic(topicName: string) {
+    if (topicName.includes("早睡")) return "作息调理";
+    if (topicName.includes("食疗") || topicName.includes("方子")) return "食疗药膳";
+    if (topicName.includes("八段锦") || topicName.includes("练")) return "运动养生";
+    if (topicName.includes("节气") || topicName.includes("小满")) return "节气养生";
+    return "中医妙招";
+}
+
+function joinTopic(topic: typeof hotTopics[number]) {
+    shareForm.value = {
+        text: `#${topic.name} 今天也来分享一点我的养生实践：`,
+        images: [],
+        video: "",
+        category: getCategoryByTopic(topic.name),
+    };
+    editingDraftIdx.value = null;
+    showDraftsPanel.value = false;
+    showShareDialog.value = true;
+}
+
 // ---- Module 4: Interaction ----
 const feedFilters = ["推荐", "关注"];
 const selectedFeedFilter = ref("推荐");
@@ -2355,11 +3160,10 @@ const selectedFeedFilter = ref("推荐");
 interface NotifItem {
     _nid: string; type: 'like' | 'comment' | 'follow';
     emoji: string; bg: string; title: string; text: string; time: string;
-    read: boolean; fromId: string; postId?: string;
+    read: boolean; fromId: string; postId?: string | undefined;
 }
 const notificationList = ref<NotifItem[]>([]);
 const unreadCount = computed(() => notificationList.value.filter(n => !n.read).length);
-const showNotifDialog = ref(false);
 const showNotifPanel = ref(false);
 const notifPanelType = ref<'like' | 'comment' | 'follow'>('like');
 const notifDetailTarget = ref<NotifItem | null>(null);
@@ -2379,8 +3183,12 @@ const unreadByType = computed(() => ({
 const filteredNotifPanel = computed(() => notifByType.value[notifPanelType.value] || []);
 
 function openNotifPanel(type: 'like' | 'comment' | 'follow') {
-    notifPanelType.value = type;
+    selectNotifPanel(type);
     showNotifPanel.value = true;
+}
+
+function selectNotifPanel(type: 'like' | 'comment' | 'follow') {
+    notifPanelType.value = type;
     notifByType.value[type].forEach(n => { n.read = true; });
     saveNotifications();
 }
@@ -2447,6 +3255,72 @@ interface CommunityComment {
     _cid: string; author: string; text: string; time: string;
     replyTo?: string;
     replies?: CommunityComment[];
+}
+
+function mapDynamicCommentToCommunity(comment: WellnessDynamicCommentVO): CommunityComment {
+    return {
+        _cid: `dynamic_comment_${comment.id}`,
+        author: `用户${comment.userId || ""}`,
+        text: comment.content || "",
+        time: comment.createdAt || "",
+        replies: [],
+    };
+}
+
+function mapDynamicToCommunityPost(dynamic: WellnessDynamicVO): CommunityPost {
+    const resources = Array.isArray(dynamic.resources) ? dynamic.resources : [];
+    const imageUrls = resources
+        .filter((resource) => (resource.resourceType || 1) === 1 && resource.url)
+        .map((resource) => ({ src: resource.url }));
+    if (imageUrls.length === 0 && dynamic.firstResourceUrl) {
+        imageUrls.push({ src: dynamic.firstResourceUrl });
+    }
+    return {
+        _id: `dynamic_${dynamic.id}`,
+        authorId: dynamic.userId === apiUserId.value ? currentUserId : `user_${dynamic.userId}`,
+        name: dynamic.userId === apiUserId.value ? "我" : `用户${dynamic.userId}`,
+        level: dynamic.userId === apiUserId.value ? "楼主" : "社区成员",
+        meta: dynamic.createdAt || "",
+        avatarBg: dynamic.userId === apiUserId.value
+            ? "linear-gradient(135deg,var(--gold),var(--cinnabar))"
+            : "linear-gradient(135deg,var(--jade),var(--moon))",
+        avatarText: dynamic.userId === apiUserId.value ? "我" : String(dynamic.userId || "?").slice(0, 2),
+        text: dynamic.content || "",
+        images: imageUrls,
+        tags: dynamic.dynamicTypeText ? [dynamic.dynamicTypeText] : ["健康生活"],
+        liked: false,
+        likeCount: 0,
+        stared: false,
+        starCount: 0,
+        commentCount: 0,
+        commentList: [],
+    };
+}
+
+async function hydrateDynamicComments(post: CommunityPost) {
+    const dynamicId = getBackendId(post._id);
+    if (!dynamicId) return;
+    try {
+        const response = await ApiCircle.getDynamicCommentPage({
+            dynamicId,
+            page: 1,
+            size: 50,
+        });
+        const page = responseData<PageResult<WellnessDynamicCommentVO>>(response);
+        const comments = page?.records || [];
+        const roots = comments.filter((c) => !c.parentId);
+        post.commentList = roots.map((comment) => ({
+            ...mapDynamicCommentToCommunity(comment),
+            replies: comments
+                .filter((reply) => reply.parentId === comment.id)
+                .map(mapDynamicCommentToCommunity),
+        }));
+        post.commentCount = (post.commentList || []).length +
+            (post.commentList || []).reduce((s, c) => s + (c.replies?.length || 0), 0);
+        saveCommunityPosts();
+    } catch {
+        // 后端未启动时沿用本地评论。
+    }
 }
 
 function getSeededCommunityPosts(): CommunityPost[] {
@@ -2527,6 +3401,29 @@ function loadCommunityPosts() {
         }));
     } catch { communityPosts.value = []; }
 }
+
+async function loadCommunityPostsApiState() {
+    try {
+        const response = await ApiCircle.getDynamicPage({ page: 1, size: 50 });
+        const page = responseData<PageResult<WellnessDynamicVO>>(response);
+        const records = page?.records || [];
+        if (records.length === 0) return;
+        const details = await Promise.allSettled(
+            records.map(async (record) => {
+                const detail = await ApiCircle.getDynamicDetail(record.id);
+                return responseData<WellnessDynamicVO>(detail) || record;
+            }),
+        );
+        communityPosts.value = details.map((result, index) => {
+            const record = result.status === "fulfilled" ? result.value : records[index]!;
+            return mapDynamicToCommunityPost(record);
+        });
+        await Promise.allSettled(communityPosts.value.map((post) => hydrateDynamicComments(post)));
+        saveCommunityPosts();
+    } catch {
+        // 后端未启动时沿用本地动态。
+    }
+}
 function saveCommunityPosts() {
     localStorage.setItem('yiyangge_community', JSON.stringify(communityPosts.value));
 }
@@ -2589,32 +3486,55 @@ function toggleCommunityTag(t: string) {
     const idx = communityForm.value.tags.indexOf(t);
     idx > -1 ? communityForm.value.tags.splice(idx, 1) : communityForm.value.tags.push(t);
 }
-function publishCommunityPost() {
+async function publishCommunityPost() {
     if (!communityForm.value.text.trim()) { toast('请输入内容'); return; }
-    const avatars = ['林','苏','阿','禾','墨','陈','小翠'];
-    const bg = ['linear-gradient(135deg,var(--gold),var(--cinnabar))','linear-gradient(135deg,var(--jade),var(--moon))','linear-gradient(135deg,var(--pink),var(--gold))'];
-    const now = new Date();
-    communityPosts.value.unshift({
+    const avatarBg = 'linear-gradient(135deg,var(--gold),var(--cinnabar))';
+    const fallbackPost: CommunityPost = {
         _id: 'cp_' + Date.now(),
         authorId: currentUserId,
         name: '我',
         level: '楼主',
         meta: '刚刚',
-        avatarBg: bg[0], avatarText: '我',
+        avatarBg, avatarText: '我',
         text: communityForm.value.text,
         images: communityForm.value.images.map(s => ({ src: s })),
         tags: communityForm.value.tags,
         liked: false, likeCount: 0,
         stared: false, starCount: 0,
         commentCount: 0, commentList: [],
-    });
+    };
+    try {
+        const resources = communityForm.value.images.map((url) => ({
+            resourceType: 1,
+            url,
+        }));
+        const response = await ApiCircle.publishDynamic({
+            userId: apiUserId.value,
+            content: communityForm.value.text,
+            coverUrl: communityForm.value.images[0] || "",
+            dynamicType: resources.length > 0 ? 1 : 3,
+            resources,
+        });
+        const saved = responseData<WellnessDynamicVO>(response);
+        communityPosts.value.unshift(saved ? mapDynamicToCommunityPost(saved) : fallbackPost);
+    } catch {
+        communityPosts.value.unshift(fallbackPost);
+    }
     saveCommunityPosts();
     showCommunityPublish.value = false;
     toast('动态已发布');
 }
-function deleteCommunityPost(pid: string) {
+async function deleteCommunityPost(pid: string) {
     const idx = communityPosts.value.findIndex(p => p._id === pid);
-    if (idx > -1) { communityPosts.value.splice(idx, 1); saveCommunityPosts(); toast('已删除'); }
+    if (idx > -1) {
+        const dynamicId = getBackendId(pid);
+        if (dynamicId) {
+            await ApiCircle.deleteDynamic(dynamicId, apiUserId.value).catch(() => {});
+        }
+        communityPosts.value.splice(idx, 1);
+        saveCommunityPosts();
+        toast('已删除');
+    }
 }
 
 // 社区互动
@@ -2623,6 +3543,7 @@ function likeCommunityPost(pid: string) {
     if (!p) return;
     p.liked = !p.liked;
     p.likeCount += p.liked ? 1 : -1;
+    if (p.likeCount < 0) p.likeCount = 0;
     saveCommunityPosts();
     // 通知（非本人帖子才通知）
     if (p.liked && p.authorId !== currentUserId) {
@@ -2641,6 +3562,7 @@ function starCommunityPost(pid: string) {
     if (!p) return;
     p.stared = !p.stared;
     p.starCount += p.stared ? 1 : -1;
+    if (p.starCount < 0) p.starCount = 0;
     saveCommunityPosts();
 }
 function shareCommunityPost(post: CommunityPost) {
@@ -2676,18 +3598,39 @@ const communityReplyTarget = ref<{ postId: string; cid: string; author: string }
 function toggleCommunityComment(pid: string) {
     expandedComments.value[pid] = !expandedComments.value[pid];
     communityReplyTarget.value = null;
+    if (expandedComments.value[pid]) {
+        const post = communityPosts.value.find((p) => p._id === pid);
+        if (post) void hydrateDynamicComments(post);
+    }
 }
 function setCommunityReplyTarget(postId: string, cid: string, author: string) {
     communityReplyTarget.value = { postId, cid, author };
 }
-function submitCommunityComment(pid: string) {
+async function submitCommunityComment(pid: string) {
     const text = (communityCommentText.value[pid] || '').trim();
     if (!text) return;
     const p = communityPosts.value.find(x => x._id === pid);
     if (!p) return;
     if (!p.commentList) p.commentList = [];
     const now = new Date().toLocaleTimeString().slice(0, 5);
-    if (communityReplyTarget.value && communityReplyTarget.value.postId === pid) {
+    const dynamicId = getBackendId(pid);
+    const parentBackendId = communityReplyTarget.value ? getBackendId(communityReplyTarget.value.cid) : null;
+    let apiSaved = false;
+    try {
+        if (dynamicId) {
+            await ApiCircle.publishDynamicComment({
+                dynamicId,
+                userId: apiUserId.value,
+                ...(parentBackendId ? { parentId: parentBackendId } : {}),
+                content: text,
+            });
+            apiSaved = true;
+            await hydrateDynamicComments(p);
+        }
+    } catch {
+        // 后端未启动时走本地评论。
+    }
+    if (communityReplyTarget.value && communityReplyTarget.value.postId === pid && !apiSaved) {
         const parent = p.commentList.find(c => c._cid === communityReplyTarget.value!.cid);
         if (parent) {
             if (!parent.replies) parent.replies = [];
@@ -2698,7 +3641,7 @@ function submitCommunityComment(pid: string) {
                 time: now,
             });
         }
-    } else {
+    } else if (!apiSaved) {
         p.commentList.unshift({
             _cid: 'cc_' + Date.now(),
             author: currentUser.value, text, time: now,
@@ -2721,7 +3664,15 @@ function submitCommunityComment(pid: string) {
     }
 }
 
-const groups = [
+interface CommunityGroup {
+    name: string;
+    emoji: string;
+    meta: string;
+    bg: string;
+    joined: boolean;
+}
+
+const groups = ref<CommunityGroup[]>([
     {
         name: "早睡自律互助组",
         emoji: "🌙",
@@ -2743,7 +3694,31 @@ const groups = [
         bg: "var(--gold-soft)",
         joined: false,
     },
-];
+]);
+
+function loadGroups() {
+    const saved = readStorage<CommunityGroup[] | null>(STORAGE_KEYS.groups, null);
+    if (!saved) return;
+    groups.value = groups.value.map((g) => ({
+        ...g,
+        joined: !!saved.find((s) => s.name === g.name)?.joined,
+    }));
+}
+
+function saveGroups() {
+    writeStorage(STORAGE_KEYS.groups, groups.value);
+}
+
+function toggleGroupJoin(name: string) {
+    const group = groups.value.find((g) => g.name === name);
+    if (!group) return;
+    group.joined = !group.joined;
+    group.meta = group.joined
+        ? group.meta.replace("活跃", "已加入").replace("每日打卡督促", "已加入")
+        : group.meta.replace("已加入", name.includes("早睡") ? "每日打卡督促" : "活跃");
+    saveGroups();
+    toast(group.joined ? `已加入「${group.name}」` : `已退出「${group.name}」`);
+}
 
 // 本周活跃榜 — 按社区数据实时计算
 // 算法：发帖＝15分, 评论＝4分, 回复＝2分, 获赞＝3分, 被收藏＝2分
@@ -2757,7 +3732,7 @@ const leaderboard = computed(() => {
             name: p.name, score: 0, posts: 0, comments: 0, likes: 0, stars: 0,
             avatarBg: p.avatarBg, avatarText: p.avatarText, isMe: id === currentUserId,
         };
-        const u = scores[id];
+        const u = scores[id]!;
         u.posts += 1;
         u.score += 15;  // 发帖积 15 分
         u.likes += p.likeCount;
@@ -2769,17 +3744,18 @@ const leaderboard = computed(() => {
     // 遍历所有帖子评论，统计评论者得分
     communityPosts.value.forEach(p => {
         (p.commentList || []).forEach(c => {
-            const commentAuthor = c.author;
+            const commentAuthor = c.author || "匿名";
             if (!scores[commentAuthor]) scores[commentAuthor] = {
                 name: commentAuthor, score: 0, posts: 0, comments: 0, likes: 0, stars: 0,
                 avatarBg: 'linear-gradient(135deg, var(--jade), var(--moon))',
-                avatarText: commentAuthor[0], isMe: false,
+                avatarText: commentAuthor.slice(0, 1) || "匿", isMe: false,
             };
-            scores[commentAuthor].comments += 1;
-            scores[commentAuthor].score += 4;  // 评论积 4 分
-            (c.replies || []).forEach(r => {
-                scores[commentAuthor].comments += 1;
-                scores[commentAuthor].score += 2;  // 回复积 2 分
+            const userScore = scores[commentAuthor]!;
+            userScore.comments += 1;
+            userScore.score += 4;  // 评论积 4 分
+            (c.replies || []).forEach(() => {
+                userScore.comments += 1;
+                userScore.score += 2;  // 回复积 2 分
             });
         });
     });
@@ -2787,7 +3763,7 @@ const leaderboard = computed(() => {
     return Object.values(scores)
         .sort((a, b) => b.score - a.score)
         .slice(0, 8)  // top 8
-        .map((u, i) => ({
+        .map((u) => ({
             ...u,
             score: String(u.score),
             sub: `${u.posts} 帖 · ${u.comments} 评 · ${u.likes} 赞 · ${u.stars} 藏`,
@@ -2798,7 +3774,25 @@ const leaderboard = computed(() => {
 const challengeFilters = ["全部", "作息", "饮食", "运动", "情志"];
 const selectedChallengeFilter = ref("全部");
 
-const challenges = [
+interface Challenge {
+    name: string;
+    emoji: string;
+    bg: string;
+    statusClass: string;
+    statusLabel: string;
+    days: number;
+    cat: string;
+    joined: boolean;
+    people: { bg: string; text: string }[];
+    desc?: string;
+    participants?: string;
+    progressDay?: number;
+    completedDays?: number;
+    points?: number;
+    lastCheckinKey?: string;
+}
+
+const challenges = ref<Challenge[]>([
     {
         name: "21 天早睡养肝挑战",
         emoji: "🌙",
@@ -2808,6 +3802,11 @@ const challenges = [
         days: 21,
         cat: "作息",
         joined: true,
+        desc: "每晚 23:00 前入睡并打卡，养肝血、调气色，21 天养成早睡习惯",
+        participants: "3,254",
+        progressDay: 8,
+        completedDays: 7,
+        points: 200,
         people: [
             { bg: "var(--jade)", text: "林" },
             { bg: "var(--gold)", text: "苏" },
@@ -2824,6 +3823,11 @@ const challenges = [
         days: 14,
         cat: "饮食",
         joined: true,
+        desc: "每天按个人目标完成饮水，稳定代谢和精力状态",
+        participants: "1,846",
+        progressDay: 5,
+        completedDays: 5,
+        points: 120,
         people: [
             { bg: "var(--moon)", text: "禾" },
             { bg: "var(--jade)", text: "陈" },
@@ -2839,6 +3843,11 @@ const challenges = [
         days: 21,
         cat: "情志",
         joined: false,
+        desc: "每天 10 分钟正念冥想，舒缓焦虑，安住当下",
+        participants: "960",
+        progressDay: 0,
+        completedDays: 0,
+        points: 180,
         people: [
             { bg: "var(--pink)", text: "阿" },
             { bg: "var(--gold)", text: "墨" },
@@ -2854,6 +3863,11 @@ const challenges = [
         days: 7,
         cat: "饮食",
         joined: false,
+        desc: "七天少油少糖，记录清淡餐和身体反馈",
+        participants: "540",
+        progressDay: 0,
+        completedDays: 0,
+        points: 80,
         people: [
             { bg: "var(--jade)", text: "林" },
             { bg: "var(--ink-muted)", text: "+540" },
@@ -2868,6 +3882,11 @@ const challenges = [
         days: 30,
         cat: "运动",
         joined: false,
+        desc: "每日晨练八段锦，改善肩颈和久坐疲劳",
+        participants: "720",
+        progressDay: 0,
+        completedDays: 0,
+        points: 260,
         people: [
             { bg: "var(--moon)", text: "陈" },
             { bg: "var(--ink-muted)", text: "+720" },
@@ -2882,12 +3901,107 @@ const challenges = [
         days: 21,
         cat: "饮食",
         joined: false,
+        desc: "减少精制糖摄入，记录皮肤、精神和食欲变化",
+        participants: "1,200",
+        progressDay: 0,
+        completedDays: 0,
+        points: 180,
         people: [
             { bg: "var(--pink)", text: "苏" },
             { bg: "var(--ink-muted)", text: "+1.2k" },
         ],
     },
-];
+]);
+
+const filteredChallenges = computed(() => {
+    if (selectedChallengeFilter.value === "全部") return challenges.value;
+    return challenges.value.filter((c) => c.cat === selectedChallengeFilter.value);
+});
+
+const heroChallenge = computed(() =>
+    challenges.value.find((c) => c.joined && c.name.includes("早睡")) ||
+    challenges.value.find((c) => c.joined) ||
+    challenges.value[0],
+);
+
+function getChallengeRate(ch: Challenge) {
+    const progress = Math.max(0, ch.progressDay || 0);
+    if (progress === 0) return 0;
+    return Math.min(100, Math.round(((ch.completedDays || 0) / progress) * 100));
+}
+
+const heroChallengeProgress = computed(() => {
+    const ch = heroChallenge.value;
+    if (!ch) return 0;
+    return Math.min(100, Math.round(((ch.progressDay || 0) / ch.days) * 100));
+});
+const heroChallengeRate = computed(() => heroChallenge.value ? getChallengeRate(heroChallenge.value) : 0);
+const heroChallengeDaysLeft = computed(() => {
+    const ch = heroChallenge.value;
+    if (!ch) return 0;
+    return Math.max(0, ch.days - (ch.progressDay || 0));
+});
+const challengeDetail = ref<Challenge | null>(null);
+
+function syncActiveChallenges() {
+    activeChallenges.value = challenges.value.filter((c) => c.joined).length;
+}
+
+function saveChallenges() {
+    syncActiveChallenges();
+    writeStorage(STORAGE_KEYS.challenges, challenges.value);
+}
+
+function loadChallenges() {
+    const saved = readStorage<Challenge[] | null>(STORAGE_KEYS.challenges, null);
+    if (!saved) return;
+    challenges.value = challenges.value.map((base) => {
+        const local = saved.find((c) => c.name === base.name);
+        return local ? { ...base, ...local, people: base.people } : base;
+    });
+    syncActiveChallenges();
+}
+
+function openChallengeDetail(name: string) {
+    challengeDetail.value = challenges.value.find((c) => c.name === name) || null;
+}
+
+function toggleChallengeJoin(name: string) {
+    const ch = challenges.value.find((c) => c.name === name);
+    if (!ch) return;
+    ch.joined = !ch.joined;
+    if (ch.joined && !ch.progressDay) {
+        ch.progressDay = 1;
+        ch.completedDays = 0;
+    }
+    saveChallenges();
+    if (challengeDetail.value?.name === name) challengeDetail.value = ch;
+    toast(ch.joined ? `已报名「${ch.name}」` : `已退出「${ch.name}」`);
+}
+
+function checkinHeroChallenge() {
+    if (!heroChallenge.value) return;
+    checkinChallenge(heroChallenge.value.name);
+}
+
+function checkinChallenge(name: string) {
+    const ch = challenges.value.find((c) => c.name === name);
+    if (!ch) return;
+    if (!ch.joined) {
+        ch.joined = true;
+        toast(`已先为你报名「${ch.name}」`);
+    }
+    if (ch.lastCheckinKey === todayKey.value) {
+        toast("今天已经完成该挑战打卡");
+        return;
+    }
+    ch.lastCheckinKey = todayKey.value;
+    ch.progressDay = Math.min(ch.days, Math.max(1, (ch.progressDay || 0) + 1));
+    ch.completedDays = Math.min(ch.progressDay, (ch.completedDays || 0) + 1);
+    saveChallenges();
+    if (challengeDetail.value?.name === name) challengeDetail.value = ch;
+    toast(`「${ch.name}」今日打卡完成`);
+}
 
 const challengeRanks = [
     {
@@ -2921,30 +4035,74 @@ const challengeRanks = [
     },
 ];
 
-const badges = [
-    { name: "早起达人", emoji: "🌅", cond: "连续 7 天早起打卡", desc: "早起打卡 7 天", unlocked: true },
-    { name: "饮水标兵", emoji: "💧", cond: "累计 10 天足量饮水", desc: "饮水达标 10 天", unlocked: true },
-    { name: "冥想新星", emoji: "🧘", cond: "累计 5 次冥想打卡", desc: "冥想 5 次", unlocked: true },
-    { name: "早睡先锋", emoji: "🌙", cond: "累计 7 天早睡打卡", desc: "早睡 7 天", unlocked: true },
-    { name: "经验作者", emoji: "✍️", cond: "发布 5 篇经验", desc: "发布 5 篇", unlocked: true },
-    { name: "恒心百日", emoji: "🏔️", cond: "连续打卡 100 天", desc: "百日坚持", unlocked: false },
-    { name: "食养专家", emoji: "🥗", cond: "发布 10 篇食疗经验", desc: "食疗 10 篇", unlocked: false },
-    { name: "社区之星", emoji: "👑", cond: "登榜周榜前三", desc: "荣登前三", unlocked: false },
-    { name: "节气使者", emoji: "🌾", cond: "完成 6 个节气打卡", desc: "6 节气打卡", unlocked: false },
-    { name: "八段锦传人", emoji: "☯️", cond: "累计 21 天运动打卡", desc: "运动 21 天", unlocked: false },
-    { name: "情志涵养", emoji: "🌸", cond: "累计 5 次冥想静心", desc: "静心 5 次", unlocked: false },
-    { name: "养生大师", emoji: "🏅", cond: "全部徽章集齐解锁", desc: "终极徽章", unlocked: false },
-];
+const selectedChallengeRankScope = ref<"好友榜" | "总榜">("好友榜");
+const displayedChallengeRanks = computed(() => {
+    if (selectedChallengeRankScope.value === "好友榜") return challengeRanks;
+    return [
+        { name: "江南药膳", sub: "达标 12 天 · 全勤", rate: "100%", avatarBg: "linear-gradient(135deg, var(--gold), var(--jade))", avatarText: "江" },
+        { name: "林清欢", sub: "连续达标 8 天 · 全勤", rate: "100%", avatarBg: "linear-gradient(135deg, var(--gold), var(--cinnabar))", avatarText: "林" },
+        { name: "青竹", sub: "达标 11 天 · 缺卡 1 天", rate: "98%", avatarBg: "linear-gradient(135deg, var(--moon), var(--jade))", avatarText: "青" },
+        { name: "陈一山", sub: "达标 7 天 · 缺卡 1 天", rate: "96%", avatarBg: "linear-gradient(135deg, var(--jade), var(--moon))", avatarText: "陈" },
+        { name: "我 · 嘉欣", sub: `达标 ${heroChallenge.value?.completedDays || 0} 天`, rate: `${heroChallengeRate.value}%`, avatarBg: "linear-gradient(135deg, var(--jade), var(--jade-light))", avatarText: "JX", isMe: true },
+    ];
+});
+
+const badges = computed(() => {
+    const earlySleep = challenges.value.find((c) => c.name.includes("早睡"));
+    const water = challenges.value.find((c) => c.name.includes("八杯水"));
+    const meditation = challenges.value.find((c) => c.name.includes("冥想"));
+    const sport = challenges.value.find((c) => c.name.includes("八段锦"));
+    const dietPosts = publishedPosts.value.filter((p) => p.category === "食疗药膳").length;
+    const topThree = leaderboard.value.slice(0, 3).some((u) => u.isMe);
+    const list = [
+        { name: "早起达人", emoji: "🌅", cond: "连续 7 天早起打卡", desc: "早起打卡 7 天", unlocked: streakDays.value >= 7 },
+        { name: "饮水标兵", emoji: "💧", cond: "累计 10 天足量饮水", desc: "饮水达标 10 天", unlocked: (water?.completedDays || 0) >= 10 || waterFilled.value * waterCupSize.value >= waterGoal.value },
+        { name: "冥想新星", emoji: "🧘", cond: "累计 5 次冥想打卡", desc: "冥想 5 次", unlocked: (meditation?.completedDays || 0) >= 5 },
+        { name: "早睡先锋", emoji: "🌙", cond: "累计 7 天早睡打卡", desc: "早睡 7 天", unlocked: (earlySleep?.completedDays || 0) >= 7 },
+        { name: "经验作者", emoji: "✍️", cond: "发布 5 篇经验", desc: "发布 5 篇", unlocked: publishedPosts.value.filter((p) => p.author === currentUser.value).length >= 5 },
+        { name: "恒心百日", emoji: "🏔️", cond: "连续打卡 100 天", desc: "百日坚持", unlocked: streakDays.value >= 100 },
+        { name: "食养专家", emoji: "🥗", cond: "发布 10 篇食疗经验", desc: "食疗 10 篇", unlocked: dietPosts >= 10 },
+        { name: "社区之星", emoji: "👑", cond: "登榜周榜前三", desc: "荣登前三", unlocked: topThree },
+        { name: "节气使者", emoji: "🌾", cond: "完成 6 个节气打卡", desc: "6 节气打卡", unlocked: checkItems.value.some((i) => i.name.includes("节气") && i.done) },
+        { name: "八段锦传人", emoji: "☯️", cond: "累计 21 天运动打卡", desc: "运动 21 天", unlocked: (sport?.completedDays || 0) >= 21 },
+        { name: "情志涵养", emoji: "🌸", cond: "累计 5 次冥想静心", desc: "静心 5 次", unlocked: (meditation?.completedDays || 0) >= 5 || selectedMood.value.includes("轻松") },
+    ];
+    return [
+        ...list,
+        { name: "养生大师", emoji: "🏅", cond: "全部徽章集齐解锁", desc: "终极徽章", unlocked: list.every((b) => b.unlocked) },
+    ];
+});
 
 const showBadgeModal = ref(false);
-const unlockedBadgeCount = computed(() => badges.filter(b => b.unlocked).length);
+const unlockedBadgeCount = computed(() => badges.value.filter(b => b.unlocked).length);
 
 // 初始化加载（必须在所有 ref 声明之后）
+loadCheckinState();
+loadLifestyleState();
 loadDrafts();
 loadPublished();
+loadSharingReactions();
 loadCommunityPosts();
 loadFollowed();
 loadNotifications();
+loadGroups();
+loadChallenges();
+syncActiveChallenges();
+
+onMounted(() => {
+    currentUser.value =
+        userStore.G_LoginInfo.nickName ||
+        userStore.G_LoginInfo.account ||
+        userStore.G_UserInfo.email ||
+        currentUser.value;
+
+    void Promise.allSettled([
+        loadCheckinApiState(),
+        loadLifestyleApiState(),
+        loadPublishedApiState(),
+        loadCommunityPostsApiState(),
+    ]);
+});
 </script>
 
 <style scoped lang="scss">
@@ -4808,6 +5966,76 @@ loadNotifications();
 }
 .cc-people .pp:first-child {
     margin-left: 0;
+}
+
+.challenge-detail-dialog {
+    width: min(560px, 92vw) !important;
+}
+.challenge-detail-body {
+    padding: 20px 22px 22px;
+}
+.challenge-detail-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+}
+.challenge-detail-emoji {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+}
+.challenge-detail-status {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--jade);
+    margin-bottom: 4px;
+}
+.challenge-detail-desc {
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.6;
+}
+.challenge-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.challenge-detail-grid > div {
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+}
+.challenge-detail-grid strong {
+    display: block;
+    color: var(--ink);
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+.challenge-detail-grid span {
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+.challenge-detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.challenge-detail-actions button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 // Leaderboard
