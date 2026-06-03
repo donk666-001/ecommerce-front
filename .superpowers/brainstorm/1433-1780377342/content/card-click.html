@@ -1,0 +1,303 @@
+<h2>点击套餐卡片后，如何展示详情？</h2>
+<p class="subtitle">决定页面跳转方式和信息密度</p>
+
+<div class="cards">
+    <div class="card" data-choice="a" onclick="toggleSelect(this)">
+        <div
+            class="card-image"
+            style="
+                background: linear-gradient(135deg, #5c8374 0%, #8fa89c 100%);
+                padding: 24px;
+                color: white;
+                font-family: STKaiti, serif;
+            "
+        >
+            <div style="font-size: 13px; opacity: 0.8; margin-bottom: 8px">
+                OPTION A
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start">
+                <div
+                    style="
+                        background: rgba(255, 255, 255, 0.15);
+                        border-radius: 10px;
+                        padding: 16px;
+                        flex: 1;
+                    "
+                >
+                    <div
+                        style="
+                            font-size: 11px;
+                            opacity: 0.7;
+                            margin-bottom: 4px;
+                        "
+                    >
+                        套餐列表页
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-bottom: 6px;
+                            font-size: 12px;
+                        "
+                    >
+                        📋 体质辨识 · ¥199
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-bottom: 6px;
+                            font-size: 12px;
+                        "
+                    >
+                        🌿 节气调理 · ¥299
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 6px;
+                            padding: 10px;
+                            font-size: 12px;
+                        "
+                    >
+                        💬 专家咨询 · ¥99
+                    </div>
+                </div>
+                <div style="font-size: 20px; align-self: center">→</div>
+                <div
+                    style="
+                        background: rgba(255, 255, 255, 0.15);
+                        border-radius: 10px;
+                        padding: 16px;
+                        flex: 1;
+                    "
+                >
+                    <div
+                        style="
+                            font-size: 11px;
+                            opacity: 0.7;
+                            margin-bottom: 4px;
+                        "
+                    >
+                        详情独立页面
+                    </div>
+                    <div
+                        style="
+                            font-size: 13px;
+                            font-weight: bold;
+                            margin-bottom: 6px;
+                        "
+                    >
+                        体质辨识套餐
+                    </div>
+                    <div
+                        style="font-size: 11px; opacity: 0.8; line-height: 1.6"
+                    >
+                        含专家问诊 + AI分析报告<br />有效期 30 天<br /><strong
+                            >¥199</strong
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <h3>跳转详情页</h3>
+            <p>
+                点击卡片后跳转到独立的套餐详情页，可展示完整的服务说明、评价、预约流程，SEO
+                友好
+            </p>
+        </div>
+    </div>
+
+    <div class="card" data-choice="b" onclick="toggleSelect(this)">
+        <div
+            class="card-image"
+            style="
+                background: linear-gradient(135deg, #c9a55c 0%, #9a7b33 100%);
+                padding: 24px;
+                color: white;
+                font-family: STKaiti, serif;
+            "
+        >
+            <div style="font-size: 13px; opacity: 0.8; margin-bottom: 8px">
+                OPTION B
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start">
+                <div
+                    style="
+                        background: rgba(255, 255, 255, 0.15);
+                        border-radius: 10px;
+                        padding: 16px;
+                        flex: 1;
+                    "
+                >
+                    <div
+                        style="
+                            font-size: 11px;
+                            opacity: 0.7;
+                            margin-bottom: 4px;
+                        "
+                    >
+                        套餐列表页
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.2);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-bottom: 6px;
+                            font-size: 12px;
+                        "
+                    >
+                        📋 体质辨识 · ¥199
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.3);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-bottom: 6px;
+                            font-size: 12px;
+                            border: 1px solid rgba(255, 255, 255, 0.5);
+                        "
+                    >
+                        👆 点击中...
+                    </div>
+                </div>
+                <div style="position: relative; flex: 1">
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.9);
+                            border-radius: 10px;
+                            padding: 14px;
+                            color: #2c3639;
+                            font-size: 12px;
+                        "
+                    >
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: #6b7c7a;
+                                margin-bottom: 4px;
+                            "
+                        >
+                            侧滑抽屉
+                        </div>
+                        <div
+                            style="
+                                font-weight: bold;
+                                margin-bottom: 6px;
+                                font-size: 13px;
+                            "
+                        >
+                            体质辨识套餐
+                        </div>
+                        <div
+                            style="
+                                color: #4a5559;
+                                line-height: 1.6;
+                                font-size: 11px;
+                            "
+                        >
+                            含专家问诊 + AI分析<br />¥199 · 立即预约
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <h3>侧滑抽屉（Drawer）</h3>
+            <p>
+                点击后从右侧滑出抽屉面板展示详情，用户无需离开列表页，体验更流畅，适合快速对比
+            </p>
+        </div>
+    </div>
+
+    <div class="card" data-choice="c" onclick="toggleSelect(this)">
+        <div
+            class="card-image"
+            style="
+                background: linear-gradient(135deg, #6b7f9e 0%, #4a5e7c 100%);
+                padding: 24px;
+                color: white;
+                font-family: STKaiti, serif;
+            "
+        >
+            <div style="font-size: 13px; opacity: 0.8; margin-bottom: 8px">
+                OPTION C
+            </div>
+            <div
+                style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <div
+                    style="
+                        background: rgba(255, 255, 255, 0.15);
+                        border-radius: 10px;
+                        padding: 16px;
+                        text-align: center;
+                    "
+                >
+                    <div
+                        style="
+                            font-size: 11px;
+                            opacity: 0.7;
+                            margin-bottom: 8px;
+                        "
+                    >
+                        列表继续显示
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.1);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-bottom: 4px;
+                            font-size: 11px;
+                        "
+                    >
+                        📋 体质辨识 · ¥199
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.3);
+                            border-radius: 6px;
+                            padding: 12px;
+                            font-size: 11px;
+                            border: 1px solid rgba(255, 255, 255, 0.5);
+                        "
+                    >
+                        ▼ 展开详情<br />
+                        <span style="font-size: 10px; opacity: 0.8"
+                            >含专家问诊 + AI分析<br />立即预约</span
+                        >
+                    </div>
+                    <div
+                        style="
+                            background: rgba(255, 255, 255, 0.1);
+                            border-radius: 6px;
+                            padding: 10px;
+                            margin-top: 4px;
+                            font-size: 11px;
+                        "
+                    >
+                        💬 专家咨询 · ¥99
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <h3>卡片内展开</h3>
+            <p>
+                点击后卡片在原地展开显示详情，不离开当前列表，适合信息较简单的服务套餐
+            </p>
+        </div>
+    </div>
+</div>

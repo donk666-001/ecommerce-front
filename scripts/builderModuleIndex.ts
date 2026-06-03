@@ -110,13 +110,11 @@ const checkExport = (url: string): boolean => {
 };
 
 const projectBasePath = path.join(process.cwd(), "../src");
-const builPathList = [
-  "utils"
-]
+const builPathList = ["utils"];
 
 // 构建模块索引
 builPathList.forEach((item) => {
-  builderModuleIndex(path.join(projectBasePath, item));
-})
+    builderModuleIndex(path.join(projectBasePath, item));
+});
 
 console.log("模块索引构建完成");

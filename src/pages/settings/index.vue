@@ -3,6 +3,10 @@
         <HeaderLayout />
 
         <div class="settings-page">
+            <button type="button" class="back-link" @click="goBack">
+                <span class="back-link-icon">‹</span>
+                <span>返回</span>
+            </button>
             <!-- 顶部用户展示区 -->
             <div class="profile-header">
                 <div
@@ -33,15 +37,18 @@
                 </div>
 
                 <div class="profile-info">
-                    <h2 class="profile-name font-serif">
-                        {{
-                            userStore.G_LoginInfo.nickName ||
-                            userStore.G_LoginInfo.account
-                        }}
-                    </h2>
-                    <p class="profile-account">
-                        {{ userStore.G_LoginInfo.account }}
-                    </p>
+                    <div class="profile-meta-list">
+                        <div class="profile-meta-item">
+                            <span class="profile-meta-label">昵称</span>
+                            <h2 class="profile-name font-serif">
+                                {{ displayNickname }}
+                            </h2>
+                        </div>
+                        <div class="profile-meta-item">
+                            <span class="profile-meta-label">账号</span>
+                            <p class="profile-account">{{ displayAccount }}</p>
+                        </div>
+                    </div>
                     <button
                         v-if="avatarPreview"
                         class="confirm-upload-btn"
@@ -125,34 +132,6 @@
                         </button>
                     </el-form-item>
                 </el-form>
-
-                <!-- 客服工作台入口（仅客服可见） -->
-                <div v-if="isCustomerService" class="cs-entry-section">
-                    <h3 class="cs-entry-heading font-serif">客服工作台</h3>
-                    <p class="cs-entry-note">
-                        您拥有客服权限，可以进入客服工作台处理客户咨询。
-                    </p>
-                    <button
-                        class="action-btn primary cs-entry-btn"
-                        @click="goToCustomerWorkspace"
-                    >
-                        进入客服工作台 →
-                    </button>
-                </div>
-
-                <!-- 管理后台入口（仅管理员可见） -->
-                <div v-if="isAdmin" class="admin-entry-section">
-                    <h3 class="admin-entry-heading font-serif">管理后台</h3>
-                    <p class="admin-entry-note">
-                        您拥有管理员权限，可以进入管理后台进行系统管理。
-                    </p>
-                    <button
-                        class="action-btn primary admin-entry-btn"
-                        @click="goToAdminDashboard"
-                    >
-                        进入管理后台 →
-                    </button>
-                </div>
             </section>
 
             <!-- 账号安全 -->
@@ -196,9 +175,10 @@
                         </el-form-item>
                         <el-form-item>
                             <button
+                                type="button"
                                 class="action-btn primary"
                                 :disabled="changingPwd"
-                                @click="changePassword"
+                                @click="submitPasswordChange"
                             >
                                 {{ changingPwd ? "修改中…" : "修改密码" }}
                             </button>
@@ -206,7 +186,7 @@
                     </el-form>
                 </div>
 
-                <div class="security-group danger-zone">
+                <div v-if="false" class="security-group danger-zone">
                     <h3 class="security-heading font-serif">退出登录</h3>
                     <p class="security-note">
                         退出后需重新登录才能访问个人数据。
@@ -284,20 +264,18 @@ const pwdRules: FormRules = {
     ],
 };
 
+const displayNickname = computed(
+    () => userStore.G_LoginInfo.nickName?.trim() || "未设置昵称",
+);
+const displayAccount = computed(
+    () => userStore.G_LoginInfo.account?.trim() || "—",
+);
+
 const displayInitial = computed(() => {
     const name =
-        userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+        userStore.G_LoginInfo.nickName?.trim() ||
+        userStore.G_LoginInfo.account?.trim();
     return name ? name.charAt(0) : "我";
-});
-
-// 判断是否为客服（role_id === 4）
-const isCustomerService = computed(() => {
-    return userStore.G_UserInfo.role_id === 4;
-});
-
-// 判断是否为管理员（role_id === 1）
-const isAdmin = computed(() => {
-    return userStore.G_UserInfo.role_id === 1;
 });
 
 onMounted(async () => {
@@ -305,12 +283,20 @@ onMounted(async () => {
     const info = userStore.G_UserInfo;
     const login = userStore.G_LoginInfo;
 
-    profileForm.nickName = login.nickName || login.account;
+    profileForm.nickName = login.nickName || "";
     profileForm.gender =
         info.gender === 1 || info.gender === 2 ? info.gender : undefined;
     profileForm.email = info.email || login.email || "";
     profileForm.phone = info.phone || "";
 });
+
+function goBack() {
+    if (window.history.length > 1) {
+        router.back();
+        return;
+    }
+    router.push("/");
+}
 
 function triggerAvatarUpload() {
     fileInputRef.value?.click();
@@ -352,89 +338,70 @@ async function saveProfile() {
 
     savingProfile.value = true;
     try {
-        // 构建只包含有值属性的对象
-        const updateData: {
-            nickname?: string;
-            gender?: number;
-            email?: string;
-            phone?: string;
-        } = {};
-
-        if (profileForm.nickName) {
-            updateData.nickname = profileForm.nickName;
+        const payload = {
+            nickname: profileForm.nickName,
+            email: profileForm.email,
+            phone: profileForm.phone,
+            ...(profileForm.gender !== undefined
+                ? { gender: profileForm.gender }
+                : {}),
+        };
+        const result = await ApiUser.updateProfileDetailed(payload);
+        if (!result.success) {
+            ElMessage.error(result.message || "保存失败，请稍后重试");
+            return;
         }
-        if (profileForm.gender !== undefined) {
-            updateData.gender = profileForm.gender;
-        }
-        if (profileForm.email) {
-            updateData.email = profileForm.email;
-        }
-        if (profileForm.phone) {
-            updateData.phone = profileForm.phone;
-        }
-
-        const result = await ApiUser.updateProfile(updateData);
-        if (result !== null) {
-            // 同步更新本地 store，避免需要刷新页面才能看到变化
-            userStore.G_LoginInfo.nickName = profileForm.nickName;
-            userStore.G_LoginInfo.email = profileForm.email;
-            if (profileForm.gender !== undefined) {
-                userStore.G_UserInfo.gender = profileForm.gender;
-            }
-            userStore.G_UserInfo.email = profileForm.email;
-            userStore.G_UserInfo.phone = profileForm.phone;
-            ElMessage.success("资料保存成功");
-        } else {
-            ElMessage.error("保存失败，请稍后重试");
-        }
+        userStore.G_LoginInfo.nickName = profileForm.nickName.trim();
+        userStore.G_LoginInfo.email = profileForm.email;
+        userStore.G_UserInfo.gender = profileForm.gender ?? 0;
+        userStore.G_UserInfo.email = profileForm.email;
+        userStore.G_UserInfo.phone = profileForm.phone;
+        ElMessage.success("账号资料修改成功");
     } finally {
         savingProfile.value = false;
     }
 }
 
-async function changePassword() {
+async function submitPasswordChange() {
     const valid = await pwdFormRef.value?.validate().catch(() => false);
     if (!valid) return;
 
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+        ElMessage.warning("两次输入的新密码不一致");
+        return;
+    }
+
     changingPwd.value = true;
     try {
-        const ok = await ApiUser.changePassword({
+        const result = await ApiUser.changePasswordDetailed({
             oldPassword: pwdForm.oldPassword,
             newPassword: pwdForm.newPassword,
         });
-        if (ok) {
-            ElMessage.success("密码修改成功，请重新登录");
-            pwdFormRef.value?.resetFields();
-            await userStore.logout();
-            await router.push("/login");
-        } else {
-            ElMessage.error("修改失败，当前密码可能不正确");
+        if (!result.success) {
+            ElMessage.error(result.message || "密码修改失败，请稍后重试");
+            return;
         }
+        ElMessage.success("密码修改成功");
+        pwdFormRef.value?.resetFields();
     } finally {
         changingPwd.value = false;
     }
 }
 
 async function handleLogout() {
-    await ElMessageBox.confirm("确定要退出登录吗？", "提示", {
+    const confirmed = await ElMessageBox.confirm("确定要退出登录吗？", "提示", {
         confirmButtonText: "退出",
         cancelButtonText: "取消",
         type: "warning",
-    }).catch(() => null);
+    })
+        .then(() => true)
+        .catch(() => false);
+
+    if (!confirmed) return;
 
     await userStore.logout();
     ElMessage.success("已退出登录");
-    await router.push("/");
-}
-
-// 跳转到客服工作台
-function goToCustomerWorkspace() {
-    router.push("/customer");
-}
-
-// 跳转到管理后台
-function goToAdminDashboard() {
-    router.push("/admin");
+    router.push("/");
 }
 </script>
 
@@ -445,11 +412,48 @@ function goToAdminDashboard() {
     padding: 48px 24px 96px;
 }
 
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        color 0.18s ease-out,
+        transform 0.18s ease-out;
+
+    &:hover {
+        color: var(--jade);
+        transform: translateX(-2px);
+    }
+}
+
+.back-link-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(92, 131, 116, 0.08);
+    border: 1px solid rgba(92, 131, 116, 0.14);
+    color: var(--jade);
+    font-size: 20px;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
 /* ── 顶部用户信息 ─────────────────────────────── */
 .profile-header {
     display: flex;
-    align-items: flex-start;
-    gap: 32px;
+    align-items: center;
+    gap: 36px;
     padding-bottom: 40px;
     border-bottom: 1px solid var(--line);
     margin-bottom: 0;
@@ -463,6 +467,7 @@ function goToAdminDashboard() {
     cursor: pointer;
     border-radius: 50%;
     overflow: hidden;
+    box-shadow: 0 12px 28px rgba(44, 54, 57, 0.12);
 
     &:hover .avatar-overlay {
         opacity: 1;
@@ -519,26 +524,61 @@ function goToAdminDashboard() {
 
 .profile-info {
     flex: 1;
-    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    max-width: 420px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.profile-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+}
+
+.profile-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-meta-label {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0;
+    color: var(--jade);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1.4;
 }
 
 .profile-name {
-    font-size: 24px;
+    font-size: 34px;
     font-weight: 700;
     color: var(--ink);
     letter-spacing: 0.04em;
-    margin-bottom: 6px;
-    line-height: 1.2;
+    margin: 0;
+    line-height: 1.15;
 }
 
 .profile-account {
-    font-size: 13px;
+    font-size: 18px;
     color: var(--ink-muted);
-    margin-bottom: 8px;
+    margin: 0;
+    line-height: 1.45;
 }
 
 .confirm-upload-btn {
     display: inline-block;
+    align-self: flex-start;
     background: var(--jade);
     color: white;
     border: none;
@@ -730,71 +770,24 @@ function goToAdminDashboard() {
     border-top: 1px solid var(--line-soft);
 }
 
-/* ── 客服工作台入口 ─────────────────────────── */
-.cs-entry-section {
-    margin-top: 32px;
-    padding: 24px;
-    background: linear-gradient(
-        135deg,
-        rgba(92, 131, 116, 0.08) 0%,
-        rgba(139, 172, 130, 0.05) 100%
-    );
-    border: 1px solid var(--jade-light);
-    border-radius: 10px;
-}
+@media (max-width: 640px) {
+    .profile-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 20px;
+    }
 
-.cs-entry-heading {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: 0.04em;
-    margin-bottom: 12px;
-}
+    .profile-info {
+        width: 100%;
+        max-width: none;
+    }
 
-.cs-entry-note {
-    font-size: 13px;
-    color: var(--ink-muted);
-    margin-bottom: 16px;
-    line-height: 1.6;
-}
+    .profile-name {
+        font-size: 28px;
+    }
 
-.cs-entry-btn {
-    min-width: 180px;
-    font-size: 14px;
-    padding: 0 28px;
-}
-
-/* ── 管理后台入口 ─────────────────────────── */
-.admin-entry-section {
-    margin-top: 32px;
-    padding: 24px;
-    background: linear-gradient(
-        135deg,
-        rgba(92, 131, 116, 0.08) 0%,
-        rgba(139, 172, 130, 0.05) 100%
-    );
-    border: 1px solid var(--jade-light);
-    border-radius: 10px;
-}
-
-.admin-entry-heading {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: 0.04em;
-    margin-bottom: 12px;
-}
-
-.admin-entry-note {
-    font-size: 13px;
-    color: var(--ink-muted);
-    margin-bottom: 16px;
-    line-height: 1.6;
-}
-
-.admin-entry-btn {
-    min-width: 180px;
-    font-size: 14px;
-    padding: 0 28px;
+    .profile-account {
+        font-size: 14px;
+    }
 }
 </style>

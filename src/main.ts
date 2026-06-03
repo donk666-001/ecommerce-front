@@ -1,6 +1,7 @@
 import App from "./App.vue";
 import { router } from "./config/index";
 import "@/styles/base.scss";
+import "@/styles/landing.scss";
 import { SysLog } from "@/utils";
 import { tryAutoLogin } from "@/utils/base/autoLogin";
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";

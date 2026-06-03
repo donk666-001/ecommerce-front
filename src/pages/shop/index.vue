@@ -70,6 +70,7 @@
                 :open-more-idx="openMoreIdx"
                 :get-product="getProduct"
                 :order-count="orderCount"
+                :order-countdowns="orderCountdowns"
                 @refresh-orders="refreshOrders"
                 @cancel-order="cancelOrder"
                 @pay-order="payOrder"
@@ -112,12 +113,19 @@
             @contact-service="handleContactService"
         />
 
+        <!-- Address Modal -->
+        <AddressModal
+            v-model="showAddressModal"
+            @confirm="handleAddressConfirm"
+        />
+
         <!-- Payment Modal -->
         <PaymentModal
             v-model="showPayModal"
-            :cart-items="cartItems"
-            :cart-total="cartTotal"
+            :display-items="payModalItems"
+            :total="payModalTotal"
             @confirm-pay="mockPaySuccess"
+            @cancel-pay="handlePayCancel"
         />
 
         <!-- Logistics Modal -->
@@ -189,7 +197,9 @@ import {
     PaymentModal,
     LogisticsModal,
     RefundModal,
+    AddressModal,
 } from "@/components/shop";
+import type { AddressFormData } from "@/components/shop";
 import {
     ApiProduct,
     type ProductVO,
@@ -362,6 +372,69 @@ const selectedProduct = ref<Product | null>(null);
 const serviceContextProduct = ref<Product | null>(null);
 const pdQty = ref(1);
 const showPayModal = ref(false);
+
+// 地址填写弹窗
+const showAddressModal = ref(false);
+const pendingBuyAction = ref<"buyNow" | "cart" | null>(null);
+const pendingProductId = ref<number | null>(null);
+const pendingProductQty = ref(1);
+
+// 支付弹窗状态（统一管理：立即购买 / 购物车结算 / 从订单列表补支付）
+const pendingOrderId = ref<number | null>(null);
+const payModalItems = ref<{ name: string; qty: number; price: number }[]>([]);
+const payModalTotal = ref(0);
+const payFromOrdersList = ref(false); // 标记是否从订单列表发起支付
+
+// 订单倒计时（orderId -> 剩余秒数）
+const orderCountdowns = ref<Record<number, number>>({});
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+// 10分钟自动取消
+const ORDER_CANCEL_TIMEOUT_MS = 10 * 60 * 1000;
+
+function recordOrderTime(orderId: number) {
+    try {
+        const times = JSON.parse(localStorage.getItem("shop_order_times") || "{}");
+        times[orderId] = Date.now();
+        localStorage.setItem("shop_order_times", JSON.stringify(times));
+    } catch { /* ignore */ }
+}
+
+function clearOrderTime(orderId: number) {
+    try {
+        const times = JSON.parse(localStorage.getItem("shop_order_times") || "{}");
+        delete times[orderId];
+        localStorage.setItem("shop_order_times", JSON.stringify(times));
+        delete orderCountdowns.value[orderId];
+    } catch { /* ignore */ }
+}
+
+function refreshCountdowns() {
+    try {
+        const times: Record<string, number> = JSON.parse(localStorage.getItem("shop_order_times") || "{}");
+        const now = Date.now();
+        const cd: Record<number, number> = {};
+        Object.entries(times).forEach(([id, ts]) => {
+            const remaining = Math.max(0, Math.floor((ORDER_CANCEL_TIMEOUT_MS - (now - ts)) / 1000));
+            if (remaining > 0) cd[Number(id)] = remaining;
+        });
+        orderCountdowns.value = cd;
+    } catch { /* ignore */ }
+}
+
+async function autoCheckAndCancelExpiredOrders() {
+    try {
+        const times: Record<string, number> = JSON.parse(localStorage.getItem("shop_order_times") || "{}");
+        const now = Date.now();
+        const expired = Object.entries(times).filter(([, ts]) => now - ts >= ORDER_CANCEL_TIMEOUT_MS);
+        for (const [orderId] of expired) {
+            try {
+                await ApiOrder.cancelOrder(Number(orderId), "超时未支付，自动取消");
+            } catch { /* 订单可能已取消或已支付 */ }
+            clearOrderTime(Number(orderId));
+        }
+    } catch { /* ignore */ }
+}
 const showLogisticsModal = ref(false);
 const selectedOrderNo = ref("");
 const showConfirmModal = ref(false);
@@ -620,67 +693,150 @@ function addToCartFromDetail() {
     showPdModal.value = false;
 }
 
+/** 立即购买：先弹地址框，填完后再创建订单 */
 function buyNow() {
     if (!selectedProduct.value) return;
-    const productId = parseInt(selectedProduct.value.id.replace("p", ""));
-    addToCart(productId, pdQty.value);
+    pendingProductId.value = parseInt(selectedProduct.value.id.replace("p", ""));
+    pendingProductQty.value = pdQty.value;
+    pendingBuyAction.value = "buyNow";
     showPdModal.value = false;
-    openPay();
+    showAddressModal.value = true;
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
+/** 购物车结算：先弹地址框 */
 function openPay() {
     if (cartItems.value.length === 0) {
         showToast("购物车为空");
         return;
     }
-    showPayModal.value = true;
+    pendingBuyAction.value = "cart";
+    showAddressModal.value = true;
 }
 
-/** 模拟支付成功（实际应调用后端创建订单接口） */
-async function mockPaySuccess() {
-    if (cartItems.value.length === 0) {
-        showToast("购物车为空");
-        return;
+/** 地址确认后：根据来源执行创建订单 → 弹支付窗 */
+async function handleAddressConfirm(addr: AddressFormData) {
+    if (pendingBuyAction.value === "buyNow") {
+        await doBuyNow(addr);
+    } else if (pendingBuyAction.value === "cart") {
+        await doCartCheckout(addr);
     }
+    pendingBuyAction.value = null;
+}
+
+/** 立即购买的实际下单逻辑 */
+async function doBuyNow(addr: AddressFormData) {
+    if (!pendingProductId.value) return;
+    try {
+        // 1. 临时加入购物车获取购物车项 ID
+        const addRes = await ApiProduct.addToCart({
+            productId: pendingProductId.value,
+            quantity: pendingProductQty.value,
+        });
+        const cartItemId = addRes.data?.data?.id;
+        if (!cartItemId) { showToast("操作失败，请重试"); return; }
+
+        // 2. 仅用该购物车项创建订单（该商品被自动移出购物车）
+        const orderRes = await ApiOrder.createOrder({
+            cartIds: [cartItemId],
+            receiverName: addr.name,
+            receiverPhone: addr.phone,
+            receiverAddress: addr.address,
+            remark: addr.remark || undefined,
+        });
+        const order = orderRes.data?.data;
+        if (!order) { showToast("创建订单失败，请重试"); return; }
+
+        // 3. 记录时间 + 填充支付弹窗
+        pendingOrderId.value = order.id;
+        payFromOrdersList.value = false;
+        recordOrderTime(order.id);
+        payModalItems.value = order.items.map((i) => ({
+            name: i.productName,
+            qty: i.quantity,
+            price: i.price,
+        }));
+        payModalTotal.value = order.payAmount || order.totalAmount;
+        showPayModal.value = true;
+
+        loadCartList();
+        loadOrders();
+    } catch (error) {
+        console.error("立即购买失败:", error);
+        showToast("操作失败，请重试");
+    }
+}
+
+/** 购物车结算的实际下单逻辑 */
+async function doCartCheckout(addr: AddressFormData) {
+    try {
+        const cartIds = cartItems.value.map((item) => item.id);
+        const orderRes = await ApiOrder.createOrder({
+            cartIds,
+            receiverName: addr.name,
+            receiverPhone: addr.phone,
+            receiverAddress: addr.address,
+            remark: addr.remark || undefined,
+        });
+        const order = orderRes.data?.data;
+        if (!order) { showToast("创建订单失败，请重试"); return; }
+
+        pendingOrderId.value = order.id;
+        payFromOrdersList.value = false;
+        recordOrderTime(order.id);
+        payModalItems.value = order.items.map((i) => ({
+            name: i.productName,
+            qty: i.quantity,
+            price: i.price,
+        }));
+        payModalTotal.value = order.payAmount || order.totalAmount;
+
+        cartItems.value = [];
+        cartSummary.value = null;
+        showPayModal.value = true;
+
+        loadOrders();
+    } catch (error) {
+        console.error("结算失败:", error);
+        showToast("结算失败，请重试");
+    }
+}
+
+/** 模拟支付成功：对已创建的订单调用 simulatePay */
+async function mockPaySuccess() {
+    if (!pendingOrderId.value) { showToast("无待支付订单"); return; }
 
     try {
-        // 获取选中的购物车项 ID 列表
-        const cartIds = cartItems.value.map((item) => item.id);
+        await ApiOrder.simulatePay(pendingOrderId.value);
+        clearOrderTime(pendingOrderId.value);
+        showToast("支付成功！");
 
-        // TODO: 这里需要用户填写收货信息，暂时使用默认值
-        // 实际应该弹出表单让用户输入收货地址、姓名、电话
-        const orderData = {
-            cartIds,
-            receiverName: "张三", // 应该从用户资料或表单中获取
-            receiverPhone: "13800138000", // 应该从用户资料或表单中获取
-            receiverAddress: "北京市朝阳区xxx街道xxx号", // 应该从用户资料或表单中获取
-            remark: "请尽快发货",
-        };
+        pendingOrderId.value = null;
+        payModalItems.value = [];
+        payModalTotal.value = 0;
+        showPayModal.value = false;
 
-        // 调用后端创建订单接口
-        const response = await ApiOrder.createOrder(orderData);
-        const apiResponse = response.data;
-
-        if (apiResponse && apiResponse.data) {
-            console.log("订单创建成功:", apiResponse.data);
-            showToast("支付成功，订单已生成");
-
-            // 清空购物车
-            cartItems.value = [];
-            cartSummary.value = null;
-
-            showPayModal.value = false;
-
-            // 重新加载订单列表并切换到订单页
-            await loadOrders();
-            setTimeout(() => {
-                activeTab.value = "order";
-            }, 600);
-        }
+        await loadOrders();
+        activeTab.value = "order";
     } catch (error) {
-        console.error("创建订单失败:", error);
-        showToast("创建订单失败，请重试");
+        console.error("支付失败:", error);
+        showToast("支付失败，请重试");
+    }
+}
+
+/** 暂不支付：关闭弹窗，订单保留在"待支付"，非订单列表发起时跳转到订单页 */
+function handlePayCancel() {
+    showPayModal.value = false;
+    pendingOrderId.value = null;
+    payModalItems.value = [];
+    payModalTotal.value = 0;
+
+    if (!payFromOrdersList.value) {
+        showToast("订单已保留，请在10分钟内完成支付");
+        loadOrders();
+        setTimeout(() => {
+            activeTab.value = "order";
+        }, 300);
     }
 }
 
@@ -715,35 +871,21 @@ async function cancelOrder(no: string) {
     );
 }
 
-/** 支付订单（对待支付订单进行支付） */
+/** 从订单列表点"立即支付"：打开支付弹窗 */
 async function payOrder(no: string) {
-    // 先从 filteredOrders 中查找，如果找不到再从 orders 中查找
     let order = filteredOrders.value.find((o) => o.no === no);
-    if (!order) {
-        order = orders.value.find((o) => o.no === no);
-    }
-    if (!order) {
-        showToast("订单不存在");
-        return;
-    }
+    if (!order) order = orders.value.find((o) => o.no === no);
+    if (!order) { showToast("订单不存在"); return; }
 
-    showConfirm(
-        "确认支付",
-        `确认支付订单 ${no}，金额 ¥${order.amount.toFixed(2)}？`,
-        "💳",
-        async () => {
-            try {
-                // 调用后端模拟支付接口
-                await ApiOrder.simulatePay(order.id);
-                showToast("支付成功！");
-                // 重新加载订单列表以更新状态
-                await loadOrders();
-            } catch (error) {
-                console.error("支付失败:", error);
-                showToast("支付失败，请重试");
-            }
-        },
-    );
+    pendingOrderId.value = order.id;
+    payFromOrdersList.value = true;
+    payModalItems.value = order.items.map((it) => ({
+        name: it.name,
+        qty: it.qty,
+        price: it.price,
+    }));
+    payModalTotal.value = order.amount;
+    showPayModal.value = true;
 }
 
 /** 申请退款 - 打开模态框 */
@@ -1148,6 +1290,8 @@ function convertOrderVO(vo: OrderVO): Order {
 
 /** 加载订单列表 */
 async function loadOrders(status?: number) {
+    // 先检查并取消超时未支付订单
+    await autoCheckAndCancelExpiredOrders();
     orderLoading.value = true;
     try {
         const queryParams: Parameters<typeof ApiOrder.listOrders>[0] = {
@@ -1284,18 +1428,20 @@ watch(activeTab, (newTab, oldTab) => {
 
 onMounted(() => {
     document.addEventListener("click", handleGlobalClick);
-    // 加载商品和分类数据
     loadProducts();
     loadCategories();
-    // 加载购物车数据
     loadCartList();
-    // 加载订单数据
     loadOrders();
+
+    // 每秒刷新待支付订单的倒计时
+    refreshCountdowns();
+    countdownInterval = setInterval(refreshCountdowns, 1000);
 });
 
 onUnmounted(() => {
     document.removeEventListener("click", handleGlobalClick);
     if (toastTimer) clearTimeout(toastTimer);
+    if (countdownInterval) clearInterval(countdownInterval);
 });
 </script>
 

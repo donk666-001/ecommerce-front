@@ -1,0 +1,1888 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>颐养阁 · 设计稿 v2 — 森林动态 Hero</title>
+        <style>
+            /* ====== 设计 Token ====== */
+            :root {
+                --moss: #5d7052;
+                --moss-dark: #4a5e42;
+                --moss-light: #8fa882;
+                --moss-soft: rgba(93, 112, 82, 0.08);
+                --terra: #c18c5d;
+                --sand: #e6dccd;
+                --sand-light: #f0ebe5;
+                --bg: #fdfcf8;
+                --paper: #fefefa;
+                --ink: #2c2c24;
+                --ink-soft: #4a4a40;
+                --ink-muted: #78786c;
+                --border: #ded8cf;
+                --shadow-moss: 0 4px 20px -2px rgba(93, 112, 82, 0.15);
+                --shadow-float: 0 10px 40px -10px rgba(193, 140, 93, 0.2);
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: var(--bg);
+                font-family:
+                    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                    sans-serif;
+                color: var(--ink);
+                line-height: 1.6;
+                overflow-x: hidden;
+            }
+            /* 全局纸质纹理 */
+            body::after {
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 9999;
+                opacity: 0.028;
+                mix-blend-mode: multiply;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 40px;
+            }
+            .section-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--moss-soft);
+                border: 1px solid rgba(93, 112, 82, 0.18);
+                border-radius: 999px;
+                padding: 5px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--moss);
+                letter-spacing: 0.5px;
+                margin-bottom: 16px;
+            }
+            .section-title {
+                font-size: 42px;
+                font-weight: 800;
+                color: var(--ink);
+                line-height: 1.15;
+                letter-spacing: -0.5px;
+                font-family: Georgia, "STSong", serif;
+            }
+            .section-sub {
+                font-size: 16px;
+                color: var(--ink-muted);
+                line-height: 1.75;
+                max-width: 520px;
+                margin-top: 12px;
+            }
+
+            /* ====== 导航栏 ====== */
+            .navbar {
+                position: fixed;
+                top: 16px;
+                left: 0;
+                right: 0;
+                z-index: 200;
+                padding: 0 40px;
+            }
+            .navbar-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.18);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                border-radius: 999px;
+                padding: 10px 20px;
+                display: flex;
+                align-items: center;
+                gap: 24px;
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+                transition: background 0.4s ease;
+            }
+            .navbar-inner.scrolled {
+                background: rgba(255, 255, 255, 0.82);
+                border-color: rgba(222, 216, 207, 0.55);
+                box-shadow: 0 4px 24px rgba(93, 112, 82, 0.1);
+            }
+            .nav-logo {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                text-decoration: none;
+                flex-shrink: 0;
+            }
+            .nav-logo-blob {
+                width: 34px;
+                height: 34px;
+                background: white;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--moss);
+                font-size: 13px;
+                font-weight: 800;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+            .nav-logo-name {
+                font-size: 16px;
+                font-weight: 700;
+                color: white;
+            }
+            .navbar-inner.scrolled .nav-logo-name {
+                color: var(--ink);
+            }
+            .nav-links {
+                display: flex;
+                gap: 4px;
+                flex: 1;
+            }
+            .nav-link {
+                padding: 6px 14px;
+                border-radius: 999px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.85);
+                text-decoration: none;
+                transition: all 0.2s;
+                cursor: pointer;
+            }
+            .nav-link:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: white;
+            }
+            .navbar-inner.scrolled .nav-link {
+                color: var(--ink-muted);
+            }
+            .navbar-inner.scrolled .nav-link:hover {
+                background: var(--moss-soft);
+                color: var(--moss);
+            }
+            .nav-actions {
+                display: flex;
+                gap: 8px;
+                margin-left: auto;
+            }
+            .btn-ghost-nav {
+                padding: 8px 18px;
+                border-radius: 999px;
+                border: 1.5px solid rgba(255, 255, 255, 0.4);
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.25s;
+            }
+            .btn-ghost-nav:hover {
+                background: rgba(255, 255, 255, 0.2);
+                border-color: rgba(255, 255, 255, 0.6);
+            }
+            .navbar-inner.scrolled .btn-ghost-nav {
+                border-color: var(--border);
+                background: transparent;
+                color: var(--ink-soft);
+            }
+            .btn-primary-nav {
+                padding: 8px 20px;
+                border-radius: 999px;
+                background: white;
+                color: var(--moss);
+                border: none;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+                transition: all 0.25s;
+            }
+            .btn-primary-nav:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            }
+            .navbar-inner.scrolled .btn-primary-nav {
+                background: var(--moss);
+                color: white;
+            }
+
+            /* ====== HERO — 森林动态背景 ====== */
+            .hero {
+                position: relative;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                overflow: hidden;
+            }
+
+            /* 森林背景图 + 慢速 Ken Burns */
+            .hero-bg {
+                position: absolute;
+                inset: -8%;
+                background-image: url("https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=85&auto=format&fit=crop");
+                background-size: cover;
+                background-position: center 30%;
+                animation: kenBurns 28s ease-in-out infinite alternate;
+                filter: brightness(0.72) saturate(1.1);
+            }
+            @keyframes kenBurns {
+                0% {
+                    transform: scale(1) translateX(0%) translateY(0%);
+                }
+                100% {
+                    transform: scale(1.08) translateX(-2%) translateY(-1.5%);
+                }
+            }
+
+            /* 多层叠加：深绿色调 + 底部渐变（与下方内容衔接） */
+            .hero-overlay-gradient {
+                position: absolute;
+                inset: 0;
+                background:
+                    linear-gradient(
+                        to right,
+                        rgba(20, 35, 18, 0.65) 0%,
+                        rgba(20, 35, 18, 0.25) 60%,
+                        rgba(20, 35, 18, 0.1) 100%
+                    ),
+                    linear-gradient(
+                        to bottom,
+                        rgba(10, 20, 8, 0.1) 0%,
+                        transparent 40%,
+                        transparent 70%,
+                        rgba(10, 20, 8, 0.6) 100%
+                    );
+            }
+
+            /* 阳光从左上角打进来 */
+            .sun-origin {
+                position: absolute;
+                top: -10%;
+                left: 18%;
+                width: 2px;
+                height: 2px;
+                pointer-events: none;
+            }
+
+            /* ── God Rays（光柱）── */
+            .god-rays {
+                position: absolute;
+                top: -10%;
+                left: 18%;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+            }
+
+            .ray {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 1px;
+                height: 220vh;
+                transform-origin: top center;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 235, 160, 0.55) 0%,
+                    rgba(255, 235, 160, 0.18) 20%,
+                    rgba(255, 235, 160, 0.04) 50%,
+                    transparent 70%
+                );
+                animation: rayPulse var(--dur, 5s) ease-in-out infinite;
+                animation-delay: var(--delay, 0s);
+                filter: blur(var(--blur, 3px));
+            }
+
+            /* 各光柱：宽度 / 角度 / 脉冲速度 */
+            .ray-1 {
+                width: 80px;
+                transform: rotate(-28deg);
+                --dur: 6s;
+                --delay: 0s;
+                --blur: 6px;
+                opacity: 0.7;
+            }
+            .ray-2 {
+                width: 40px;
+                transform: rotate(-22deg);
+                --dur: 8s;
+                --delay: 0.8s;
+                --blur: 4px;
+                opacity: 0.5;
+            }
+            .ray-3 {
+                width: 120px;
+                transform: rotate(-18deg);
+                --dur: 7s;
+                --delay: 1.5s;
+                --blur: 8px;
+                opacity: 0.6;
+            }
+            .ray-4 {
+                width: 30px;
+                transform: rotate(-14deg);
+                --dur: 5.5s;
+                --delay: 2.2s;
+                --blur: 3px;
+                opacity: 0.45;
+            }
+            .ray-5 {
+                width: 60px;
+                transform: rotate(-10deg);
+                --dur: 9s;
+                --delay: 0.4s;
+                --blur: 5px;
+                opacity: 0.4;
+            }
+            .ray-6 {
+                width: 20px;
+                transform: rotate(-6deg);
+                --dur: 6.5s;
+                --delay: 3s;
+                --blur: 2px;
+                opacity: 0.35;
+            }
+            .ray-7 {
+                width: 50px;
+                transform: rotate(-2deg);
+                --dur: 7.5s;
+                --delay: 1s;
+                --blur: 4px;
+                opacity: 0.3;
+            }
+            .ray-8 {
+                width: 15px;
+                transform: rotate(3deg);
+                --dur: 10s;
+                --delay: 2s;
+                --blur: 2px;
+                opacity: 0.25;
+            }
+
+            @keyframes rayPulse {
+                0%,
+                100% {
+                    opacity: 0.15;
+                }
+                40%,
+                60% {
+                    opacity: 1;
+                }
+            }
+
+            /* ── 阳光光晕（Bloom）── */
+            .sun-bloom {
+                position: absolute;
+                top: -10%;
+                left: 18%;
+                transform: translate(-50%, -50%);
+                width: 320px;
+                height: 320px;
+                background: radial-gradient(
+                    circle at center,
+                    rgba(255, 248, 180, 0.55) 0%,
+                    rgba(255, 220, 100, 0.25) 18%,
+                    rgba(255, 190, 80, 0.1) 36%,
+                    transparent 60%
+                );
+                border-radius: 50%;
+                animation: bloomPulse 6s ease-in-out infinite;
+                pointer-events: none;
+                mix-blend-mode: screen;
+                filter: blur(8px);
+            }
+            @keyframes bloomPulse {
+                0%,
+                100% {
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 0.7;
+                }
+                50% {
+                    transform: translate(-50%, -50%) scale(1.15);
+                    opacity: 1;
+                }
+            }
+
+            /* ── 浮尘粒子 ── */
+            .particles {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                overflow: hidden;
+            }
+            .particle {
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 240, 180, 0.7);
+                animation: floatUp var(--dur, 12s) ease-in-out infinite;
+                animation-delay: var(--delay, 0s);
+                width: var(--size, 3px);
+                height: var(--size, 3px);
+                left: var(--x, 20%);
+                bottom: -10px;
+                filter: blur(0.5px);
+            }
+            @keyframes floatUp {
+                0% {
+                    transform: translateY(0) translateX(0) opacity(0);
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 0.8;
+                }
+                90% {
+                    opacity: 0.3;
+                }
+                100% {
+                    transform: translateY(-80vh)
+                        translateX(calc(var(--drift, 30px)));
+                    opacity: 0;
+                }
+            }
+            .p1 {
+                --x: 15%;
+                --size: 2px;
+                --dur: 14s;
+                --delay: 0s;
+                --drift: 20px;
+            }
+            .p2 {
+                --x: 22%;
+                --size: 3px;
+                --dur: 11s;
+                --delay: 2s;
+                --drift: -15px;
+            }
+            .p3 {
+                --x: 30%;
+                --size: 2px;
+                --dur: 16s;
+                --delay: 0.5s;
+                --drift: 25px;
+            }
+            .p4 {
+                --x: 38%;
+                --size: 4px;
+                --dur: 13s;
+                --delay: 4s;
+                --drift: -10px;
+            }
+            .p5 {
+                --x: 44%;
+                --size: 2px;
+                --dur: 18s;
+                --delay: 1s;
+                --drift: 18px;
+            }
+            .p6 {
+                --x: 19%;
+                --size: 3px;
+                --dur: 12s;
+                --delay: 6s;
+                --drift: -22px;
+            }
+            .p7 {
+                --x: 26%;
+                --size: 2px;
+                --dur: 15s;
+                --delay: 3s;
+                --drift: 12px;
+            }
+            .p8 {
+                --x: 35%;
+                --size: 4px;
+                --dur: 10s;
+                --delay: 7s;
+                --drift: -18px;
+            }
+            .p9 {
+                --x: 50%;
+                --size: 2px;
+                --dur: 17s;
+                --delay: 1.5s;
+                --drift: 8px;
+            }
+            .p10 {
+                --x: 12%;
+                --size: 3px;
+                --dur: 13s;
+                --delay: 5s;
+                --drift: 28px;
+            }
+
+            /* 底部薄雾渐变（与下方白色内容衔接） */
+            .hero-fog {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 200px;
+                background: linear-gradient(
+                    to top,
+                    var(--bg) 0%,
+                    transparent 100%
+                );
+                pointer-events: none;
+            }
+
+            /* Hero 内容 */
+            .hero-content {
+                position: relative;
+                z-index: 2;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 130px 40px 100px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 80px;
+                align-items: center;
+            }
+            .hero-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(255, 255, 255, 0.12);
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                border-radius: 999px;
+                padding: 6px 16px;
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.9);
+                letter-spacing: 1px;
+                margin-bottom: 28px;
+                backdrop-filter: blur(8px);
+            }
+            .hero-title {
+                font-size: 72px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.06;
+                letter-spacing: -2px;
+                margin-bottom: 20px;
+                font-family: Georgia, "STSong", serif;
+                text-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+            }
+            .hero-title .light {
+                font-weight: 300;
+                font-size: 48px;
+                display: block;
+                opacity: 0.82;
+                margin-bottom: 6px;
+                letter-spacing: -1px;
+            }
+            .hero-sub {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.72);
+                line-height: 1.85;
+                max-width: 420px;
+                margin-bottom: 36px;
+                text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            }
+            .hero-btns {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            .hero-btn-p {
+                background: rgba(255, 255, 255, 0.95);
+                color: var(--moss);
+                border-radius: 999px;
+                padding: 15px 30px;
+                font-size: 15px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow:
+                    0 8px 32px rgba(0, 0, 0, 0.25),
+                    0 2px 8px rgba(0, 0, 0, 0.15);
+                transition: all 0.25s;
+                border: none;
+            }
+            .hero-btn-p:hover {
+                transform: scale(1.04) translateY(-2px);
+                box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+            }
+            .hero-btn-o {
+                border: 1.5px solid rgba(255, 255, 255, 0.4);
+                background: rgba(255, 255, 255, 0.08);
+                color: white;
+                border-radius: 999px;
+                padding: 15px 28px;
+                font-size: 15px;
+                cursor: pointer;
+                backdrop-filter: blur(8px);
+                transition: all 0.25s;
+            }
+            .hero-btn-o:hover {
+                background: rgba(255, 255, 255, 0.18);
+                border-color: rgba(255, 255, 255, 0.65);
+            }
+
+            /* 右侧功能卡片 */
+            .hero-right {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .hero-feature-card {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 24px;
+                padding: 22px;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                transition: all 0.3s;
+            }
+            .hero-feature-card:hover {
+                background: rgba(255, 255, 255, 0.18);
+                transform: translateY(-4px);
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+            }
+            .hero-feature-card:nth-child(2) {
+                border-radius: 24px 52px 24px 24px;
+            }
+            .hero-feature-card:nth-child(3) {
+                border-radius: 24px 24px 24px 52px;
+            }
+            .hero-feature-card.wide {
+                grid-column: span 2;
+                border-radius: 999px;
+                padding: 16px 28px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+            }
+            .hero-feature-icon {
+                font-size: 28px;
+                margin-bottom: 10px;
+            }
+            .hero-feature-card.wide .hero-feature-icon {
+                margin-bottom: 0;
+                font-size: 24px;
+            }
+            .hero-feature-name {
+                font-size: 13px;
+                font-weight: 700;
+                color: white;
+                margin-bottom: 4px;
+                text-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+            }
+            .hero-feature-card.wide .hero-feature-name {
+                margin-bottom: 0;
+            }
+            .hero-feature-desc {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.65);
+                line-height: 1.5;
+            }
+
+            /* 滚动提示 */
+            .scroll-hint {
+                position: absolute;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            .scroll-hint-text {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.5);
+                letter-spacing: 2px;
+                text-transform: uppercase;
+            }
+            .scroll-line {
+                width: 1px;
+                height: 40px;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.6),
+                    transparent
+                );
+                animation: scrollLine 2s ease-in-out infinite;
+            }
+            @keyframes scrollLine {
+                0%,
+                100% {
+                    transform: scaleY(1) translateY(0);
+                    opacity: 1;
+                }
+                50% {
+                    transform: scaleY(0.6) translateY(8px);
+                    opacity: 0.4;
+                }
+            }
+
+            /* ====== Stats ====== */
+            .stats {
+                padding: 64px 0;
+                background: var(--bg);
+                border-bottom: 1px solid var(--sand);
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 2px;
+            }
+            .stat-item {
+                text-align: center;
+                padding: 32px 20px;
+                position: relative;
+            }
+            .stat-item::after {
+                content: "";
+                position: absolute;
+                right: 0;
+                top: 20%;
+                bottom: 20%;
+                width: 1px;
+                background: var(--sand);
+            }
+            .stat-item:last-child::after {
+                display: none;
+            }
+            .stat-num {
+                font-size: 48px;
+                font-weight: 800;
+                color: var(--moss);
+                line-height: 1;
+                font-family: Georgia, serif;
+                margin-bottom: 8px;
+            }
+            .stat-unit {
+                font-size: 22px;
+                font-weight: 400;
+                opacity: 0.7;
+            }
+            .stat-label {
+                font-size: 13px;
+                color: var(--ink-muted);
+            }
+
+            /* ====== Features ====== */
+            .features {
+                padding: 100px 0;
+                background: var(--sand-light);
+                position: relative;
+                overflow: hidden;
+            }
+            .features-blob {
+                position: absolute;
+                right: -100px;
+                top: -50px;
+                width: 400px;
+                height: 350px;
+                background: rgba(93, 112, 82, 0.07);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(60px);
+                pointer-events: none;
+            }
+            .features-header {
+                text-align: center;
+                margin-bottom: 60px;
+            }
+            .features-header .section-sub {
+                margin: 12px auto 0;
+                text-align: center;
+            }
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+            .feature-card {
+                background: var(--paper);
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                padding: 32px;
+                box-shadow: var(--shadow-moss);
+                transition: all 0.3s;
+                cursor: default;
+            }
+            .feature-card:nth-child(1) {
+                border-radius: 2rem;
+            }
+            .feature-card:nth-child(2) {
+                border-radius: 4rem 2rem 2rem 2rem;
+            }
+            .feature-card:nth-child(3) {
+                border-radius: 2rem 4rem 2rem 2rem;
+            }
+            .feature-card:nth-child(4) {
+                border-radius: 2rem 2rem 2rem 4rem;
+            }
+            .feature-card:nth-child(5) {
+                border-radius: 2rem 2rem 4rem 2rem;
+            }
+            .feature-card:nth-child(6) {
+                border-radius: 5rem 2rem 2rem 2rem;
+            }
+            .feature-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 20px 40px -10px rgba(93, 112, 82, 0.15);
+            }
+            .feature-icon-wrap {
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+                background: var(--moss-soft);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 26px;
+                margin-bottom: 20px;
+                transition: all 0.3s;
+            }
+            .feature-card:hover .feature-icon-wrap {
+                background: var(--moss);
+            }
+            .feature-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 10px;
+            }
+            .feature-desc {
+                font-size: 14px;
+                color: var(--ink-muted);
+                line-height: 1.7;
+                margin-bottom: 16px;
+            }
+            .feature-tags {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .feature-tag {
+                font-size: 11px;
+                padding: 3px 10px;
+                border-radius: 999px;
+                background: var(--moss-soft);
+                color: var(--moss);
+                border: 1px solid rgba(93, 112, 82, 0.15);
+            }
+
+            /* ====== How It Works ====== */
+            .how {
+                padding: 100px 0;
+                background: var(--bg);
+            }
+            .how-header {
+                text-align: center;
+                margin-bottom: 72px;
+            }
+            .how-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .how-steps {
+                display: grid;
+                grid-template-columns: 1fr 80px 1fr 80px 1fr;
+                align-items: center;
+                max-width: 900px;
+                margin: 0 auto;
+            }
+            .how-connector {
+                text-align: center;
+            }
+            .how-connector svg {
+                width: 60px;
+                opacity: 0.35;
+            }
+            .how-step {
+                text-align: center;
+                padding: 0 16px;
+            }
+            .how-step-num {
+                width: 52px;
+                height: 52px;
+                border-radius: 999px;
+                background: var(--moss);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                font-weight: 800;
+                margin: 0 auto 20px;
+                box-shadow: 0 8px 24px -4px rgba(93, 112, 82, 0.35);
+                font-family: Georgia, serif;
+            }
+            .how-step-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 10px;
+            }
+            .how-step-desc {
+                font-size: 13px;
+                color: var(--ink-muted);
+                line-height: 1.7;
+            }
+
+            /* ====== Experts ====== */
+            .experts {
+                padding: 100px 0;
+                background: var(--sand-light);
+                position: relative;
+                overflow: hidden;
+            }
+            .experts-blob {
+                position: absolute;
+                left: -80px;
+                bottom: -40px;
+                width: 300px;
+                height: 280px;
+                background: rgba(193, 140, 93, 0.1);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(50px);
+            }
+            .experts-header {
+                text-align: center;
+                margin-bottom: 60px;
+            }
+            .experts-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .experts-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px;
+            }
+            .expert-card {
+                background: var(--paper);
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                border-radius: 2rem;
+                padding: 32px 24px;
+                text-align: center;
+                box-shadow: var(--shadow-moss);
+                transition: all 0.3s;
+            }
+            .expert-card:hover {
+                transform: rotate(1deg) translateY(-4px);
+                box-shadow: var(--shadow-float);
+            }
+            .expert-avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: linear-gradient(
+                    135deg,
+                    var(--moss) 0%,
+                    var(--terra) 100%
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 16px;
+                font-size: 28px;
+                font-weight: 800;
+                color: white;
+                font-family: Georgia, serif;
+                border: 3px solid white;
+                box-shadow: 0 8px 24px rgba(93, 112, 82, 0.2);
+            }
+            .expert-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 4px;
+            }
+            .expert-title {
+                font-size: 13px;
+                color: var(--moss);
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .expert-org {
+                font-size: 12px;
+                color: var(--ink-muted);
+                margin-bottom: 14px;
+            }
+            .expert-tags {
+                display: flex;
+                gap: 5px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .expert-tag {
+                font-size: 11px;
+                padding: 3px 9px;
+                border-radius: 999px;
+                background: var(--moss-soft);
+                color: var(--moss);
+                border: 1px solid rgba(93, 112, 82, 0.15);
+            }
+
+            /* ====== Testimonials ====== */
+            .testimonials {
+                padding: 100px 0;
+                background: var(--bg);
+            }
+            .testimonials-header {
+                text-align: center;
+                margin-bottom: 60px;
+            }
+            .testimonials-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .testi-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px;
+            }
+            .testi-card {
+                background: var(--paper);
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                border-radius: 2rem;
+                padding: 28px;
+                box-shadow: var(--shadow-moss);
+                transition: all 0.3s;
+            }
+            .testi-card:hover {
+                transform: rotate(1deg);
+                box-shadow: var(--shadow-float);
+            }
+            .testi-card:nth-child(2):hover {
+                transform: rotate(-1deg);
+            }
+            .testi-quote {
+                font-size: 32px;
+                line-height: 1;
+                color: var(--moss);
+                opacity: 0.3;
+                font-family: Georgia, serif;
+                margin-bottom: 12px;
+            }
+            .testi-text {
+                font-size: 14px;
+                color: var(--ink-soft);
+                line-height: 1.8;
+                margin-bottom: 20px;
+                font-style: italic;
+            }
+            .testi-user {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .testi-avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: linear-gradient(135deg, var(--moss), var(--terra));
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .testi-name {
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--ink);
+            }
+            .testi-role {
+                font-size: 11px;
+                color: var(--ink-muted);
+            }
+            .testi-stars {
+                margin-left: auto;
+                color: var(--terra);
+                font-size: 12px;
+                letter-spacing: 1px;
+            }
+
+            /* ====== CTA ====== */
+            .cta-section {
+                padding: 100px 0;
+                background: var(--ink);
+                position: relative;
+                overflow: hidden;
+            }
+            .cta-blob1 {
+                position: absolute;
+                right: -60px;
+                top: -40px;
+                width: 350px;
+                height: 300px;
+                background: rgba(93, 112, 82, 0.25);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(60px);
+            }
+            .cta-blob2 {
+                position: absolute;
+                left: -30px;
+                bottom: -30px;
+                width: 280px;
+                height: 250px;
+                background: rgba(193, 140, 93, 0.18);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(50px);
+            }
+            .cta-content {
+                position: relative;
+                z-index: 1;
+                text-align: center;
+            }
+            .cta-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(93, 112, 82, 0.2);
+                border: 1px solid rgba(93, 112, 82, 0.3);
+                border-radius: 999px;
+                padding: 5px 14px;
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.75);
+                letter-spacing: 0.5px;
+                margin-bottom: 24px;
+            }
+            .cta-title {
+                font-size: 52px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.12;
+                letter-spacing: -1px;
+                font-family: Georgia, serif;
+                margin-bottom: 16px;
+            }
+            .cta-sub {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.55);
+                line-height: 1.75;
+                margin-bottom: 40px;
+            }
+            .cta-btns {
+                display: flex;
+                gap: 14px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .cta-btn-p {
+                background: var(--moss);
+                color: white;
+                border-radius: 999px;
+                padding: 16px 36px;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                border: none;
+                box-shadow: 0 8px 32px rgba(93, 112, 82, 0.4);
+                transition: all 0.25s;
+            }
+            .cta-btn-p:hover {
+                transform: scale(1.04);
+            }
+            .cta-btn-o {
+                border: 1.5px solid rgba(255, 255, 255, 0.2);
+                background: transparent;
+                color: rgba(255, 255, 255, 0.8);
+                border-radius: 999px;
+                padding: 16px 36px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: all 0.25s;
+            }
+            .cta-features {
+                display: flex;
+                gap: 32px;
+                justify-content: center;
+                margin-top: 48px;
+                flex-wrap: wrap;
+            }
+            .cta-feature-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cta-feature-item::before {
+                content: "✓";
+                width: 18px;
+                height: 18px;
+                border-radius: 999px;
+                background: rgba(93, 112, 82, 0.3);
+                color: var(--moss-light);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+            }
+
+            /* ====== Footer ====== */
+            .footer {
+                background: #1a1a12;
+                padding: 48px 0 32px;
+            }
+            .footer-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 40px;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 40px;
+                margin-bottom: 40px;
+            }
+            .footer-logo {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            .footer-logo-blob {
+                width: 32px;
+                height: 32px;
+                background: var(--moss);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 12px;
+                font-weight: 800;
+            }
+            .footer-logo-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.85);
+            }
+            .footer-desc {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.35);
+                line-height: 1.75;
+            }
+            .footer-col-title {
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.55);
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                margin-bottom: 16px;
+            }
+            .footer-links {
+                list-style: none;
+            }
+            .footer-links li {
+                margin-bottom: 10px;
+            }
+            .footer-links a {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.35);
+                text-decoration: none;
+                transition: color 0.2s;
+            }
+            .footer-links a:hover {
+                color: rgba(255, 255, 255, 0.7);
+            }
+            .footer-bottom {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px 40px 0;
+                border-top: 1px solid rgba(255, 255, 255, 0.07);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .footer-copy {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.25);
+            }
+            .footer-social {
+                display: flex;
+                gap: 10px;
+            }
+            .social-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .social-icon:hover {
+                background: rgba(93, 112, 82, 0.2);
+            }
+
+            /* 注释条 */
+            .design-note {
+                background: rgba(93, 112, 82, 0.9);
+                color: white;
+                text-align: center;
+                padding: 10px;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 300;
+                backdrop-filter: blur(8px);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="design-note">
+            📐 颐养阁 · v2 设计稿 — 森林动态 Hero（真实背景图 + CSS 光柱 +
+            浮尘粒子 + Ken Burns）· 滚动查看全部区块
+        </div>
+
+        <!-- ① 导航栏 -->
+        <nav class="navbar" id="navbar">
+            <div class="navbar-inner" id="navbarInner">
+                <a class="nav-logo" href="#">
+                    <div class="nav-logo-blob">颐</div>
+                    <span class="nav-logo-name">颐养阁</span>
+                </a>
+                <div class="nav-links">
+                    <span class="nav-link">功能介绍</span>
+                    <span class="nav-link">专家团队</span>
+                    <span class="nav-link">用户评价</span>
+                    <span class="nav-link">名医健康圈</span>
+                </div>
+                <div class="nav-actions">
+                    <button class="btn-ghost-nav">登录</button>
+                    <button class="btn-primary-nav">免费体验 →</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ② Hero — 森林动态背景 -->
+        <section class="hero">
+            <!-- 森林背景 + Ken Burns -->
+            <div class="hero-bg"></div>
+
+            <!-- 多层渐变叠加 -->
+            <div class="hero-overlay-gradient"></div>
+
+            <!-- God Rays 光柱 -->
+            <div class="god-rays">
+                <div class="ray ray-1"></div>
+                <div class="ray ray-2"></div>
+                <div class="ray ray-3"></div>
+                <div class="ray ray-4"></div>
+                <div class="ray ray-5"></div>
+                <div class="ray ray-6"></div>
+                <div class="ray ray-7"></div>
+                <div class="ray ray-8"></div>
+            </div>
+
+            <!-- 太阳光晕 Bloom -->
+            <div class="sun-bloom"></div>
+
+            <!-- 浮尘粒子 -->
+            <div class="particles">
+                <div class="particle p1"></div>
+                <div class="particle p2"></div>
+                <div class="particle p3"></div>
+                <div class="particle p4"></div>
+                <div class="particle p5"></div>
+                <div class="particle p6"></div>
+                <div class="particle p7"></div>
+                <div class="particle p8"></div>
+                <div class="particle p9"></div>
+                <div class="particle p10"></div>
+            </div>
+
+            <!-- 底部薄雾与下方内容衔接 -->
+            <div class="hero-fog"></div>
+
+            <!-- 文字内容 -->
+            <div class="hero-content">
+                <div class="hero-left">
+                    <div class="hero-badge">🌿 传承东方养生智慧 · 顺时而为</div>
+                    <h1 class="hero-title">
+                        <span class="light">让每一天</span>
+                        与自然同频
+                    </h1>
+                    <p class="hero-sub">
+                        二十四节气 × 中医古方 × AI个性推荐<br />一站式东方自然健康生活平台，让养生回归最本真的节律。
+                    </p>
+                    <div class="hero-btns">
+                        <button class="hero-btn-p">🌿 开启养生之旅</button>
+                        <button class="hero-btn-o">了解更多</button>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <div class="hero-feature-card">
+                        <div class="hero-feature-icon">🌿</div>
+                        <div class="hero-feature-name">节气养生</div>
+                        <div class="hero-feature-desc">
+                            随二十四节气变化，调整饮食起居
+                        </div>
+                    </div>
+                    <div class="hero-feature-card">
+                        <div class="hero-feature-icon">🌙</div>
+                        <div class="hero-feature-name">睡眠作息</div>
+                        <div class="hero-feature-desc">
+                            追踪记录，优化你的自然睡眠节律
+                        </div>
+                    </div>
+                    <div class="hero-feature-card">
+                        <div class="hero-feature-icon">🍵</div>
+                        <div class="hero-feature-name">中医智慧</div>
+                        <div class="hero-feature-desc">
+                            体质辨识，古法今用，调和阴阳
+                        </div>
+                    </div>
+                    <div class="hero-feature-card">
+                        <div class="hero-feature-icon">🤖</div>
+                        <div class="hero-feature-name">AI 管家</div>
+                        <div class="hero-feature-desc">
+                            专属顾问，智能分析健康状态
+                        </div>
+                    </div>
+                    <div class="hero-feature-card wide">
+                        <div class="hero-feature-icon">👩‍⚕️</div>
+                        <div>
+                            <div class="hero-feature-name">
+                                名医健康圈 · 在线问诊
+                            </div>
+                            <div class="hero-feature-desc">
+                                50+ 认证专家，随时在线
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 滚动提示 -->
+            <div class="scroll-hint">
+                <span class="scroll-hint-text">向下滚动</span>
+                <div class="scroll-line"></div>
+            </div>
+        </section>
+
+        <!-- ③ 核心数据 -->
+        <section class="stats">
+            <div class="container">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-num">
+                            24<span class="stat-unit">节</span>
+                        </div>
+                        <div class="stat-label">二十四节气完整覆盖</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">
+                            6<span class="stat-unit">+</span>
+                        </div>
+                        <div class="stat-label">健康管理功能模块</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">
+                            50<span class="stat-unit">+</span>
+                        </div>
+                        <div class="stat-label">三甲医院认证专家</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">
+                            10<span class="stat-unit">万+</span>
+                        </div>
+                        <div class="stat-label">活跃用户</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ④ 功能介绍 -->
+        <section class="features">
+            <div class="features-blob"></div>
+            <div class="container">
+                <div class="features-header">
+                    <div class="section-tag">✦ 核心功能</div>
+                    <h2 class="section-title">
+                        六大模块，<br />守护你的自然节律
+                    </h2>
+                    <p class="section-sub">
+                        从节气饮食到睡眠优化，从经期管理到情绪疗愈——每一个模块都与你的身体深度协同。
+                    </p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">🌿</div>
+                        <div class="feature-name">节气养生</div>
+                        <p class="feature-desc">
+                            根据当前节气推送饮食、作息、经络调理建议，顺时而为，事半功倍。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">饮食推荐</span
+                            ><span class="feature-tag">作息指南</span
+                            ><span class="feature-tag">经络调理</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">🌙</div>
+                        <div class="feature-name">睡眠作息</div>
+                        <p class="feature-desc">
+                            记录睡眠质量，AI分析睡眠规律，给出个性化改善建议。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">睡眠追踪</span
+                            ><span class="feature-tag">AI分析</span
+                            ><span class="feature-tag">改善建议</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">🌸</div>
+                        <div class="feature-name">经期管理</div>
+                        <p class="feature-desc">
+                            智能预测经期，根据不同阶段推送养生建议，守护女性自然节律。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">周期预测</span
+                            ><span class="feature-tag">阶段养生</span
+                            ><span class="feature-tag">数据追踪</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">🍵</div>
+                        <div class="feature-name">中医养生</div>
+                        <p class="feature-desc">
+                            九大体质辨识结合古方今用，推荐食疗、穴位与中药茶饮方案。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">体质辨识</span
+                            ><span class="feature-tag">食疗方案</span
+                            ><span class="feature-tag">穴位指导</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">🫂</div>
+                        <div class="feature-name">情绪疗愈</div>
+                        <p class="feature-desc">
+                            冥想引导、情绪日记与正念练习，帮助你找回内心的平静。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">冥想引导</span
+                            ><span class="feature-tag">情绪日记</span
+                            ><span class="feature-tag">正念练习</span>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-wrap">✨</div>
+                        <div class="feature-name">个性推荐</div>
+                        <p class="feature-desc">
+                            AI管家综合体质、节气、睡眠数据，每日生成专属养生日历。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">AI定制</span
+                            ><span class="feature-tag">每日日历</span
+                            ><span class="feature-tag">综合分析</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑤ 使用步骤 -->
+        <section class="how">
+            <div class="container">
+                <div class="how-header">
+                    <div class="section-tag">✦ 开始使用</div>
+                    <h2 class="section-title">
+                        三步开启<br />你的自然养生之旅
+                    </h2>
+                    <p class="section-sub">
+                        注册只需 60 秒，AI
+                        管家会在第一次对话中完成体质评估并生成专属方案。
+                    </p>
+                </div>
+                <div class="how-steps">
+                    <div class="how-step">
+                        <div class="how-step-num">1</div>
+                        <div class="how-step-name">注册账号</div>
+                        <p class="how-step-desc">
+                            填写基本信息与体质问卷，完成快速的体质初筛（约 3
+                            分钟）
+                        </p>
+                    </div>
+                    <div class="how-connector">
+                        <svg
+                            viewBox="0 0 60 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M4 12 C14 4, 24 20, 34 12 C44 4, 54 16, 58 12"
+                                stroke="#5D7052"
+                                stroke-width="2"
+                                stroke-dasharray="4 3"
+                                stroke-linecap="round"
+                                fill="none"
+                            />
+                            <path
+                                d="M54 8 L58 12 L54 16"
+                                stroke="#5D7052"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                fill="none"
+                            />
+                        </svg>
+                    </div>
+                    <div class="how-step">
+                        <div class="how-step-num">2</div>
+                        <div class="how-step-name">探索功能</div>
+                        <p class="how-step-desc">
+                            查看今日节气指南，记录睡眠与情绪，与 AI
+                            管家开始第一次对话
+                        </p>
+                    </div>
+                    <div class="how-connector">
+                        <svg
+                            viewBox="0 0 60 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M4 12 C14 20, 24 4, 34 12 C44 20, 54 8, 58 12"
+                                stroke="#5D7052"
+                                stroke-width="2"
+                                stroke-dasharray="4 3"
+                                stroke-linecap="round"
+                                fill="none"
+                            />
+                            <path
+                                d="M54 8 L58 12 L54 16"
+                                stroke="#5D7052"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                fill="none"
+                            />
+                        </svg>
+                    </div>
+                    <div class="how-step">
+                        <div class="how-step-num">3</div>
+                        <div class="how-step-name">获取方案</div>
+                        <p class="how-step-desc">
+                            AI
+                            综合你的数据生成每日养生日历，并推荐适合的专家进行深度咨询
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑥ 专家团队 -->
+        <section class="experts">
+            <div class="experts-blob"></div>
+            <div class="container">
+                <div class="experts-header">
+                    <div class="section-tag">✦ 专家团队</div>
+                    <h2 class="section-title">
+                        名医健康圈<br />50+ 认证专家在线
+                    </h2>
+                    <p class="section-sub">
+                        来自三甲医院的中西医专家，提供在线问诊、养生指导与专业健康咨询服务。
+                    </p>
+                </div>
+                <div class="experts-grid">
+                    <div class="expert-card">
+                        <div class="expert-avatar">张</div>
+                        <div class="expert-name">张明慧</div>
+                        <div class="expert-title">主任中医师</div>
+                        <div class="expert-org">北京协和医院 · 中医科</div>
+                        <div class="expert-tags">
+                            <span class="expert-tag">体质调理</span
+                            ><span class="expert-tag">节气养生</span
+                            ><span class="expert-tag">失眠</span>
+                        </div>
+                    </div>
+                    <div class="expert-card">
+                        <div class="expert-avatar">李</div>
+                        <div class="expert-name">李春晓</div>
+                        <div class="expert-title">营养科主任</div>
+                        <div class="expert-org">上海中医药大学附属医院</div>
+                        <div class="expert-tags">
+                            <span class="expert-tag">食疗方案</span
+                            ><span class="expert-tag">减重管理</span
+                            ><span class="expert-tag">孕期营养</span>
+                        </div>
+                    </div>
+                    <div class="expert-card">
+                        <div class="expert-avatar">王</div>
+                        <div class="expert-name">王子轩</div>
+                        <div class="expert-title">睡眠科专家</div>
+                        <div class="expert-org">广州中医药大学第一附属医院</div>
+                        <div class="expert-tags">
+                            <span class="expert-tag">睡眠障碍</span
+                            ><span class="expert-tag">针灸理疗</span
+                            ><span class="expert-tag">情绪调节</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑦ 用户评价 -->
+        <section class="testimonials">
+            <div class="container">
+                <div class="testimonials-header">
+                    <div class="section-tag">✦ 用户评价</div>
+                    <h2 class="section-title">真实用户<br />真实改变</h2>
+                    <p class="section-sub">
+                        来自社区用户的真实体验分享，感受自然养生带来的身心变化。
+                    </p>
+                </div>
+                <div class="testi-grid">
+                    <div class="testi-card">
+                        <div class="testi-quote">"</div>
+                        <p class="testi-text">
+                            节气养生功能让我第一次真正理解了为什么古人说"顺时而为"。按节气调整饮食后，整个人感觉轻盈了很多，春困的问题也减轻了。
+                        </p>
+                        <div class="testi-user">
+                            <div class="testi-avatar">小</div>
+                            <div>
+                                <div class="testi-name">小雨同学</div>
+                                <div class="testi-role">
+                                    使用 3 个月 · 阴虚体质
+                                </div>
+                            </div>
+                            <div class="testi-stars">★★★★★</div>
+                        </div>
+                    </div>
+                    <div class="testi-card">
+                        <div class="testi-quote">"</div>
+                        <p class="testi-text">
+                            AI
+                            管家真的很懂我！每次和它聊完，都能给出很贴合实际情况的建议。昨天失眠，它帮我分析是最近压力大导致的心火旺。
+                        </p>
+                        <div class="testi-user">
+                            <div class="testi-avatar">陈</div>
+                            <div>
+                                <div class="testi-name">陈志远</div>
+                                <div class="testi-role">
+                                    使用 5 个月 · 气郁体质
+                                </div>
+                            </div>
+                            <div class="testi-stars">★★★★★</div>
+                        </div>
+                    </div>
+                    <div class="testi-card">
+                        <div class="testi-quote">"</div>
+                        <p class="testi-text">
+                            名医健康圈的张医师给我制定了专属经期养生方案，照着做了两个月，痛经减轻了很多。终于不用每个月都痛苦地撑过去了。
+                        </p>
+                        <div class="testi-user">
+                            <div class="testi-avatar">月</div>
+                            <div>
+                                <div class="testi-name">月牙儿</div>
+                                <div class="testi-role">
+                                    使用 2 个月 · 寒湿体质
+                                </div>
+                            </div>
+                            <div class="testi-stars">★★★★★</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑧ 行动召唤 -->
+        <section class="cta-section">
+            <div class="cta-blob1"></div>
+            <div class="cta-blob2"></div>
+            <div class="container">
+                <div class="cta-content">
+                    <div class="cta-tag">🌿 开始你的自然养生之旅</div>
+                    <h2 class="cta-title">与自然同频<br />从今天开始</h2>
+                    <p class="cta-sub">
+                        免费注册，立即体验六大功能模块<br />让 AI
+                        管家为你生成第一份专属养生日历
+                    </p>
+                    <div class="cta-btns">
+                        <button class="cta-btn-p">🌿 免费开始使用</button>
+                        <button class="cta-btn-o">查看全部功能</button>
+                    </div>
+                    <div class="cta-features">
+                        <span class="cta-feature-item">完全免费注册</span>
+                        <span class="cta-feature-item">AI 体质评估</span>
+                        <span class="cta-feature-item">专属养生日历</span>
+                        <span class="cta-feature-item">50+ 认证专家</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑨ 页脚 -->
+        <footer class="footer">
+            <div class="footer-inner">
+                <div>
+                    <div class="footer-logo">
+                        <div class="footer-logo-blob">颐</div>
+                        <span class="footer-logo-name">颐养阁</span>
+                    </div>
+                    <p class="footer-desc">
+                        传承东方养生智慧<br />让自然节律守护健康生活
+                    </p>
+                </div>
+                <div>
+                    <div class="footer-col-title">功能模块</div>
+                    <ul class="footer-links">
+                        <li><a href="#">节气养生</a></li>
+                        <li><a href="#">睡眠作息</a></li>
+                        <li><a href="#">经期管理</a></li>
+                        <li><a href="#">中医养生</a></li>
+                        <li><a href="#">情绪疗愈</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-col-title">服务</div>
+                    <ul class="footer-links">
+                        <li><a href="#">名医健康圈</a></li>
+                        <li><a href="#">AI 管家</a></li>
+                        <li><a href="#">元气社区</a></li>
+                        <li><a href="#">健康商城</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-col-title">关于</div>
+                    <ul class="footer-links">
+                        <li><a href="#">关于我们</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                        <li><a href="#">用户协议</a></li>
+                        <li><a href="#">联系我们</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span class="footer-copy"
+                    >© 2025 颐养阁 · 传承东方养生智慧</span
+                >
+                <div class="footer-social">
+                    <div class="social-icon">微</div>
+                    <div class="social-icon">博</div>
+                    <div class="social-icon">抖</div>
+                </div>
+            </div>
+        </footer>
+
+        <script>
+            // 导航栏滚动变色
+            const navInner = document.getElementById("navbarInner");
+            window.addEventListener(
+                "scroll",
+                () => {
+                    if (window.scrollY > 80) navInner.classList.add("scrolled");
+                    else navInner.classList.remove("scrolled");
+                },
+                { passive: true },
+            );
+        </script>
+    </body>
+</html>

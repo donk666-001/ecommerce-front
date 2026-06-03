@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>风格方向</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: #fdfcf8;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                color: #2c2c24;
+                padding: 40px 24px 80px;
+            }
+            .page-header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            .page-header h1 {
+                font-size: 26px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+            .page-header p {
+                color: #78786c;
+                font-size: 14px;
+            }
+
+            .cards-row {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+                max-width: 1100px;
+                margin: 0 auto 40px;
+            }
+
+            .style-card {
+                border: 2px solid #ded8cf;
+                border-radius: 24px;
+                overflow: hidden;
+                cursor: pointer;
+                transition: all 0.3s;
+                background: white;
+            }
+            .style-card:hover {
+                border-color: #5d7052;
+                transform: translateY(-4px);
+                box-shadow: 0 16px 40px rgba(93, 112, 82, 0.15);
+            }
+            .style-card.selected {
+                border-color: #5d7052;
+                box-shadow:
+                    0 0 0 3px rgba(93, 112, 82, 0.2),
+                    0 16px 40px rgba(93, 112, 82, 0.15);
+            }
+
+            /* ===== 方向A：纯有机自然（西式）===== */
+            .hero-a {
+                background: #5d7052;
+                padding: 22px 18px 18px;
+                position: relative;
+                overflow: hidden;
+                min-height: 200px;
+            }
+            .hero-a::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+                mix-blend-mode: multiply;
+                opacity: 0.5;
+                pointer-events: none;
+            }
+            .blob-a1 {
+                position: absolute;
+                right: -15px;
+                top: -15px;
+                width: 100px;
+                height: 90px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(12px);
+            }
+            .blob-a2 {
+                position: absolute;
+                left: -5px;
+                bottom: -5px;
+                width: 70px;
+                height: 60px;
+                background: rgba(193, 140, 93, 0.25);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(10px);
+            }
+            .nav-a {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                position: relative;
+                z-index: 1;
+                margin-bottom: 20px;
+            }
+            .logo-a {
+                width: 24px;
+                height: 24px;
+                background: white;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #5d7052;
+                font-size: 9px;
+                font-weight: 800;
+            }
+            .logo-text-a {
+                font-size: 11px;
+                font-weight: 700;
+                color: white;
+                letter-spacing: 0.5px;
+            }
+            .hero-a-badge {
+                position: relative;
+                z-index: 1;
+                display: inline-flex;
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.85);
+                margin-bottom: 10px;
+            }
+            .hero-a-title {
+                position: relative;
+                z-index: 1;
+                font-size: 26px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.15;
+                margin-bottom: 8px;
+                font-family: Georgia, serif;
+                letter-spacing: -0.5px;
+            }
+            .hero-a-sub {
+                position: relative;
+                z-index: 1;
+                font-size: 9px;
+                color: rgba(255, 255, 255, 0.72);
+                line-height: 1.7;
+                margin-bottom: 14px;
+            }
+            .hero-a-btns {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                gap: 6px;
+            }
+            .btn-a-p {
+                background: white;
+                color: #5d7052;
+                border-radius: 999px;
+                padding: 6px 14px;
+                font-size: 9px;
+                font-weight: 700;
+            }
+            .btn-a-o {
+                border: 1.5px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                border-radius: 999px;
+                padding: 6px 14px;
+                font-size: 9px;
+            }
+            .chips-a {
+                display: flex;
+                gap: 5px;
+                flex-wrap: wrap;
+                margin-top: 14px;
+                position: relative;
+                z-index: 1;
+            }
+            .chip-a {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                padding: 5px 8px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.85);
+                text-align: center;
+            }
+            .chip-icon {
+                font-size: 13px;
+                display: block;
+                margin-bottom: 2px;
+            }
+
+            /* ===== 方向B：东方有机融合 ===== */
+            .hero-b {
+                background: linear-gradient(160deg, #fdfaf3 0%, #f0e8d5 100%);
+                padding: 0 0 0 0;
+                min-height: 200px;
+                position: relative;
+                overflow: hidden;
+            }
+            .nav-b {
+                background: rgba(255, 255, 255, 0.75);
+                backdrop-filter: blur(8px);
+                border-bottom: 1px solid rgba(232, 223, 208, 0.5);
+                padding: 9px 16px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .seal-b {
+                width: 24px;
+                height: 24px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: #b33c2c;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .logo-text-b {
+                font-size: 12px;
+                font-weight: 700;
+                color: #2c3639;
+                font-family: STKaiti, KaiTi, serif;
+            }
+            .nav-b-links {
+                margin-left: auto;
+                display: flex;
+                gap: 10px;
+                font-size: 8px;
+                color: #6b7c7a;
+            }
+            .nav-b-btn {
+                background: #5c8374;
+                color: white;
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-size: 8px;
+            }
+            .hero-b-content {
+                padding: 18px 16px;
+                position: relative;
+            }
+            .hero-b-blob1 {
+                position: absolute;
+                right: -5px;
+                top: 0;
+                width: 80px;
+                height: 70px;
+                background: rgba(92, 131, 116, 0.1);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(12px);
+            }
+            .hero-b-blob2 {
+                position: absolute;
+                right: 30px;
+                bottom: 5px;
+                width: 50px;
+                height: 45px;
+                background: rgba(201, 165, 92, 0.12);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(10px);
+            }
+            .hero-b-label {
+                font-size: 8px;
+                color: #c9a55c;
+                letter-spacing: 3px;
+                margin-bottom: 6px;
+                position: relative;
+                z-index: 1;
+            }
+            .hero-b-title {
+                font-size: 24px;
+                font-weight: 700;
+                color: #2c3639;
+                font-family: STKaiti, KaiTi, serif;
+                line-height: 1.2;
+                margin-bottom: 6px;
+                position: relative;
+                z-index: 1;
+            }
+            .hero-b-sub {
+                font-size: 9px;
+                color: #6b7c7a;
+                line-height: 1.65;
+                margin-bottom: 12px;
+                position: relative;
+                z-index: 1;
+            }
+            .hero-b-btns {
+                display: flex;
+                gap: 6px;
+                position: relative;
+                z-index: 1;
+            }
+            .btn-b-p {
+                background: #5c8374;
+                color: white;
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 9px;
+                font-weight: 600;
+            }
+            .btn-b-o {
+                border: 1.5px solid #c9a55c;
+                color: #c9a55c;
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 9px;
+            }
+            .meta-row-b {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-top: 12px;
+                position: relative;
+                z-index: 1;
+            }
+            .meta-b {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 8px;
+                color: #6b7c7a;
+                background: rgba(92, 131, 116, 0.07);
+                border: 1px solid rgba(92, 131, 116, 0.15);
+                border-radius: 999px;
+                padding: 3px 8px;
+            }
+
+            /* ===== 方向C：暗调沉浸（深墨+有机）===== */
+            .hero-c {
+                background: #1e1e16;
+                padding: 0;
+                min-height: 200px;
+                position: relative;
+                overflow: hidden;
+            }
+            .hero-c::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+                mix-blend-mode: multiply;
+                opacity: 0.6;
+                pointer-events: none;
+            }
+            .blob-c1 {
+                position: absolute;
+                right: 5px;
+                top: 10px;
+                width: 100px;
+                height: 80px;
+                background: rgba(93, 112, 82, 0.25);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(20px);
+            }
+            .blob-c2 {
+                position: absolute;
+                left: -10px;
+                bottom: 0;
+                width: 80px;
+                height: 70px;
+                background: rgba(193, 140, 93, 0.2);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(16px);
+            }
+            .nav-c {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 16px;
+                position: relative;
+                z-index: 1;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            }
+            .logo-c {
+                width: 22px;
+                height: 22px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: #5d7052;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 8px;
+                font-weight: 800;
+            }
+            .logo-text-c {
+                font-size: 11px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .nav-c-links {
+                margin-left: auto;
+                display: flex;
+                gap: 8px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .nav-c-btn {
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-size: 8px;
+            }
+            .hero-c-content {
+                padding: 16px;
+                position: relative;
+                z-index: 1;
+            }
+            .hero-c-badge {
+                display: inline-flex;
+                background: rgba(93, 112, 82, 0.2);
+                border: 1px solid rgba(93, 112, 82, 0.3);
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.7);
+                margin-bottom: 10px;
+            }
+            .hero-c-title {
+                font-size: 23px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.2;
+                margin-bottom: 7px;
+                font-family: Georgia, serif;
+            }
+            .hero-c-title .accent {
+                color: #5d7052;
+            }
+            .hero-c-sub {
+                font-size: 9px;
+                color: rgba(255, 255, 255, 0.55);
+                line-height: 1.65;
+                margin-bottom: 12px;
+            }
+            .hero-c-btns {
+                display: flex;
+                gap: 6px;
+            }
+            .btn-c-p {
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 9px;
+                font-weight: 700;
+            }
+            .btn-c-o {
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                color: rgba(255, 255, 255, 0.75);
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 9px;
+            }
+            .hero-c-tags {
+                display: flex;
+                gap: 5px;
+                margin-top: 12px;
+                flex-wrap: wrap;
+            }
+            .tag-c {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                padding: 4px 8px;
+                font-size: 7px;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            /* 共用卡片底部信息 */
+            .card-info {
+                padding: 18px;
+                border-top: 1px solid rgba(222, 216, 207, 0.5);
+            }
+            .card-badge {
+                display: inline-flex;
+                gap: 5px;
+                align-items: center;
+                background: rgba(93, 112, 82, 0.08);
+                border: 1px solid rgba(93, 112, 82, 0.15);
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 11px;
+                color: #5d7052;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .card-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: #2c2c24;
+                margin-bottom: 6px;
+            }
+            .card-desc {
+                font-size: 12px;
+                color: #78786c;
+                line-height: 1.65;
+                margin-bottom: 12px;
+            }
+
+            /* 色板 */
+            .palette {
+                display: flex;
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+            .swatch {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                border: 1.5px solid rgba(255, 255, 255, 0.8);
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+            }
+            .palette-label {
+                font-size: 10px;
+                color: #78786c;
+                margin-top: 4px;
+            }
+
+            .tag-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .tag {
+                font-size: 10px;
+                padding: 2px 8px;
+                border-radius: 999px;
+                background: #f0ebe5;
+                color: #78786c;
+                border: 1px solid #ded8cf;
+            }
+
+            .recommend {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                background: rgba(93, 112, 82, 0.1);
+                border: 1px solid rgba(93, 112, 82, 0.2);
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 10px;
+                color: #5d7052;
+                font-weight: 600;
+                margin-bottom: 8px;
+                margin-left: 6px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page-header">
+            <h1>选择视觉风格方向</h1>
+            <p>同样是有机自然系，三种调性各有侧重——点击预览选择你的风格</p>
+        </div>
+
+        <div class="cards-row">
+            <!-- 方向A -->
+            <div class="style-card" onclick="pick(this, 'A')">
+                <div class="hero-a">
+                    <div class="blob-a1"></div>
+                    <div class="blob-a2"></div>
+                    <div class="nav-a">
+                        <div class="logo-a">颐</div>
+                        <span class="logo-text-a">YiYangGe</span>
+                    </div>
+                    <div class="hero-a-badge">🌿 Natural · Health · Life</div>
+                    <div class="hero-a-title">让每一天<br />与自然同频</div>
+                    <div class="hero-a-sub">
+                        二十四节气 × 中医古方 × 现代科学<br />重新定义你的养生方式
+                    </div>
+                    <div class="hero-a-btns">
+                        <span class="btn-a-p">开启养生之旅 →</span>
+                        <span class="btn-a-o">了解更多</span>
+                    </div>
+                    <div class="chips-a">
+                        <div class="chip-a">
+                            <span class="chip-icon">🌿</span>节气
+                        </div>
+                        <div class="chip-a">
+                            <span class="chip-icon">🌙</span>睡眠
+                        </div>
+                        <div class="chip-a">
+                            <span class="chip-icon">🍵</span>中医
+                        </div>
+                        <div class="chip-a">
+                            <span class="chip-icon">🤖</span>AI
+                        </div>
+                        <div class="chip-a">
+                            <span class="chip-icon">👩‍⚕️</span>专家
+                        </div>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div style="display: flex; align-items: center">
+                        <div class="card-badge">方向 A</div>
+                        <span class="recommend">★ 推荐</span>
+                    </div>
+                    <div class="card-title">纯有机自然风</div>
+                    <div class="card-desc">
+                        完全采用设计系统的苔藓绿+陶土色调，英文品牌字（衬线）+
+                        中文正文，Blob 背景 + 纸质纹理，清新自然，现代感强。
+                    </div>
+                    <div class="palette">
+                        <div
+                            class="swatch"
+                            style="background: #5d7052"
+                            title="苔藓绿"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #c18c5d"
+                            title="陶土橙"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #fdfcf8"
+                            title="宣纸白"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #e6dccd"
+                            title="沙土米"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #2c2c24"
+                            title="深墨"
+                        ></div>
+                    </div>
+                    <div class="tag-row">
+                        <span class="tag">苔藓绿主色</span>
+                        <span class="tag">衬线大标题</span>
+                        <span class="tag">Blob+纹理</span>
+                        <span class="tag">明亮通透</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方向B -->
+            <div class="style-card" onclick="pick(this, 'B')">
+                <div class="hero-b">
+                    <div class="nav-b">
+                        <div class="seal-b">颐</div>
+                        <span class="logo-text-b">颐养阁</span>
+                        <div class="nav-b-links">
+                            <span>养生智库</span><span>AI管家</span
+                            ><span>名医</span>
+                            <span class="nav-b-btn">体验</span>
+                        </div>
+                    </div>
+                    <div class="hero-b-content">
+                        <div class="hero-b-blob1"></div>
+                        <div class="hero-b-blob2"></div>
+                        <div class="hero-b-label">
+                            YǍNG SHĒNG ZHÌ KÙ · 顺应节气 调和阴阳
+                        </div>
+                        <div class="hero-b-title">
+                            养生智库<br />自然·和谐·健康
+                        </div>
+                        <div class="hero-b-sub">
+                            集二十四节气、睡眠作息、经期管理、中医养生<br />情绪疗愈与个性推荐于一体的东方健康平台
+                        </div>
+                        <div class="hero-b-btns">
+                            <span class="btn-b-p">🌿 立即体验</span>
+                            <span class="btn-b-o">了解更多</span>
+                        </div>
+                        <div class="meta-row-b">
+                            <span class="meta-b"
+                                >🌿 今日节气 <strong>立夏</strong></span
+                            >
+                            <span class="meta-b">🌙 睡眠优化</span>
+                            <span class="meta-b">🍵 中医智慧</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div class="card-badge">方向 B</div>
+                    <div class="card-title">东西融合风</div>
+                    <div class="card-desc">
+                        在现有中式美学（朱砂印章、楷体标题、玉石绿）基础上，叠加有机质感（Blob、毛绒阴影、pill按钮）。中文品牌感更强。
+                    </div>
+                    <div class="palette">
+                        <div
+                            class="swatch"
+                            style="background: #5c8374"
+                            title="玉石绿"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #c9a55c"
+                            title="金色"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #b33c2c"
+                            title="朱砂红"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #faf6ee"
+                            title="奶油"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #2c3639"
+                            title="墨色"
+                        ></div>
+                    </div>
+                    <div class="tag-row">
+                        <span class="tag">中式玉石绿</span>
+                        <span class="tag">楷体标题</span>
+                        <span class="tag">有机形状</span>
+                        <span class="tag">东方气质</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方向C -->
+            <div class="style-card" onclick="pick(this, 'C')">
+                <div class="hero-c">
+                    <div class="blob-c1"></div>
+                    <div class="blob-c2"></div>
+                    <div class="nav-c">
+                        <div class="logo-c">颐</div>
+                        <span class="logo-text-c">颐养阁</span>
+                        <div class="nav-c-links">
+                            <span>功能</span><span>专家</span><span>社区</span>
+                            <span class="nav-c-btn">体验</span>
+                        </div>
+                    </div>
+                    <div class="hero-c-content">
+                        <div class="hero-c-badge">🌿 传承东方 · 拥抱自然</div>
+                        <div class="hero-c-title">
+                            让养生<br /><span class="accent">回归自然</span>
+                        </div>
+                        <div class="hero-c-sub">
+                            二十四节气 × 中医智慧 × AI管家<br />在现代生活中找回自然的节律
+                        </div>
+                        <div class="hero-c-btns">
+                            <span class="btn-c-p">🌿 开始体验</span>
+                            <span class="btn-c-o">查看功能</span>
+                        </div>
+                        <div class="hero-c-tags">
+                            <span class="tag-c">节气养生</span>
+                            <span class="tag-c">睡眠优化</span>
+                            <span class="tag-c">中医智慧</span>
+                            <span class="tag-c">AI个性推荐</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div class="card-badge">方向 C</div>
+                    <div class="card-title">深色沉浸风</div>
+                    <div class="card-desc">
+                        深墨色底+苔藓绿点缀，高对比度、强视觉冲击。苔藓绿作为强调色在暗色背景上格外突出，夜间阅读友好。
+                    </div>
+                    <div class="palette">
+                        <div
+                            class="swatch"
+                            style="background: #1e1e16"
+                            title="深墨"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #5d7052"
+                            title="苔藓绿"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: #c18c5d"
+                            title="陶土"
+                        ></div>
+                        <div
+                            class="swatch"
+                            style="background: rgba(255, 255, 255, 0.1)"
+                            title="玻璃白"
+                            style="border: 1.5px solid rgba(0, 0, 0, 0.1)"
+                        ></div>
+                    </div>
+                    <div class="tag-row">
+                        <span class="tag">暗色调</span>
+                        <span class="tag">高对比度</span>
+                        <span class="tag">沉浸感强</span>
+                        <span class="tag">现代感</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function pick(el, choice) {
+                document
+                    .querySelectorAll(".style-card")
+                    .forEach((c) => c.classList.remove("selected"));
+                el.classList.add("selected");
+                if (window.__companion) {
+                    window.__companion.record({
+                        type: "click",
+                        choice,
+                        text: el.querySelector(".card-title").textContent,
+                    });
+                }
+            }
+        </script>
+    </body>
+</html>

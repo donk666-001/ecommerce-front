@@ -1,6 +1,6 @@
-import { ApiUser } from "@/network/user";
 import type { ILoginInfo, IUserInfo } from "@/types";
 import { defineStore } from "pinia";
+import { ApiUser } from "@/network/user";
 
 const emptyLoginInfo = (): ILoginInfo => ({
     id: NaN,
@@ -39,25 +39,19 @@ export const useUserStore = defineStore("user", {
     actions: {
         // 刷新令牌（首次调用后标记 isInitialized，避免重复请求）
         async refreshToken() {
-            console.log("[Auth] 开始刷新令牌...");
             try {
                 const result = await ApiUser.refresh();
-                console.log("[Auth] 刷新令牌响应:", result);
                 if (result) {
                     // ── Tab 身份守卫 ──────────────────────────────────────────────
                     // sessionStorage 是 per-tab 的，不在标签页间共享。
                     // 若其他标签页用不同账号登录，会覆盖浏览器共享的 HttpOnly Cookie，
                     // 导致本 tab 刷新时拿到别人的 JWT。通过比对 userId 来检测这种情况。
-                    const storedTabUserId =
-                        sessionStorage.getItem("tab-user-id");
-                    if (
-                        storedTabUserId &&
-                        storedTabUserId !== String(result.id)
-                    ) {
+                    const storedTabUserId = sessionStorage.getItem("tab-user-id");
+                    if (storedTabUserId && storedTabUserId !== String(result.id)) {
                         // Cookie 已被其他标签页的登录覆盖，本 tab 强制退出
                         console.warn(
                             `[Auth] Session 冲突：本 tab 期望用户 ${storedTabUserId}，` +
-                                `但 Cookie 已被覆盖为用户 ${result.id}，强制退出登录。`,
+                            `但 Cookie 已被覆盖为用户 ${result.id}，强制退出登录。`
                         );
                         this.clearLoginInfo();
                         sessionStorage.removeItem("tab-user-id");
@@ -87,17 +81,11 @@ export const useUserStore = defineStore("user", {
                     sessionStorage.setItem("tab-user-id", String(result.id));
                     await this.loadUserInfo();
                 } else {
-                    console.warn("[Auth] 刷新令牌返回 null，清除登录态");
                     this.clearLoginInfo();
                 }
-            } catch (error) {
-                console.error("[Auth] 刷新令牌失败:", error);
+            } catch {
                 this.clearLoginInfo();
             } finally {
-                console.log(
-                    "[Auth] isInitialized 设置为 true, isLogin:",
-                    this.G_LoginInfo.isLogin,
-                );
                 this.isInitialized = true;
             }
             return this.G_LoginInfo.isLogin;

@@ -1,0 +1,115 @@
+// src/styles/landing.scss
+// 落地页专用设计 token，不影响全局 base.scss
+
+:root {
+    --ld-moss: #5d7052;
+    --ld-moss-light: #8fa882;
+    --ld-terra: #c18c5d;
+    --ld-cinnabar: #b33c2c;
+    --ld-ink: #2c2c24;
+
+    // 动画曲线
+    --ld-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+// 滚动入场动画基础类
+[data-animate] {
+    opacity: 0;
+    transform: translateY(32px);
+    transition:
+        opacity 0.75s var(--ld-ease-out),
+        transform 0.75s var(--ld-ease-out);
+    transition-delay: var(--delay, 0ms);
+
+    &.visible {
+        opacity: 1;
+        transform: none;
+    }
+
+    &[data-animate="from-left"] {
+        transform: translateX(-40px);
+    }
+
+    &[data-animate="from-right"] {
+        transform: translateX(40px);
+    }
+
+    &[data-animate="scale-up"] {
+        transform: scale(0.88) translateY(16px);
+    }
+}
+
+// Blob 漂移
+@keyframes blobDrift1 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    33% {
+        transform: translate(14px, -10px) scale(1.05) rotate(5deg);
+    }
+    66% {
+        transform: translate(-8px, 8px) scale(0.96) rotate(-3deg);
+    }
+}
+@keyframes blobDrift2 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    40% {
+        transform: translate(-12px, 10px) scale(1.04) rotate(-4deg);
+    }
+    70% {
+        transform: translate(10px, -6px) scale(0.97) rotate(6deg);
+    }
+}
+@keyframes blobDrift3 {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    33% {
+        transform: translate(-14px, 8px) scale(1.03) rotate(-5deg);
+    }
+    66% {
+        transform: translate(10px, -10px) scale(0.98) rotate(4deg);
+    }
+}
+
+.drifting-1 {
+    animation: blobDrift1 14s ease-in-out infinite;
+}
+.drifting-2 {
+    animation: blobDrift2 18s ease-in-out infinite;
+}
+.drifting-3 {
+    animation: blobDrift3 22s ease-in-out infinite;
+}
+
+// 卡片流光 hover
+.shimmer-card {
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(
+            105deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.07) 50%,
+            transparent 70%
+        );
+        background-size: 200% 100%;
+        background-position: 200% 0;
+        transition: background-position 0.55s ease;
+        pointer-events: none;
+    }
+
+    &:hover::after {
+        background-position: -200% 0;
+    }
+}
