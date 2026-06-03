@@ -126,20 +126,45 @@
                 <button
                     class="btn btn-ghost"
                     type="button"
+                    :disabled="
+                        isLoadingCourses || !hasActiveUser || allCourses.length === 0
+                    "
                     @click="showAllCourses = true"
                 >
                     查看全部 →
                 </button>
             </div>
-            <div class="grid-4">
+            <div v-if="!hasActiveUser" class="course-state">
+                登录后可同步你的中医课程推荐。
+            </div>
+            <div v-else-if="isLoadingCourses" class="course-state">
+                正在同步中医课程推荐...
+            </div>
+            <div v-else-if="courseError" class="course-state error">
+                <span>{{ courseError }}</span>
+                <button type="button" @click="loadRecommendedCourses">
+                    重试
+                </button>
+            </div>
+            <div v-else-if="courses.length === 0" class="course-state">
+                暂无推荐课程。
+            </div>
+            <div v-else class="grid-4">
                 <button
                     v-for="course in courses"
-                    :key="course.name"
+                    :key="course.id ?? course.name"
                     class="course-card"
                     type="button"
-                    @click="selectedCourse = course"
+                    @click="openCourse(course)"
                 >
-                    <div class="course-img">{{ course.emoji }}</div>
+                    <div v-if="courseHasCover(course)" class="course-img cover">
+                        <img
+                            :src="course.coverUrl"
+                            alt=""
+                            @error="markCourseCoverBroken(course)"
+                        />
+                    </div>
+                    <div v-else class="course-img">{{ course.emoji }}</div>
                     <div class="course-body">
                         <div class="course-name">{{ course.name }}</div>
                         <div class="course-meta">{{ course.meta }}</div>
@@ -288,25 +313,48 @@
                             {{
                                 selectedCourse
                                     ? selectedCourse.detail
-                                    : "课程均为纯前端模拟数据，可点击任意课程查看学习进度与简介。"
+                                    : "课程根据你的体质、经期和睡眠状态由后端推荐，可点击课程查看详情。"
                             }}
                         </p>
+                        <div v-if="isLoadingCourseDetail" class="course-state">
+                            正在同步课程详情...
+                        </div>
+                        <div
+                            v-if="selectedCourse?.tags.length"
+                            class="course-tags"
+                        >
+                            <span
+                                v-for="tag in selectedCourse.tags"
+                                :key="`${selectedCourse.name}-${tag}`"
+                            >
+                                {{ tag }}
+                            </span>
+                        </div>
                         <div class="course-list">
                             <button
                                 v-for="course in allCourses"
-                                :key="course.name"
+                                :key="course.id ?? course.name"
                                 type="button"
                                 :class="{
                                     active:
+                                        selectedCourse?.id === course.id ||
                                         selectedCourse?.name === course.name,
                                 }"
-                                @click="selectedCourse = course"
+                                @click="openCourse(course)"
                             >
                                 <span>{{ course.emoji }}</span>
                                 <strong>{{ course.name }}</strong>
                                 <em>{{ course.meta }}</em>
                             </button>
                         </div>
+                        <button
+                            v-if="selectedCourse?.contentUrl"
+                            class="btn"
+                            type="button"
+                            @click="openCourseContent"
+                        >
+                            查看课程内容
+                        </button>
                     </section>
                 </div>
             </Transition>
@@ -317,9 +365,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import {
+    ApiTcmCourse,
     ApiPsychScale,
     type PsychScaleLatestVO,
     type PsychScaleQuestionVO,
+    type TcmCourseVO,
 } from "@/network";
 import { useUserStore } from "@/store";
 
@@ -330,7 +380,17 @@ type Acupoint = {
     top: string;
     left: string;
 };
-type Course = { name: string; emoji: string; meta: string; detail: string };
+type Course = {
+    id?: number | string;
+    name: string;
+    emoji: string;
+    meta: string;
+    detail: string;
+    coverUrl: string;
+    contentUrl: string;
+    tags: string[];
+    source: TcmCourseVO;
+};
 type DimensionEntry = { name: string; score: number };
 type RadarAxis = {
     name: string;
@@ -358,6 +418,11 @@ const isLoadingConstitution = ref(false);
 const isLoadingQuestions = ref(false);
 const isSubmittingTest = ref(false);
 const testError = ref("");
+const recommendedCourses = ref<TcmCourseVO[]>([]);
+const isLoadingCourses = ref(false);
+const isLoadingCourseDetail = ref(false);
+const courseError = ref("");
+const brokenCourseCovers = ref(new Set<string>());
 
 const radarAxes: RadarAxis[] = [
     { name: "阴虚", labelX: 100, labelY: 15, valueX: 100, valueY: 30 },
@@ -425,45 +490,8 @@ const acupoints: Acupoint[] = [
 ];
 const selectedAcupoint = ref<Acupoint>(acupoints[0]!);
 
-const allCourses: Course[] = [
-    {
-        name: "八段锦入门",
-        emoji: "🧘",
-        meta: "12 节 · 王老师 · 已学 3 节",
-        detail: "从预备式到两手托天理三焦，适合每天 15 分钟跟练。",
-    },
-    {
-        name: "阴阳五行精讲",
-        emoji: "📖",
-        meta: "8 节 · 李教授 · 未开始",
-        detail: "用生活场景讲清阴阳、五行、脏腑之间的基础关系。",
-    },
-    {
-        name: "太极二十四式",
-        emoji: "☯️",
-        meta: "24 节 · 张师傅 · 未开始",
-        detail: "节奏舒缓，适合改善体态、呼吸与下肢稳定性。",
-    },
-    {
-        name: "面诊舌诊基础",
-        emoji: "👐",
-        meta: "6 节 · 陈医师 · 已学 1 节",
-        detail: "认识常见舌象与面色变化，辅助日常健康记录。",
-    },
-    {
-        name: "经络入门",
-        emoji: "🧭",
-        meta: "10 节 · 周老师 · 未开始",
-        detail: "从十二经络走向到常用穴位，建立基础经络地图。",
-    },
-    {
-        name: "四季食养",
-        emoji: "🍵",
-        meta: "16 节 · 苏老师 · 已收藏",
-        detail: "按节气选择食材与烹调方式，适合搭配养生智库使用。",
-    },
-];
-const courses = allCourses.slice(0, 4);
+const allCourses = computed(() => recommendedCourses.value.map(toCourse));
+const courses = computed(() => allCourses.value.slice(0, 4));
 
 const activeUserId = computed(() => {
     const loginId = Number(userStore.G_LoginInfo.id);
@@ -551,9 +579,155 @@ const resultDescription = computed(
         "结果已保存，可在后台历史中继续查看。",
 );
 
+function toCourse(course: TcmCourseVO): Course {
+    const name =
+        cleanApiText(course.courseTitle) ||
+        cleanApiText(course.courseSubtitle) ||
+        "中医课程";
+    const displayCourse: Course = {
+        name,
+        emoji: courseCategoryIcon(course.courseCategory),
+        meta: buildCourseMeta(course),
+        detail: buildCourseDetail(course),
+        coverUrl: course.coverUrl,
+        contentUrl: course.contentUrl,
+        tags: course.tags,
+        source: course,
+    };
+    if (course.id !== undefined && course.id !== null) {
+        displayCourse.id = course.id;
+    }
+    return displayCourse;
+}
+
+function buildCourseMeta(course: TcmCourseVO) {
+    return [
+        course.durationMinutes > 0 ? `${course.durationMinutes} 分钟` : "",
+        cleanApiText(course.teacherName) || "平台推荐",
+        courseLevelText(course.courseLevel),
+    ]
+        .filter(Boolean)
+        .join(" · ");
+}
+
+function buildCourseDetail(course: TcmCourseVO) {
+    const intro = cleanApiText(course.introText);
+    if (intro) return intro;
+    const subtitle = cleanApiText(course.courseSubtitle);
+    if (subtitle) return subtitle;
+
+    const targets = [
+        cleanApiText(course.targetConstitution)
+            ? `适合${course.targetConstitution}体质`
+            : "",
+        cyclePhaseText(course.targetCyclePhase),
+        cleanApiText(course.targetSleepType),
+    ].filter(Boolean);
+    return targets.length
+        ? `推荐依据：${targets.join("、")}。`
+        : "课程详情已同步，可结合个人体质、作息和周期状态学习。";
+}
+
+function courseCategoryIcon(category: string) {
+    const normalized = category.toLowerCase();
+    if (normalized.includes("constitution")) return "🧘";
+    if (normalized.includes("meridian")) return "🧭";
+    if (normalized.includes("diet")) return "🍵";
+    if (normalized.includes("exercise") || normalized.includes("taiji"))
+        return "☯️";
+    return "📖";
+}
+
+function courseLevelText(level: string) {
+    const normalized = level.toLowerCase();
+    if (normalized === "beginner") return "入门";
+    if (normalized === "intermediate") return "进阶";
+    if (normalized === "advanced") return "高级";
+    return cleanApiText(level);
+}
+
+function cyclePhaseText(value: number) {
+    const phase = {
+        1: "经期",
+        2: "卵泡期",
+        3: "排卵期",
+        4: "黄体期",
+    }[value];
+    return phase ? `适合${phase}` : "";
+}
+
+function courseCoverKey(course: Course) {
+    return `${course.id ?? course.name}-${course.coverUrl}`;
+}
+
+function courseHasCover(course: Course) {
+    return (
+        Boolean(course.coverUrl) &&
+        !brokenCourseCovers.value.has(courseCoverKey(course))
+    );
+}
+
+function markCourseCoverBroken(course: Course) {
+    brokenCourseCovers.value = new Set([
+        ...brokenCourseCovers.value,
+        courseCoverKey(course),
+    ]);
+}
+
+async function loadRecommendedCourses() {
+    if (!hasActiveUser.value) {
+        recommendedCourses.value = [];
+        courseError.value = "";
+        return;
+    }
+
+    isLoadingCourses.value = true;
+    courseError.value = "";
+    try {
+        recommendedCourses.value = await ApiTcmCourse.getRecommended(
+            activeUserId.value,
+        );
+        brokenCourseCovers.value = new Set();
+    } catch (error) {
+        console.error("读取中医课程推荐失败", error);
+        recommendedCourses.value = [];
+        courseError.value = resolveTcmErrorMessage(
+            error,
+            "中医课程推荐同步失败，请稍后重试",
+        );
+    } finally {
+        isLoadingCourses.value = false;
+    }
+}
+
+async function openCourse(course: Course) {
+    selectedCourse.value = course;
+    if (course.id == null) return;
+
+    isLoadingCourseDetail.value = true;
+    try {
+        const detail = await ApiTcmCourse.getDetail(course.id);
+        recommendedCourses.value = recommendedCourses.value.map((item) =>
+            String(item.id) === String(detail.id) ? detail : item,
+        );
+        selectedCourse.value = toCourse(detail);
+    } catch (error) {
+        console.error("读取中医课程详情失败", error);
+    } finally {
+        isLoadingCourseDetail.value = false;
+    }
+}
+
+function openCourseContent() {
+    const url = selectedCourse.value?.contentUrl;
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+}
+
 function closeCourseDialog() {
     selectedCourse.value = null;
     showAllCourses.value = false;
+    isLoadingCourseDetail.value = false;
 }
 
 async function openConstitutionTest() {
@@ -764,14 +938,18 @@ function isValidUserId(value: number) {
 
 onMounted(() => {
     void loadLatestConstitution();
+    void loadRecommendedCourses();
 });
 
 watch(activeUserId, (userId) => {
     if (!isValidUserId(userId)) {
         latestConstitution.value = null;
+        recommendedCourses.value = [];
+        courseError.value = "";
         return;
     }
     void loadLatestConstitution();
+    void loadRecommendedCourses();
 });
 </script>
 
@@ -901,6 +1079,31 @@ watch(activeUserId, (userId) => {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
+.course-state {
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(92, 131, 116, 0.22);
+    border-radius: 12px;
+    background: var(--paper-warm);
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
+}
+.course-state.error {
+    color: var(--cinnabar);
+}
+.course-state button {
+    border: 1px solid var(--jade);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--jade);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 12px;
+}
 .course-img {
     height: 100px;
     background: linear-gradient(135deg, var(--gold-soft), var(--jade-soft));
@@ -908,6 +1111,18 @@ watch(activeUserId, (userId) => {
     align-items: center;
     justify-content: center;
     font-size: 36px;
+    color: var(--jade);
+    line-height: 1;
+    overflow: hidden;
+}
+.course-img.cover {
+    background: var(--paper-warm);
+}
+.course-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 .course-body {
     padding: 12px;
@@ -1099,6 +1314,20 @@ watch(activeUserId, (userId) => {
     color: var(--ink-muted);
     font-size: 12px;
     font-style: normal;
+}
+.course-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -6px 0 14px;
+}
+.course-tags span {
+    padding: 4px 10px;
+    border: 1px solid rgba(92, 131, 116, 0.18);
+    border-radius: 999px;
+    background: rgba(92, 131, 116, 0.1);
+    color: var(--jade);
+    font-size: 12px;
 }
 .test-options strong {
     display: block;

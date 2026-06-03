@@ -1,9 +1,24 @@
 import { GAxios, GAxiosWithCredentials } from "@/plugins";
 
+function normalizeAssetUrl(url: string | null | undefined, baseURL?: string) {
+    if (
+        !url ||
+        /^(https?:)?\/\//.test(url) ||
+        url.startsWith("data:") ||
+        url.startsWith("blob:")
+    ) {
+        return url ?? "";
+    }
+    if (url.startsWith("/users/") && baseURL) {
+        return `${baseURL.replace(/\/$/, "")}${url}`;
+    }
+    return url;
+}
+
 export interface ExpertCardVO {
     id: number;
     realName: string;
-    avatar: string;
+    avatar: string | null;
     roleType: string;
     bio: string;
     lastActiveAt: string | null;
@@ -68,11 +83,33 @@ export interface SubmitApplicationRequest {
 }
 
 export const ApiExpert = {
-    getRecommendExperts: (limit = 12) =>
-        GAxios.get<ExpertCardVO[]>("/experts/recommend", { params: { limit } }),
+    async getRecommendExperts(limit = 12) {
+        const response = await GAxios.get("/experts/recommend", {
+            params: { limit },
+        });
+        const experts = response.data?.data;
+        if (Array.isArray(experts)) {
+            experts.forEach((expert: ExpertCardVO) => {
+                expert.avatar = normalizeAssetUrl(
+                    expert.avatar,
+                    response.config.baseURL,
+                );
+            });
+        }
+        return response;
+    },
 
-    getMyExpertProfile: () =>
-        GAxiosWithCredentials.get<ExpertBasicVO>("/experts/me"),
+    async getMyExpertProfile() {
+        const response = await GAxiosWithCredentials.get("/experts/me");
+        const expert = response.data?.data as ExpertBasicVO | null | undefined;
+        if (expert?.avatar) {
+            expert.avatar = normalizeAssetUrl(
+                expert.avatar,
+                response.config.baseURL,
+            );
+        }
+        return response;
+    },
 
     uploadAttachment: (file: File) => {
         const form = new FormData();
