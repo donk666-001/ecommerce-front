@@ -16,3 +16,5 @@ export * from "./order.ts";
 export * from "./refund.ts";
 export * from "./logistics.ts";
 export * from "./recommendation.ts";
+export * from "./tcmCourse.ts";
+export * from "./wellnessMedia.ts";

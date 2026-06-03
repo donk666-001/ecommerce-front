@@ -138,26 +138,47 @@
         <div class="grid-2 secondary-grid">
             <div class="card">
                 <div class="card-title"><span class="dot"></span>冥想引导</div>
-                <button
-                    v-for="med in meditations"
-                    :key="med.title"
-                    class="meditation-row"
-                    :class="{ active: activeMeditation === med.title }"
-                    type="button"
-                    @click="
-                        activeMeditation =
-                            activeMeditation === med.title ? '' : med.title
-                    "
+                <div v-if="isLoadingMeditations" class="meditation-state">
+                    正在同步冥想音频...
+                </div>
+                <div v-else-if="meditationError" class="meditation-state error">
+                    <span>{{ meditationError }}</span>
+                    <button type="button" @click="loadMeditations">重试</button>
+                </div>
+                <div
+                    v-else-if="meditations.length === 0"
+                    class="meditation-state"
                 >
-                    <div class="med-icon">{{ med.emoji }}</div>
-                    <div class="med-info">
-                        <div class="med-title">{{ med.title }}</div>
-                        <div class="med-dur">{{ med.dur }}</div>
-                    </div>
-                    <div class="play-state">
-                        {{ activeMeditation === med.title ? "暂停" : "开始" }}
-                    </div>
-                </button>
+                    暂无冥想引导资源。
+                </div>
+                <template v-else>
+                    <button
+                        v-for="med in meditations"
+                        :key="med.id ?? med.title"
+                        class="meditation-row"
+                        :class="{
+                            active: activeMeditation === meditationKey(med),
+                            disabled: !med.mediaUrl,
+                        }"
+                        type="button"
+                        @click="toggleMeditation(med)"
+                    >
+                        <div class="med-icon">{{ med.emoji }}</div>
+                        <div class="med-info">
+                            <div class="med-title">{{ med.title }}</div>
+                            <div class="med-dur">{{ med.dur }}</div>
+                        </div>
+                        <div class="play-state">
+                            {{
+                                activeMeditation === meditationKey(med)
+                                    ? "暂停"
+                                    : med.mediaUrl
+                                      ? "开始"
+                                      : "无资源"
+                            }}
+                        </div>
+                    </button>
+                </template>
             </div>
 
             <div class="card">
@@ -302,13 +323,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
     ApiEmotion,
+    ApiWellnessMedia,
     type DayEmotionVO,
     type Emotion17DaysVO,
     type PsychScaleLatestVO,
     type PsychScaleQuestionVO,
+    type WellnessMediaResourceVO,
 } from "@/network";
 import { useUserStore } from "@/store";
 
@@ -336,6 +359,15 @@ type MoodChartPoint = {
     y: number;
 };
 
+type MeditationItem = {
+    id?: number | string;
+    emoji: string;
+    title: string;
+    dur: string;
+    mediaUrl: string;
+    source: WellnessMediaResourceVO;
+};
+
 const moods: MoodOption[] = [
     { score: 1, emoji: "😔", label: "很差" },
     { score: 2, emoji: "😐", label: "低落" },
@@ -344,11 +376,7 @@ const moods: MoodOption[] = [
     { score: 5, emoji: "🥰", label: "极佳" },
 ];
 
-const meditations = [
-    { emoji: "🌬️", title: "焦虑舒缓 · 478 呼吸", dur: "10 分钟 · 入门" },
-    { emoji: "🌸", title: "正念扫描身体", dur: "15 分钟 · 进阶" },
-    { emoji: "🌅", title: "晨间唤醒冥想", dur: "5 分钟 · 入门" },
-];
+const meditations = ref<MeditationItem[]>([]);
 
 const scaleDefinitions: ScaleDefinition[] = [
     { code: "SAS", name: "SAS · 焦虑自评量表", defaultCount: 20, minutes: 5 },
@@ -365,6 +393,9 @@ const moodKeywords = ref(["平静", "温暖"]);
 const showKeywordInput = ref(false);
 const keywordInput = ref("");
 const activeMeditation = ref("");
+const activeMeditationAudio = ref<HTMLAudioElement | null>(null);
+const isLoadingMeditations = ref(false);
+const meditationError = ref("");
 const emotionSummary = ref<Emotion17DaysVO | null>(null);
 const isLoadingEmotion = ref(false);
 const isSavingEmotion = ref(false);
@@ -631,6 +662,112 @@ async function submitSurvey() {
     }
 }
 
+function toMeditationItem(resource: WellnessMediaResourceVO): MeditationItem {
+    const item: MeditationItem = {
+        emoji: meditationIcon(resource),
+        title: cleanMediaText(resource.mediaName) || "冥想引导",
+        dur: buildMediaMeta(resource, "冥想音频"),
+        mediaUrl: resource.mediaUrl,
+        source: resource,
+    };
+    if (resource.id !== undefined && resource.id !== null) {
+        item.id = resource.id;
+    }
+    return item;
+}
+
+function meditationIcon(resource: WellnessMediaResourceVO) {
+    const text = `${resource.mediaName} ${resource.mediaCategory} ${resource.description}`;
+    if (/呼吸|breath|478|4-7-8/i.test(text)) return "🌬️";
+    if (/身体|扫描|body/i.test(text)) return "🌸";
+    if (/晨|唤醒|morning/i.test(text)) return "🌅";
+    if (/睡|夜|sleep/i.test(text)) return "🌙";
+    return "🧘";
+}
+
+function buildMediaMeta(resource: WellnessMediaResourceVO, fallback: string) {
+    const description = cleanMediaText(resource.description);
+    const category = cleanMediaText(resource.mediaCategory) || fallback;
+    const playableText = resource.mediaUrl ? "可播放" : "暂无播放地址";
+    return [description || category, playableText].filter(Boolean).join(" · ");
+}
+
+function cleanMediaText(value: unknown) {
+    if (value == null) return "";
+    const text = String(value).trim();
+    return text === "##default" ? "" : text;
+}
+
+function meditationKey(meditation: MeditationItem) {
+    return `${meditation.id ?? meditation.title}`;
+}
+
+async function loadMeditations() {
+    isLoadingMeditations.value = true;
+    meditationError.value = "";
+    try {
+        const resources = await ApiWellnessMedia.getMeditationAudio();
+        meditations.value = resources.map(toMeditationItem);
+    } catch (error) {
+        console.error("读取冥想音频失败", error);
+        meditations.value = [];
+        meditationError.value = "冥想音频同步失败，请稍后重试";
+    } finally {
+        isLoadingMeditations.value = false;
+    }
+}
+
+function stopMeditationAudio() {
+    activeMeditationAudio.value?.pause();
+    activeMeditationAudio.value = null;
+    activeMeditation.value = "";
+}
+
+async function toggleMeditation(meditation: MeditationItem) {
+    const key = meditationKey(meditation);
+    if (activeMeditation.value === key) {
+        stopMeditationAudio();
+        return;
+    }
+
+    if (!meditation.mediaUrl) {
+        showToast("该冥想音频暂无播放地址");
+        return;
+    }
+
+    stopMeditationAudio();
+    activeMeditation.value = key;
+
+    if (typeof Audio === "undefined") return;
+
+    const player = new Audio(meditation.mediaUrl);
+    activeMeditationAudio.value = player;
+    player.onended = () => {
+        if (activeMeditationAudio.value === player) {
+            activeMeditationAudio.value = null;
+        }
+        activeMeditation.value = "";
+    };
+    player.onerror = () => {
+        if (activeMeditationAudio.value === player) {
+            activeMeditationAudio.value = null;
+        }
+        activeMeditation.value = "";
+        showToast("冥想音频加载失败，请稍后重试");
+    };
+
+    try {
+        await player.play();
+    } catch (error) {
+        console.error("播放冥想音频失败", error);
+        if (activeMeditationAudio.value === player) {
+            activeMeditationAudio.value = null;
+        }
+        activeMeditation.value = "";
+        showToast("冥想音频播放失败，请检查资源地址");
+    }
+}
+
 function buildRecentMoodDays(source: DayEmotionVO[]) {
     const byDate = new Map(source.map((item) => [item.recordDate, item]));
     return Array.from({ length: 17 }, (_, index) => {
@@ -727,12 +864,18 @@ function isValidUserId(value: number) {
 onMounted(() => {
     void loadEmotionTrend();
     void preloadScaleLatest();
+    void loadMeditations();
 });
 
 watch(activeUserId, (userId) => {
     if (!isValidUserId(userId)) return;
     void loadEmotionTrend();
     void preloadScaleLatest();
+});
+
+onBeforeUnmount(() => {
+    if (toastTimer) clearTimeout(toastTimer);
+    stopMeditationAudio();
 });
 </script>
 
@@ -911,6 +1054,31 @@ watch(activeUserId, (userId) => {
 .secondary-grid {
     margin-top: 20px;
 }
+.meditation-state {
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(96, 122, 158, 0.22);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--moon-soft) 48%, var(--paper));
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
+}
+.meditation-state.error {
+    color: var(--cinnabar);
+}
+.meditation-state button {
+    border: 1px solid var(--moon);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--moon);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 12px;
+}
 .meditation-row {
     width: 100%;
     display: flex;
@@ -930,6 +1098,14 @@ watch(activeUserId, (userId) => {
 .meditation-row.active {
     transform: translateX(4px);
     box-shadow: var(--shadow);
+}
+.meditation-row.disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+.meditation-row.disabled:hover {
+    transform: none;
+    box-shadow: none;
 }
 .med-icon {
     width: 44px;

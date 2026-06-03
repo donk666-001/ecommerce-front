@@ -572,18 +572,33 @@
                 </div>
                 <div class="metric-text">{{ playingAudioTitle }}</div>
             </div>
-            <div class="grid-2">
+            <div v-if="isLoadingSleepAudios" class="media-state">
+                正在同步助眠音律...
+            </div>
+            <div v-else-if="sleepAudioError" class="media-state error">
+                <span>{{ sleepAudioError }}</span>
+                <button type="button" @click="loadSleepAudios">重试</button>
+            </div>
+            <div v-else-if="allAudios.length === 0" class="media-state">
+                暂无助眠音律资源。
+            </div>
+            <div v-else class="grid-2">
                 <div>
                     <button
                         v-for="audio in audioList1"
-                        :key="audio.title"
+                        :key="audio.id ?? audio.title"
                         class="audio-row"
-                        :class="{ playing: audio.playing }"
+                        :class="{
+                            playing: audio.playing,
+                            disabled: !audio.mediaUrl,
+                        }"
                         type="button"
-                        @click="toggleAudio(audio.title)"
+                        @click="toggleAudio(audio)"
                     >
                         <div class="audio-play">
-                            {{ audio.playing ? "Ⅱ" : "▶" }}
+                            {{
+                                audio.playing ? "Ⅱ" : audio.mediaUrl ? "▶" : "—"
+                            }}
                         </div>
                         <div class="audio-info">
                             <div class="audio-title">{{ audio.title }}</div>
@@ -594,14 +609,19 @@
                 <div>
                     <button
                         v-for="audio in audioList2"
-                        :key="audio.title"
+                        :key="audio.id ?? audio.title"
                         class="audio-row"
-                        :class="{ playing: audio.playing }"
+                        :class="{
+                            playing: audio.playing,
+                            disabled: !audio.mediaUrl,
+                        }"
                         type="button"
-                        @click="toggleAudio(audio.title)"
+                        @click="toggleAudio(audio)"
                     >
                         <div class="audio-play">
-                            {{ audio.playing ? "Ⅱ" : "▶" }}
+                            {{
+                                audio.playing ? "Ⅱ" : audio.mediaUrl ? "▶" : "—"
+                            }}
                         </div>
                         <div class="audio-info">
                             <div class="audio-title">{{ audio.title }}</div>
@@ -722,6 +742,10 @@ import {
     type SleepRecordDTO,
     type SleepWeeklyStatDTO,
 } from "@/network/sleep";
+import {
+    ApiWellnessMedia,
+    type WellnessMediaResourceVO,
+} from "@/network/wellnessMedia";
 import { useUserStore } from "@/store";
 
 const props = withDefaults(
@@ -734,7 +758,14 @@ const props = withDefaults(
 );
 
 type TimeField = "sleep" | "wake";
-type AudioItem = { title: string; meta: string; playing: boolean };
+type AudioItem = {
+    id?: number | string;
+    title: string;
+    meta: string;
+    mediaUrl: string;
+    playing: boolean;
+    source: WellnessMediaResourceVO;
+};
 type PhoneImportStatus =
     | "idle"
     | "checking"
@@ -982,19 +1013,20 @@ const chartTooltipStyle = computed(() => {
     };
 });
 
-const audioList1 = ref<AudioItem[]>([
-    { title: "竹林夜雨", meta: "自然白噪音 · 30 分钟", playing: false },
-    { title: "古琴 · 平沙落雁", meta: "国风轻音 · 12 分钟", playing: false },
-    { title: "颂钵冥想", meta: "放松引导 · 20 分钟", playing: false },
-]);
+const sleepAudioItems = ref<AudioItem[]>([]);
+const isLoadingSleepAudios = ref(false);
+const sleepAudioError = ref("");
+const activeSleepAudioElement = ref<HTMLAudioElement | null>(null);
 
-const audioList2 = ref<AudioItem[]>([
-    { title: "深海蓝调", meta: "慢波音乐 · 45 分钟", playing: false },
-    { title: "睡前呼吸引导", meta: "4-7-8 呼吸法 · 8 分钟", playing: false },
-    { title: "山雨竹篱", meta: "环境音 · 60 分钟", playing: false },
-]);
-
-const allAudios = computed(() => [...audioList1.value, ...audioList2.value]);
+const audioList1 = computed(() => {
+    const splitIndex = Math.ceil(sleepAudioItems.value.length / 2);
+    return sleepAudioItems.value.slice(0, splitIndex);
+});
+const audioList2 = computed(() => {
+    const splitIndex = Math.ceil(sleepAudioItems.value.length / 2);
+    return sleepAudioItems.value.slice(splitIndex);
+});
+const allAudios = computed(() => sleepAudioItems.value);
 const playingAudioTitle = computed(() => {
     const active = allAudios.value.find((audio) => audio.playing);
     return active ? `正在播放：${active.title}` : "点击曲目即可播放";
@@ -2358,17 +2390,103 @@ async function saveSleep() {
     }
 }
 
-function toggleAudio(title: string) {
-    const wasPlaying = allAudios.value.find(
-        (audio) => audio.title === title,
-    )?.playing;
-    allAudios.value.forEach((audio) => {
-        audio.playing = audio.title === title ? !wasPlaying : false;
+function toSleepAudioItem(resource: WellnessMediaResourceVO): AudioItem {
+    const item: AudioItem = {
+        title: cleanMediaText(resource.mediaName) || "助眠音律",
+        meta: buildMediaMeta(resource, "助眠音律"),
+        mediaUrl: resource.mediaUrl,
+        playing: false,
+        source: resource,
+    };
+    if (resource.id !== undefined && resource.id !== null) {
+        item.id = resource.id;
+    }
+    return item;
+}
+
+function buildMediaMeta(resource: WellnessMediaResourceVO, fallback: string) {
+    const description = cleanMediaText(resource.description);
+    const category = cleanMediaText(resource.mediaCategory) || fallback;
+    const playableText = resource.mediaUrl ? "可播放" : "暂无播放地址";
+    return [description || category, playableText].filter(Boolean).join(" · ");
+}
+
+function cleanMediaText(value: unknown) {
+    if (value == null) return "";
+    const text = String(value).trim();
+    return text === "##default" ? "" : text;
+}
+
+async function loadSleepAudios() {
+    isLoadingSleepAudios.value = true;
+    sleepAudioError.value = "";
+    try {
+        const resources = await ApiWellnessMedia.getSleepMusic();
+        sleepAudioItems.value = resources.map(toSleepAudioItem);
+    } catch (error) {
+        console.error("读取助眠音律失败", error);
+        sleepAudioItems.value = [];
+        sleepAudioError.value = "助眠音律同步失败，请稍后重试";
+    } finally {
+        isLoadingSleepAudios.value = false;
+    }
+}
+
+function stopSleepAudio() {
+    activeSleepAudioElement.value?.pause();
+    activeSleepAudioElement.value = null;
+    allAudios.value.forEach((item) => {
+        item.playing = false;
     });
+}
+
+async function toggleAudio(audio: AudioItem) {
+    if (audio.playing) {
+        stopSleepAudio();
+        return;
+    }
+
+    if (!audio.mediaUrl) {
+        showToast("该音频暂无播放地址");
+        return;
+    }
+
+    stopSleepAudio();
+    audio.playing = true;
+
+    if (typeof Audio === "undefined") return;
+
+    const player = new Audio(audio.mediaUrl);
+    activeSleepAudioElement.value = player;
+    player.onended = () => {
+        audio.playing = false;
+        if (activeSleepAudioElement.value === player) {
+            activeSleepAudioElement.value = null;
+        }
+    };
+    player.onerror = () => {
+        audio.playing = false;
+        if (activeSleepAudioElement.value === player) {
+            activeSleepAudioElement.value = null;
+        }
+        showToast("音频加载失败，请稍后重试");
+    };
+
+    try {
+        await player.play();
+    } catch (error) {
+        console.error("播放助眠音律失败", error);
+        audio.playing = false;
+        if (activeSleepAudioElement.value === player) {
+            activeSleepAudioElement.value = null;
+        }
+        showToast("音频播放失败，请检查资源地址");
+    }
 }
 
 onMounted(() => {
     void reloadSleepDataForActiveUser();
+    void loadSleepAudios();
 });
 
 watch(activeUserId, (userId) => {
@@ -2386,6 +2504,7 @@ watch(showTimePicker, (visible) => {
 onBeforeUnmount(() => {
     if (toastTimer) clearTimeout(toastTimer);
     clearPhoneImportTimers();
+    stopSleepAudio();
     if (typeof document !== "undefined") {
         document.body.style.overflow = "";
     }
@@ -3199,6 +3318,32 @@ onBeforeUnmount(() => {
     font-size: 13px;
 }
 
+.media-state {
+    min-height: 124px;
+    display: grid;
+    place-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(92, 131, 116, 0.22);
+    border-radius: 12px;
+    background: var(--paper-warm);
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
+}
+.media-state.error {
+    color: var(--cinnabar);
+}
+.media-state button {
+    border: 1px solid var(--jade);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--jade);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
 .audio-row {
     width: 100%;
     display: flex;
@@ -3216,6 +3361,14 @@ onBeforeUnmount(() => {
 .audio-row.playing {
     background: var(--cream);
     transform: translateX(3px);
+}
+.audio-row.disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+.audio-row.disabled:hover {
+    background: transparent;
+    transform: none;
 }
 .audio-play {
     width: 40px;
