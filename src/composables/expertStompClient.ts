@@ -55,7 +55,7 @@ export function deactivateExpertClient(): void {
 export function addExpertSubscription(
     key: string,
     topic: string,
-    callback: (msg: IMessage) => void
+    callback: (msg: IMessage) => void,
 ): void {
     const entry: SubEntry = { topic, callback };
     if (client?.connected) {

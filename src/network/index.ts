@@ -7,3 +7,4 @@ export * from "./consult.ts";
 export * from "./admin.ts";
 export * from "./notification.ts";
 export * from "./menstrual.ts";
+export * from "./aiButler.ts";

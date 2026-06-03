@@ -1,7 +1,12 @@
 import { GAxios, GAxiosWithCredentials } from "@/plugins";
 
 function normalizeAssetUrl(url: string, baseURL?: string) {
-    if (!url || /^(https?:)?\/\//.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+    if (
+        !url ||
+        /^(https?:)?\/\//.test(url) ||
+        url.startsWith("data:") ||
+        url.startsWith("blob:")
+    ) {
         return url;
     }
     if (url.startsWith("/users/") && baseURL) {
@@ -61,7 +66,10 @@ class ApiUser {
             const res = response.data;
             if (res.code !== 200) return null;
             if (res.data?.avatar) {
-                res.data.avatar = normalizeAssetUrl(res.data.avatar, response.config.baseURL);
+                res.data.avatar = normalizeAssetUrl(
+                    res.data.avatar,
+                    response.config.baseURL,
+                );
             }
             return res.data;
         } catch {
@@ -108,12 +116,15 @@ class ApiUser {
             const res = response.data;
             return {
                 success: res.code === 200,
-                message: res.message || (res.code === 200 ? "保存成功" : "保存失败，请稍后重试"),
+                message:
+                    res.message ||
+                    (res.code === 200 ? "保存成功" : "保存失败，请稍后重试"),
             };
         } catch (error: any) {
             return {
                 success: false,
-                message: error?.response?.data?.message || "保存失败，请稍后重试",
+                message:
+                    error?.response?.data?.message || "保存失败，请稍后重试",
             };
         }
     }
@@ -123,9 +134,14 @@ class ApiUser {
         const formData = new FormData();
         formData.append("file", file);
         try {
-            const response = await GAxiosWithCredentials.post("/users/avatar", formData);
+            const response = await GAxiosWithCredentials.post(
+                "/users/avatar",
+                formData,
+            );
             const res = response.data;
-            return res.code === 200 ? normalizeAssetUrl(res.data as string, response.config.baseURL) : null;
+            return res.code === 200
+                ? normalizeAssetUrl(res.data as string, response.config.baseURL)
+                : null;
         } catch {
             return null;
         }
@@ -153,12 +169,18 @@ class ApiUser {
             const res = response.data;
             return {
                 success: res.code === 200,
-                message: res.message || (res.code === 200 ? "密码修改成功" : "密码修改失败，请稍后重试"),
+                message:
+                    res.message ||
+                    (res.code === 200
+                        ? "密码修改成功"
+                        : "密码修改失败，请稍后重试"),
             };
         } catch (error: any) {
             return {
                 success: false,
-                message: error?.response?.data?.message || "密码修改失败，请稍后重试",
+                message:
+                    error?.response?.data?.message ||
+                    "密码修改失败，请稍后重试",
             };
         }
     }

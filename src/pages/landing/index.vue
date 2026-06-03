@@ -56,3 +56,30 @@ const router = useRouter();
     z-index: 1;
 }
 </style>
+
+<!-- 全局 reduced-motion（非 scoped，影响子组件动画） -->
+<style lang="scss">
+@media (prefers-reduced-motion: reduce) {
+    .landing-page *,
+    .landing-page *::before,
+    .landing-page *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .scene-bg {
+        animation: none !important;
+    }
+
+    .chat-row {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    [data-animate] {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+</style>

@@ -1,10 +1,9 @@
 <template>
-    <section ref="sectionEl" class="experts glass-section">
+    <section ref="sectionEl" class="experts">
         <div class="exp-blob exp-blob-1 drifting-2" />
         <div class="exp-blob exp-blob-2 drifting-1" />
         <div class="container">
             <div class="experts-header">
-                <div class="section-tag" data-animate>✦ 专家团队</div>
                 <h2 class="section-title" data-animate style="--delay: 80ms">
                     名医健康圈<br />50+ 认证专家在线
                 </h2>
@@ -74,9 +73,8 @@ const experts = [
 
 <style lang="scss" scoped>
 .experts {
-    padding: 108px 0;
-    background: rgba(20, 12, 6, 0.52);
-    backdrop-filter: blur(3px);
+    padding: 100px 0;
+    background: rgba(12, 8, 4, 0.5);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -88,23 +86,23 @@ const experts = [
 }
 .exp-blob {
     position: absolute;
-    filter: blur(56px);
+    filter: blur(70px);
     pointer-events: none;
 }
 .exp-blob-1 {
-    left: -60px;
-    bottom: -40px;
-    width: 300px;
-    height: 260px;
-    background: rgba(193, 140, 93, 0.1);
+    left: -80px;
+    bottom: -60px;
+    width: 340px;
+    height: 300px;
+    background: rgba(193, 140, 93, 0.06);
     border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
 }
 .exp-blob-2 {
-    right: -40px;
-    top: -30px;
-    width: 220px;
-    height: 200px;
-    background: rgba(93, 112, 82, 0.08);
+    right: -60px;
+    top: -50px;
+    width: 260px;
+    height: 240px;
+    background: rgba(93, 112, 82, 0.05);
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
 }
 .experts-header {
@@ -113,35 +111,21 @@ const experts = [
     position: relative;
     z-index: 1;
 }
-.section-tag {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(6px);
-}
 .section-title {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    font-family: Georgia, "STSong", serif;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
 }
 .section-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.68);
-    line-height: 1.75;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.8;
     max-width: 520px;
-    margin: 12px auto 0;
+    margin: 14px auto 0;
 }
 .experts-grid {
     display: grid;
@@ -149,25 +133,28 @@ const experts = [
     gap: 24px;
     position: relative;
     z-index: 1;
+
+    @media (max-width: 760px) {
+        grid-template-columns: 1fr;
+    }
 }
 .expert-card {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
     padding: 36px 28px;
     text-align: center;
     box-shadow:
-        0 4px 24px rgba(0, 0, 0, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 4px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition:
-        transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1),
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         background 0.3s;
-    backdrop-filter: blur(14px);
     &:hover {
-        transform: rotate(1.5deg) translateY(-6px) scale(1.02);
-        background: rgba(255, 255, 255, 0.11);
+        transform: translateY(-4px);
+        background: rgba(255, 255, 255, 0.1);
         .expert-avatar {
-            transform: scale(1.08) rotate(-3deg);
+            transform: scale(1.06) rotate(-3deg);
         }
     }
 }

@@ -2,7 +2,7 @@
 <template>
     <section
         ref="sectionEl"
-        class="ai-butler glass-section"
+        class="ai-butler"
         id="ai-butler-section"
     >
         <div class="ai-blob ai-blob-1 drifting-1" />
@@ -11,9 +11,6 @@
             <div class="ai-inner">
                 <!-- 左侧 -->
                 <div class="ai-left">
-                    <div class="section-tag" data-animate="from-left">
-                        ✦ AI 管家
-                    </div>
                     <h2
                         class="section-title"
                         data-animate="from-left"
@@ -222,7 +219,6 @@ onMounted(() => {
 .ai-butler {
     padding: 108px 0;
     background: rgba(6, 14, 5, 0.5);
-    backdrop-filter: blur(3px);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -271,37 +267,22 @@ onMounted(() => {
 
 // ========== 左侧：文本内容 ==========
 
-.section-tag {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(6px);
-}
-
 .section-title {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    font-family: Georgia, "STSong", serif;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
 }
 
 .section-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.68);
-    line-height: 1.75;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.8;
     max-width: 520px;
-    margin-top: 12px;
+    margin-top: 14px;
 }
 
 // 功能特性列表

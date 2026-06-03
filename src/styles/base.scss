@@ -1,155 +1,196 @@
 // ===== 颐养阁设计系统 =====
 :root {
-  --cream: #FAF6EE;
-  --paper: #FFFFFF;
-  --paper-warm: #FDFAF3;
-  --jade: #5C8374;
-  --jade-light: #8FA89C;
-  --jade-soft: #E8F0EC;
-  --gold: #C9A55C;
-  --gold-soft: #F5EBD3;
-  --gold-deep: #9A7B33;
-  --cinnabar: #B33C2C;
-  --cinnabar-soft: #FAE5E0;
-  --ink: #2C3639;
-  --ink-soft: #4A5559;
-  --ink-muted: #6B7C7A;
-  --line: #E8DFD0;
-  --line-soft: #F0E8D6;
-  --pink: #D88A9A;
-  --pink-soft: #FBEEF1;
-  --moon: #6B7F9E;
-  --moon-soft: #E8EDF3;
-  --bamboo: #5B8C5A;
-  --bamboo-soft: #EAF2EA;
-  --shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
-  --shadow-lg: 0 8px 28px rgba(60, 50, 30, 0.10);
+    --cream: #faf6ee;
+    --paper: #ffffff;
+    --paper-warm: #fdfaf3;
+    --jade: #5c8374;
+    --jade-light: #8fa89c;
+    --jade-soft: #e8f0ec;
+    --gold: #c9a55c;
+    --gold-soft: #f5ebd3;
+    --gold-deep: #9a7b33;
+    --cinnabar: #b33c2c;
+    --cinnabar-soft: #fae5e0;
+    --ink: #2c3639;
+    --ink-soft: #4a5559;
+    --ink-muted: #6b7c7a;
+    --line: #e8dfd0;
+    --line-soft: #f0e8d6;
+    --pink: #d88a9a;
+    --pink-soft: #fbeef1;
+    --moon: #6b7f9e;
+    --moon-soft: #e8edf3;
+    --bamboo: #5b8c5a;
+    --bamboo-soft: #eaf2ea;
+    --shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
+    --shadow-lg: 0 8px 28px rgba(60, 50, 30, 0.1);
 
-  // Element Plus 主题覆盖（玉石绿替换蓝色）
-  --el-color-primary: #5C8374;
-  --el-color-primary-light-3: #8FA89C;
-  --el-color-primary-light-5: #B3C7BF;
-  --el-color-primary-light-7: #D1DFDB;
-  --el-color-primary-light-8: #E0ECEA;
-  --el-color-primary-light-9: #EDF5F2;
-  --el-color-primary-dark-2: #4A6B5E;
-  --el-bg-color-page: #FAF6EE;
-  --el-bg-color: #FFFFFF;
-  --el-bg-color-overlay: #FFFFFF;
-  --el-text-color-primary: #2C3639;
-  --el-text-color-regular: #4A5559;
-  --el-text-color-secondary: #6B7C7A;
-  --el-text-color-placeholder: #9DB0AE;
-  --el-border-color: #E8DFD0;
-  --el-border-color-light: #F0E8D6;
-  --el-border-color-lighter: #F5EFE3;
-  --el-border-color-extra-light: #FAF6EE;
-  --el-border-radius-base: 8px;
-  --el-border-radius-round: 20px;
-  --el-font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
-  --el-box-shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
-  --el-box-shadow-light: 0 1px 6px rgba(60, 50, 30, 0.04);
-  --el-fill-color: #F5F0E8;
-  --el-fill-color-light: #FAF6EE;
-  --el-fill-color-lighter: #FDFBF5;
+    // Element Plus 主题覆盖（玉石绿替换蓝色）
+    --el-color-primary: #5c8374;
+    --el-color-primary-light-3: #8fa89c;
+    --el-color-primary-light-5: #b3c7bf;
+    --el-color-primary-light-7: #d1dfdb;
+    --el-color-primary-light-8: #e0ecea;
+    --el-color-primary-light-9: #edf5f2;
+    --el-color-primary-dark-2: #4a6b5e;
+    --el-bg-color-page: #faf6ee;
+    --el-bg-color: #ffffff;
+    --el-bg-color-overlay: #ffffff;
+    --el-text-color-primary: #2c3639;
+    --el-text-color-regular: #4a5559;
+    --el-text-color-secondary: #6b7c7a;
+    --el-text-color-placeholder: #9db0ae;
+    --el-border-color: #e8dfd0;
+    --el-border-color-light: #f0e8d6;
+    --el-border-color-lighter: #f5efe3;
+    --el-border-color-extra-light: #faf6ee;
+    --el-border-radius-base: 8px;
+    --el-border-radius-round: 20px;
+    --el-font-family:
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system,
+        BlinkMacSystemFont, sans-serif;
+    --el-box-shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
+    --el-box-shadow-light: 0 1px 6px rgba(60, 50, 30, 0.04);
+    --el-fill-color: #f5f0e8;
+    --el-fill-color-light: #faf6ee;
+    --el-fill-color-lighter: #fdfbf5;
 }
 
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--cream);
-  color: var(--ink);
-  line-height: 1.6;
-  min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 10% 0%, rgba(201, 165, 92, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 90% 100%, rgba(92, 131, 116, 0.05) 0%, transparent 40%);
-  background-attachment: fixed;
+    font-family:
+        "PingFang SC",
+        "Hiragino Sans GB",
+        "Microsoft YaHei",
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+    background-image:
+        radial-gradient(
+            circle at 10% 0%,
+            rgba(201, 165, 92, 0.04) 0%,
+            transparent 40%
+        ),
+        radial-gradient(
+            circle at 90% 100%,
+            rgba(92, 131, 116, 0.05) 0%,
+            transparent 40%
+        );
+    background-attachment: fixed;
 }
 
 .font-serif {
-  font-family: "STKaiti", "KaiTi", "FangSong", "STSong", serif;
+    font-family: "STKaiti", "KaiTi", "FangSong", "STSong", serif;
 }
 
-h1, h2, h3, h4, h5, h6, p, header {
-  margin: 0;
-  padding: 0;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+header {
+    margin: 0;
+    padding: 0;
 }
 
-ul, figure {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+ul,
+figure {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 img {
-  width: 100%;
-  height: auto;
+    width: 100%;
+    height: auto;
 }
 
 // 保持 Element Plus 弹窗打开时锁定页面滚动，避免出现页面和弹窗双滚动条
 body.el-popup-parent--hidden {
-  overflow-y: hidden !important;
-  width: 100% !important;
-  padding-right: 0 !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+    padding-right: 0 !important;
 }
 
 // 通用卡片样式
 .yy-card {
-  background: var(--paper);
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(232, 223, 208, 0.4);
+    background: var(--paper);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(232, 223, 208, 0.4);
 }
 
 .yy-card-title {
-  font-family: "STKaiti", "KaiTi", serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    font-family: "STKaiti", "KaiTi", serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-  .dot {
-    width: 4px;
-    height: 16px;
-    background: var(--jade);
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
+    .dot {
+        width: 4px;
+        height: 16px;
+        background: var(--jade);
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
 }
 
 // 通用按钮
 .yy-btn {
-  background: var(--jade);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 22px;
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+    background: var(--jade);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 22px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 
-  &:hover { background: var(--ink); transform: translateY(-1px); }
-  &.ghost { background: transparent; color: var(--jade); border: 1px solid var(--jade); }
-  &.ghost:hover { background: var(--jade-soft); transform: translateY(-1px); }
-  &.gold { background: linear-gradient(135deg, var(--gold), var(--gold-deep)); }
-  &.gold:hover { background: var(--gold-deep); }
-  &.sm { padding: 6px 14px; font-size: 12px; }
+    &:hover {
+        background: var(--ink);
+        transform: translateY(-1px);
+    }
+    &.ghost {
+        background: transparent;
+        color: var(--jade);
+        border: 1px solid var(--jade);
+    }
+    &.ghost:hover {
+        background: var(--jade-soft);
+        transform: translateY(-1px);
+    }
+    &.gold {
+        background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+    }
+    &.gold:hover {
+        background: var(--gold-deep);
+    }
+    &.sm {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
 }
 
 .area-main {
-  width: 100%;
+    width: 100%;
 }

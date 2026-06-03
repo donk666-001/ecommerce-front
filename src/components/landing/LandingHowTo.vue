@@ -1,9 +1,8 @@
 <template>
-    <section ref="sectionEl" class="how glass-section">
+    <section ref="sectionEl" class="how">
         <div class="how-blob drifting-3" />
         <div class="container">
             <div class="how-header">
-                <div class="section-tag" data-animate>✦ 开始使用</div>
                 <h2 class="section-title" data-animate style="--delay: 80ms">
                     三步开启<br />你的自然养生之旅
                 </h2>
@@ -73,9 +72,8 @@ const steps = [
 
 <style lang="scss" scoped>
 .how {
-    padding: 108px 0;
-    background: rgba(8, 16, 6, 0.48);
-    backdrop-filter: blur(2px);
+    padding: 100px 0;
+    background: rgba(6, 12, 4, 0.5);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -92,7 +90,7 @@ const steps = [
     transform: translate(-50%, -50%);
     width: 500px;
     height: 400px;
-    background: rgba(93, 112, 82, 0.05);
+    background: rgba(93, 112, 82, 0.04);
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
     filter: blur(80px);
 }
@@ -102,35 +100,21 @@ const steps = [
     position: relative;
     z-index: 1;
 }
-.section-tag {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(6px);
-}
 .section-title {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    font-family: Georgia, "STSong", serif;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
 }
 .section-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.68);
-    line-height: 1.75;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.8;
     max-width: 520px;
-    margin: 12px auto 0;
+    margin: 14px auto 0;
 }
 .how-steps {
     display: grid;

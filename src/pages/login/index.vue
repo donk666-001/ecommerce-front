@@ -1,5 +1,11 @@
 <template>
     <div class="login-page">
+        <!-- 动态森林背景 -->
+        <LandingScene />
+
+        <!-- 顶部漫射环境光，模拟树冠间隙 -->
+        <div class="ambient-light" aria-hidden="true"></div>
+
         <!-- 左侧品牌面板 -->
         <div class="brand-panel">
             <div class="brand-content">
@@ -60,7 +66,6 @@
 
         <!-- 右侧表单区 -->
         <div class="form-panel">
-            <div class="deco-circle font-serif" aria-hidden="true">养</div>
             <div class="form-area">
                 <div class="mode-tabs">
                     <button :class="{ active: mode === 'login' }" @click="switchMode('login')">登录</button>
@@ -140,6 +145,8 @@
                     </el-form-item>
                     <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="submitRegister">注册</el-button>
                 </el-form>
+
+                <p class="form-trust">安全登录 · 数据加密传输</p>
             </div>
         </div>
     </div>
@@ -153,6 +160,7 @@ import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
 import { resolvePostLoginPath } from "@/utils";
+import LandingScene from "@/components/landing/LandingScene.vue";
 
 // ── 路由 & Store ────────────────────────────────
 const router = useRouter();
@@ -254,7 +262,7 @@ function eyeballSty(size: number, blinking: boolean) {
     return {
         width: `${size}px`,
         height: blinking ? "2px" : `${size}px`,
-        backgroundColor: "white",
+        backgroundColor: "rgba(240, 248, 238, 0.92)", // 柔白，不刺眼
         borderRadius: "50%",
         display: "flex",
         alignItems: "center",
@@ -306,7 +314,7 @@ const purpleBodyStyle = computed(() => {
     return {
         left: "70px", width: "180px",
         height: hiding ? "440px" : "400px",
-        backgroundColor: "#6C3FF5",
+        backgroundColor: "#3d5c7a", // 青玄：深邃如夜林
         borderRadius: "10px 10px 0 0",
         zIndex: 1,
         transform,
@@ -343,7 +351,7 @@ const blackBodyStyle = computed(() => {
             : `skewX(${sk}deg)`;
     return {
         left: "240px", width: "120px", height: "310px",
-        backgroundColor: "#2D2D2D",
+        backgroundColor: "#1e2c22", // 墨林：森林深处的暗色
         borderRadius: "8px 8px 0 0",
         zIndex: 2,
         transform,
@@ -369,7 +377,7 @@ const orangeBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
         left: "0", width: "240px", height: "200px",
-        backgroundColor: "#FF9B6B",
+        backgroundColor: "#a06040", // 陶土：树皮与泥土的暖褐
         borderRadius: "120px 120px 0 0",
         zIndex: 3,
         transform: showing ? "skewX(0deg)" : `skewX(${orangePos.value.bodySkew}deg)`,
@@ -395,7 +403,7 @@ const yellowBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
         left: "310px", width: "140px", height: "230px",
-        backgroundColor: "#E8D754",
+        backgroundColor: "#7a9e6a", // 苔绿：苔藓与嫩叶
         borderRadius: "70px 70px 0 0",
         zIndex: 4,
         transform: showing ? "skewX(0deg)" : `skewX(${yellowPos.value.bodySkew}deg)`,
@@ -590,20 +598,22 @@ async function submitRegister() {
 .login-page {
     min-height: 100vh;
     display: flex;
-    background: var(--paper-warm);
+    background: #0c180a; // 森林场景图加载前的兜底暗色
+    position: relative; // 让 .form-light 的 absolute 相对此容器定位
 }
 
 // ── 左侧品牌面板 ──────────────────────────────────
 .brand-panel {
     width: 48%;
-    background: var(--jade);
+    background: rgba(28, 55, 41, 0.55); // jade 半透明遮罩，透出森林背景
+    backdrop-filter: blur(3px);
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     padding: 52px 40px 44px;
     flex-shrink: 0;
-
+    z-index: 1;
 }
 
 .brand-watermark {
@@ -670,6 +680,8 @@ async function submitRegister() {
     width: 460px;
     height: 400px;
     flex-shrink: 0;
+    opacity: 0.88; // 略微半透，融入森林氛围
+    filter: saturate(0.9); // 轻微降饱和，更自然
 }
 
 .char {
@@ -716,51 +728,28 @@ async function submitRegister() {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 36px 56px 56px;
-    background: var(--paper-warm);
+    align-items: center;
+    justify-content: center;
+    background: rgba(4, 10, 6, 0.38); // 半透明，让森林背景透出
+    border-left: 1px solid rgba(92, 131, 116, 0.15);
     position: relative;
+    z-index: 1;
     overflow: hidden;
 
+    // 右上角暗角，增加内聚感
     &::before {
         content: '';
         position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-        background: var(--jade-soft);
+        inset: 0;
+        background: radial-gradient(ellipse at 85% 10%, transparent 45%, rgba(0, 0, 0, 0.3) 100%);
+        pointer-events: none;
     }
 }
 
-.deco-circle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 680px;
-    height: 680px;
-    border-radius: 50%;
-    background: var(--jade);
-    opacity: 0.1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 580px;
-    line-height: 1;
-    color: #fff;
-    overflow: hidden;
-    pointer-events: none;
-    user-select: none;
-    z-index: 0;
-}
-
 .form-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-width: 360px;
-    margin: 0 auto;
     width: 100%;
-    padding: 32px 0 64px;
+    max-width: 340px;
+    padding: 0 8px;
     position: relative;
     z-index: 1;
 }
@@ -770,38 +759,39 @@ async function submitRegister() {
     display: flex;
     gap: 0;
     margin-bottom: 36px;
-    border-bottom: 1px solid var(--line);
+    // 细玉石线，呼应品牌色
+    border-bottom: 1px solid rgba(92, 131, 116, 0.25);
 
     button {
         background: none;
         border: none;
         padding: 12px 0;
-        margin-right: 32px;
-        font-size: 18px;
-        font-weight: 500;
-        color: var(--ink-muted);
+        margin-right: 36px;
+        font-size: 17px;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.32);
         cursor: pointer;
         position: relative;
-        transition: color 0.18s ease-out;
-        letter-spacing: 0.02em;
+        transition: color 0.22s ease-out;
+        letter-spacing: 0.06em;
+        font-family: var(--font-serif, Georgia, serif);
 
         &.active {
-            color: var(--ink);
-            font-weight: 700;
+            color: rgba(255, 255, 255, 0.92);
+            font-weight: 600;
 
             &::after {
                 content: '';
                 position: absolute;
                 bottom: -1px;
                 left: 0;
-                right: 0;
-                height: 2px;
-                background: var(--jade);
-                border-radius: 2px 2px 0 0;
+                width: 100%;
+                height: 1px;
+                background: #6dba90; // jade green 强调线
             }
         }
 
-        &:hover:not(.active) { color: var(--ink-soft); }
+        &:hover:not(.active) { color: rgba(255, 255, 255, 0.55); }
     }
 }
 
@@ -812,82 +802,127 @@ async function submitRegister() {
 
     :deep(.el-form-item) { margin-bottom: 18px; }
 
+    :deep(.el-form-item__error) { color: #f0a090; font-size: 12px; }
+
     :deep(.el-input__wrapper) {
-        background: var(--cream);
-        border-radius: 8px;
-        border: 1px solid rgba(232, 223, 208, 0.9);
-        box-shadow:
-            inset 0 1px 3px rgba(60, 50, 30, 0.08),
-            inset 0 1px 1px rgba(60, 50, 30, 0.04);
-        transition: box-shadow 0.18s ease-out, border-color 0.18s ease-out;
+        // 极简深色输入框：无填充，只有细边框
+        background: rgba(0, 0, 0, 0.28);
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: none;
+        transition: border-color 0.2s ease-out, background 0.2s ease-out;
         padding: 0 14px;
 
         &:hover {
-            border-color: rgba(143, 168, 156, 0.6);
-            box-shadow:
-                inset 0 1px 3px rgba(60, 50, 30, 0.06),
-                inset 0 1px 1px rgba(60, 50, 30, 0.03);
+            background: rgba(0, 0, 0, 0.35);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         &.is-focus {
-            border-color: rgba(92, 131, 116, 0.7) !important;
-            box-shadow:
-                inset 0 1px 2px rgba(60, 50, 30, 0.04),
-                0 0 0 3px rgba(92, 131, 116, 0.1) !important;
+            background: rgba(255, 255, 255, 0.06) !important;
+            border-color: rgba(109, 186, 144, 0.6) !important; // jade 聚焦色
+            box-shadow: none !important;
         }
     }
 
     :deep(.el-input__inner) {
-        height: 44px;
+        height: 46px;
         font-size: 14px;
-        color: var(--ink);
+        color: rgba(255, 255, 255, 0.88);
+        background: transparent;
+        caret-color: #6dba90;
+        letter-spacing: 0.02em;
 
-        &::placeholder { color: var(--ink-muted); opacity: 0.65; }
+        &::placeholder { color: rgba(255, 255, 255, 0.28); }
     }
 
-    :deep(.el-input__prefix-icon) { color: var(--ink-muted); opacity: 0.75; }
+    :deep(.el-input__prefix-icon) {
+        color: rgba(255, 255, 255, 0.28);
+        font-size: 15px;
+    }
+
+    :deep(.el-radio__label) { color: rgba(255, 255, 255, 0.65); font-size: 13px; }
+    :deep(.el-radio__inner) {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: transparent;
+    }
+    :deep(.el-radio__input.is-checked .el-radio__inner) {
+        border-color: #6dba90;
+        background: #6dba90;
+    }
+    :deep(.el-form-item__label) { color: rgba(255, 255, 255, 0.55); font-size: 13px; }
 }
 
 .pw-eye {
     cursor: pointer;
-    color: var(--ink-muted);
-    transition: color 0.15s;
+    color: rgba(255, 255, 255, 0.3);
+    transition: color 0.18s;
 
-    &:hover { color: var(--ink); }
+    &:hover { color: rgba(255, 255, 255, 0.7); }
 }
 
 .submit-btn {
     width: 100%;
-    margin-top: 8px;
+    margin-top: 10px;
     height: 48px;
-    font-size: 15px;
-    font-weight: 600;
-    border-radius: 8px;
-    background: var(--jade);
-    border-color: var(--jade);
-    letter-spacing: 0.06em;
-    box-shadow:
-        0 2px 5px rgba(92, 131, 116, 0.28),
-        0 5px 16px rgba(92, 131, 116, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: background 0.15s ease-out, transform 0.12s ease-out, box-shadow 0.15s ease-out, border-color 0.15s;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    background: #4a7260; // 沉稳的深玉色，不用渐变
+    border: 1px solid rgba(109, 186, 144, 0.3);
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 0.12em;
+    font-family: var(--font-serif, Georgia, serif);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    transition: background 0.2s ease-out, transform 0.12s ease-out;
 
     &:hover {
-        background: var(--bamboo) !important;
-        border-color: var(--bamboo) !important;
-        transform: translateY(-2px);
-        box-shadow:
-            0 4px 10px rgba(92, 131, 116, 0.32),
-            0 10px 26px rgba(92, 131, 116, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        background: #5a8a70 !important;
+        border-color: rgba(109, 186, 144, 0.5) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
 
     &:active {
-        transform: translateY(1px) !important;
-        box-shadow:
-            0 1px 3px rgba(92, 131, 116, 0.22),
-            inset 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+        transform: translateY(0) !important;
+        background: #3f6455 !important;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3) !important;
     }
+}
+
+// ── 底部信任提示 ───────────────────────────────────
+.form-trust {
+    margin-top: 24px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.18);
+    letter-spacing: 0.1em;
+    text-align: center;
+}
+
+// ── 顶部漫射环境光 ─────────────────────────────────────
+// 宽幅径向渐变，模拟树冠间隙漫射光，不是光柱
+.ambient-light {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+        ellipse 90% 50% at 62% -5%,
+        rgba(210, 235, 185, 0.18) 0%,
+        rgba(180, 220, 160, 0.06) 45%,
+        transparent 70%
+    );
+    animation: ambientPulse 12s ease-in-out infinite alternate;
+}
+
+@keyframes ambientPulse {
+    0%   { opacity: 0.6; }
+    100% { opacity: 1;   }
+}
+
+// ── 隐藏 LandingScene 的 god rays，保留 sun-bloom 柔光晕 ──
+:deep(.god-rays) {
+    display: none;
 }
 
 // ── 响应式 ────────────────────────────────────────
@@ -897,8 +932,6 @@ async function submitRegister() {
     .brand-panel {
         width: 100%;
         padding: 40px 28px 28px;
-
-        &::before { display: none; }
     }
 
     .stage-wrap { display: none; }
@@ -907,11 +940,11 @@ async function submitRegister() {
     .brand-watermark { font-size: 220px; bottom: -40px; right: -20px; }
 
     .form-panel {
-        padding: 28px 28px 48px;
-
-        &::before { display: none; }
+        min-height: 50vh;
+        border-left: none;
+        border-top: 1px solid rgba(92, 131, 116, 0.15);
     }
 
-    .form-area { padding: 24px 0 40px; }
+    .form-area { padding: 0 8px; }
 }
 </style>

@@ -20,13 +20,15 @@ export interface PageVO<T> {
 
 export const ApiNotification = {
     listMyNotifications: (page = 1, size = 10, unreadOnly = false) =>
-        GAxiosWithCredentials.get<PageVO<NotificationVO>>('/notifications/my', {
+        GAxiosWithCredentials.get<PageVO<NotificationVO>>("/notifications/my", {
             params: { page, size, unreadOnly },
         }),
 
     markRead: (notificationId: number) =>
-        GAxiosWithCredentials.put<void>(`/notifications/${notificationId}/read`),
+        GAxiosWithCredentials.put<void>(
+            `/notifications/${notificationId}/read`,
+        ),
 
     markAllRead: () =>
-        GAxiosWithCredentials.put<void>('/notifications/read-all'),
+        GAxiosWithCredentials.put<void>("/notifications/read-all"),
 };

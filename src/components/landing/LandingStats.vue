@@ -61,8 +61,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .stats {
     padding: 72px 0;
-    background: rgba(8, 18, 6, 0.42);
-    backdrop-filter: blur(2px);
+    background: rgba(8, 18, 6, 0.45);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     position: relative;
     z-index: 1;

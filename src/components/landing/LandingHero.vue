@@ -163,24 +163,23 @@ onMounted(() => {
 }
 
 .hero-title {
-    font-size: 86px;
-    font-weight: 800;
+    font-size: clamp(3rem, 5.5vw, 5.4rem);
+    font-weight: 600;
     color: white;
-    line-height: 1.02;
-    letter-spacing: -3px;
+    line-height: 1.2;
     margin-bottom: 24px;
-    font-family: Georgia, "STSong", serif;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
     text-shadow: 0 4px 40px rgba(0, 0, 0, 0.45);
+    text-wrap: balance;
     opacity: 0;
     animation: heroFadeUp 0.9s 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 
     .light {
         font-weight: 300;
-        font-size: 58px;
+        font-size: clamp(2rem, 3.6vw, 3.6rem);
         display: block;
         opacity: 0.78;
-        margin-bottom: 4px;
-        letter-spacing: -1.5px;
+        margin-bottom: 6px;
     }
 }
 

@@ -17,13 +17,18 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     // 通用请求拦截器
     instance.interceptors.request.use(
         (config) => {
-            const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+            const isFormData =
+                typeof FormData !== "undefined" &&
+                config.data instanceof FormData;
             if (isFormData) {
                 if (config.headers) {
-                    delete (config.headers as Record<string, unknown>)["Content-Type"];
+                    delete (config.headers as Record<string, unknown>)[
+                        "Content-Type"
+                    ];
                 }
             } else if (config.data != null && config.headers) {
-                (config.headers as Record<string, unknown>)["Content-Type"] = "application/json";
+                (config.headers as Record<string, unknown>)["Content-Type"] =
+                    "application/json";
             }
             console.log("完整请求路径：", (config.baseURL || "") + config.url);
             if (withCredentials) {
@@ -54,8 +59,8 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                 // 以下接口的 401 由各自的调用方静默处理，不触发全局跳转
                 // /users/refresh → router guard 判断未登录，正常流转
                 // /users/info   → loadUserInfo() 自行 catch 降级
-                const silentPaths = ['/users/refresh', '/users/info'];
-                if (silentPaths.some(p => error.config?.url?.includes(p))) {
+                const silentPaths = ["/users/refresh", "/users/info"];
+                if (silentPaths.some((p) => error.config?.url?.includes(p))) {
                     return Promise.reject(error);
                 }
                 console.warn("认证过期", data?.message);
@@ -65,7 +70,10 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                 });
                 const loginPath = `${import.meta.env.BASE_URL}login`;
                 const current = window.location.pathname;
-                const redirect = current !== loginPath ? `?redirect=${encodeURIComponent(current)}` : "";
+                const redirect =
+                    current !== loginPath
+                        ? `?redirect=${encodeURIComponent(current)}`
+                        : "";
                 window.location.href = `${loginPath}${redirect}`;
             } else {
                 console.error(`服务异常 [${status}]`, error.response);

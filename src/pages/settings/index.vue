@@ -9,7 +9,11 @@
             </button>
             <!-- 顶部用户展示区 -->
             <div class="profile-header">
-                <div class="avatar-wrap" @click="triggerAvatarUpload" title="更换头像">
+                <div
+                    class="avatar-wrap"
+                    @click="triggerAvatarUpload"
+                    title="更换头像"
+                >
                     <img
                         v-if="avatarPreview || userStore.G_UserInfo.avatar"
                         :src="avatarPreview || userStore.G_UserInfo.avatar"
@@ -33,17 +37,25 @@
                 </div>
 
                 <div class="profile-info">
-                    <h2 class="profile-name font-serif">
-                        {{ userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account }}
-                    </h2>
-                    <p class="profile-account">{{ userStore.G_LoginInfo.account }}</p>
+                    <div class="profile-meta-list">
+                        <div class="profile-meta-item">
+                            <span class="profile-meta-label">昵称</span>
+                            <h2 class="profile-name font-serif">
+                                {{ displayNickname }}
+                            </h2>
+                        </div>
+                        <div class="profile-meta-item">
+                            <span class="profile-meta-label">账号</span>
+                            <p class="profile-account">{{ displayAccount }}</p>
+                        </div>
+                    </div>
                     <button
                         v-if="avatarPreview"
                         class="confirm-upload-btn"
                         :disabled="uploadingAvatar"
                         @click.stop="confirmAvatarUpload"
                     >
-                        {{ uploadingAvatar ? '上传中…' : '确认更换头像' }}
+                        {{ uploadingAvatar ? "上传中…" : "确认更换头像" }}
                     </button>
                 </div>
             </div>
@@ -58,11 +70,17 @@
                     role="tab"
                     :aria-selected="activeTab === tab.key"
                     @click="activeTab = tab.key"
-                >{{ tab.label }}</button>
+                >
+                    {{ tab.label }}
+                </button>
             </div>
 
             <!-- 基本资料 -->
-            <section v-show="activeTab === 'profile'" class="settings-section" role="tabpanel">
+            <section
+                v-show="activeTab === 'profile'"
+                class="settings-section"
+                role="tabpanel"
+            >
                 <el-form
                     ref="profileFormRef"
                     :model="profileForm"
@@ -70,7 +88,10 @@
                     class="settings-form"
                 >
                     <el-form-item label="昵称">
-                        <el-input v-model="profileForm.nickName" placeholder="请输入昵称" />
+                        <el-input
+                            v-model="profileForm.nickName"
+                            placeholder="请输入昵称"
+                        />
                     </el-form-item>
                     <el-form-item label="性别">
                         <el-radio-group v-model="profileForm.gender">
@@ -81,12 +102,24 @@
                     <el-form-item
                         label="邮箱"
                         prop="email"
-                        :rules="[{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]"
+                        :rules="[
+                            {
+                                type: 'email',
+                                message: '邮箱格式不正确',
+                                trigger: 'blur',
+                            },
+                        ]"
                     >
-                        <el-input v-model="profileForm.email" placeholder="example@mail.com" />
+                        <el-input
+                            v-model="profileForm.email"
+                            placeholder="example@mail.com"
+                        />
                     </el-form-item>
                     <el-form-item label="手机号">
-                        <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+                        <el-input
+                            v-model="profileForm.phone"
+                            placeholder="请输入手机号"
+                        />
                     </el-form-item>
                     <el-form-item>
                         <button
@@ -94,13 +127,19 @@
                             class="action-btn primary"
                             :disabled="savingProfile"
                             @click="saveProfile"
-                        >{{ savingProfile ? '保存中…' : '保存资料' }}</button>
+                        >
+                            {{ savingProfile ? "保存中…" : "保存资料" }}
+                        </button>
                     </el-form-item>
                 </el-form>
             </section>
 
             <!-- 账号安全 -->
-            <section v-show="activeTab === 'security'" class="settings-section" role="tabpanel">
+            <section
+                v-show="activeTab === 'security'"
+                class="settings-section"
+                role="tabpanel"
+            >
                 <div class="security-group">
                     <h3 class="security-heading font-serif">修改密码</h3>
                     <el-form
@@ -140,15 +179,21 @@
                                 class="action-btn primary"
                                 :disabled="changingPwd"
                                 @click="submitPasswordChange"
-                            >{{ changingPwd ? '修改中…' : '修改密码' }}</button>
+                            >
+                                {{ changingPwd ? "修改中…" : "修改密码" }}
+                            </button>
                         </el-form-item>
                     </el-form>
                 </div>
 
                 <div v-if="false" class="security-group danger-zone">
                     <h3 class="security-heading font-serif">退出登录</h3>
-                    <p class="security-note">退出后需重新登录才能访问个人数据。</p>
-                    <button class="action-btn danger" @click="handleLogout">退出登录</button>
+                    <p class="security-note">
+                        退出后需重新登录才能访问个人数据。
+                    </p>
+                    <button class="action-btn danger" @click="handleLogout">
+                        退出登录
+                    </button>
                 </div>
             </section>
         </div>
@@ -159,7 +204,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
@@ -197,7 +242,9 @@ const savingProfile = ref(false);
 const changingPwd = ref(false);
 
 const pwdRules: FormRules = {
-    oldPassword: [{ required: true, message: "请输入当前密码", trigger: "blur" }],
+    oldPassword: [
+        { required: true, message: "请输入当前密码", trigger: "blur" },
+    ],
     newPassword: [
         { required: true, message: "请输入新密码", trigger: "blur" },
         { min: 6, max: 20, message: "密码长度 6-20 位", trigger: "blur" },
@@ -217,8 +264,17 @@ const pwdRules: FormRules = {
     ],
 };
 
+const displayNickname = computed(
+    () => userStore.G_LoginInfo.nickName?.trim() || "未设置昵称",
+);
+const displayAccount = computed(
+    () => userStore.G_LoginInfo.account?.trim() || "—",
+);
+
 const displayInitial = computed(() => {
-    const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+    const name =
+        userStore.G_LoginInfo.nickName?.trim() ||
+        userStore.G_LoginInfo.account?.trim();
     return name ? name.charAt(0) : "我";
 });
 
@@ -227,8 +283,9 @@ onMounted(async () => {
     const info = userStore.G_UserInfo;
     const login = userStore.G_LoginInfo;
 
-    profileForm.nickName = login.nickName || login.account;
-    profileForm.gender = info.gender === 1 || info.gender === 2 ? info.gender : undefined;
+    profileForm.nickName = login.nickName || "";
+    profileForm.gender =
+        info.gender === 1 || info.gender === 2 ? info.gender : undefined;
     profileForm.email = info.email || login.email || "";
     profileForm.phone = info.phone || "";
 });
@@ -281,76 +338,34 @@ async function saveProfile() {
 
     savingProfile.value = true;
     try {
-        const result = await ApiUser.updateProfileDetailed({
+        const payload = {
             nickname: profileForm.nickName,
-            gender: profileForm.gender,
             email: profileForm.email,
             phone: profileForm.phone,
-        });
+            ...(profileForm.gender !== undefined
+                ? { gender: profileForm.gender }
+                : {}),
+        };
+        const result = await ApiUser.updateProfileDetailed(payload);
         if (!result.success) {
             ElMessage.error(result.message || "保存失败，请稍后重试");
             return;
         }
-        ElMessage.success("密码修改成功");
-        pwdFormRef.value?.resetFields();
-        return;
-        ElMessage.success("密码修改成功");
-        pwdFormRef.value?.resetFields();
-        return;
-        ElMessage.success("密码修改成功");
-        pwdFormRef.value?.resetFields();
-        return;
-        if (result.success) {
-            // 同步更新本地 store，避免需要刷新页面才能看到变化
-            userStore.G_LoginInfo.nickName = profileForm.nickName;
-            userStore.G_LoginInfo.email = profileForm.email;
-            userStore.G_UserInfo.gender = profileForm.gender;
-            userStore.G_UserInfo.email = profileForm.email;
-            userStore.G_UserInfo.phone = profileForm.phone;
-            ElMessage.success("资料保存成功");
-        } else {
-            ElMessage.error("保存失败，请稍后重试");
-        }
+        userStore.G_LoginInfo.nickName = profileForm.nickName.trim();
+        userStore.G_LoginInfo.email = profileForm.email;
+        userStore.G_UserInfo.gender = profileForm.gender ?? 0;
+        userStore.G_UserInfo.email = profileForm.email;
+        userStore.G_UserInfo.phone = profileForm.phone;
+        ElMessage.success("账号资料修改成功");
     } finally {
         savingProfile.value = false;
     }
 }
 
-async function changePassword() {
-    const valid = await pwdFormRef.value?.validate().catch(() => false);
-    if (!valid) {
-        ElMessage.warning("请先完善密码信息后再修改");
-        return;
-    }
-
-    changingPwd.value = true;
-    try {
-        const result = await ApiUser.changePasswordDetailed({
-            oldPassword: pwdForm.oldPassword,
-            newPassword: pwdForm.newPassword,
-        });
-        if (!result.success) {
-            ElMessage.error(result.message || "密码修改失败，请稍后重试");
-            return;
-        }
-        if (result.success) {
-            ElMessage.success("密码修改成功，请重新登录");
-            pwdFormRef.value?.resetFields();
-        } else {
-            ElMessage.error("修改失败，当前密码可能不正确");
-        }
-    } finally {
-        changingPwd.value = false;
-    }
-}
-
 async function submitPasswordChange() {
-    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
-        ElMessage.warning("当前两次密码不一致，无法修改");
-        return;
-    }
     const valid = await pwdFormRef.value?.validate().catch(() => false);
     if (!valid) return;
+
     if (pwdForm.newPassword !== pwdForm.confirmPassword) {
         ElMessage.warning("两次输入的新密码不一致");
         return;
@@ -374,11 +389,15 @@ async function submitPasswordChange() {
 }
 
 async function handleLogout() {
-    await ElMessageBox.confirm("确定要退出登录吗？", "提示", {
+    const confirmed = await ElMessageBox.confirm("确定要退出登录吗？", "提示", {
         confirmButtonText: "退出",
         cancelButtonText: "取消",
         type: "warning",
-    }).catch(() => null);
+    })
+        .then(() => true)
+        .catch(() => false);
+
+    if (!confirmed) return;
 
     await userStore.logout();
     ElMessage.success("已退出登录");
@@ -405,7 +424,9 @@ async function handleLogout() {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: color 0.18s ease-out, transform 0.18s ease-out;
+    transition:
+        color 0.18s ease-out,
+        transform 0.18s ease-out;
 
     &:hover {
         color: var(--jade);
@@ -431,8 +452,8 @@ async function handleLogout() {
 /* ── 顶部用户信息 ─────────────────────────────── */
 .profile-header {
     display: flex;
-    align-items: flex-start;
-    gap: 32px;
+    align-items: center;
+    gap: 36px;
     padding-bottom: 40px;
     border-bottom: 1px solid var(--line);
     margin-bottom: 0;
@@ -446,8 +467,11 @@ async function handleLogout() {
     cursor: pointer;
     border-radius: 50%;
     overflow: hidden;
+    box-shadow: 0 12px 28px rgba(44, 54, 57, 0.12);
 
-    &:hover .avatar-overlay { opacity: 1; }
+    &:hover .avatar-overlay {
+        opacity: 1;
+    }
 }
 
 .avatar-img {
@@ -494,30 +518,67 @@ async function handleLogout() {
     }
 }
 
-.file-input { display: none; }
+.file-input {
+    display: none;
+}
 
 .profile-info {
     flex: 1;
-    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    max-width: 420px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.profile-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+}
+
+.profile-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-meta-label {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0;
+    color: var(--jade);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1.4;
 }
 
 .profile-name {
-    font-size: 24px;
+    font-size: 34px;
     font-weight: 700;
     color: var(--ink);
     letter-spacing: 0.04em;
-    margin-bottom: 6px;
-    line-height: 1.2;
+    margin: 0;
+    line-height: 1.15;
 }
 
 .profile-account {
-    font-size: 13px;
+    font-size: 18px;
     color: var(--ink-muted);
-    margin-bottom: 8px;
+    margin: 0;
+    line-height: 1.45;
 }
 
 .confirm-upload-btn {
     display: inline-block;
+    align-self: flex-start;
     background: var(--jade);
     color: white;
     border: none;
@@ -529,8 +590,13 @@ async function handleLogout() {
     letter-spacing: 0.04em;
     transition: background 0.18s ease-out;
 
-    &:hover { background: var(--bamboo); }
-    &:disabled { opacity: 0.6; cursor: default; }
+    &:hover {
+        background: var(--bamboo);
+    }
+    &:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
 }
 
 /* ── Tab 导航 ─────────────────────────────────── */
@@ -558,7 +624,7 @@ async function handleLogout() {
         font-weight: 700;
 
         &::after {
-            content: '';
+            content: "";
             position: absolute;
             bottom: -1px;
             left: 0;
@@ -569,7 +635,9 @@ async function handleLogout() {
         }
     }
 
-    &:hover:not(.active) { color: var(--ink-soft); }
+    &:hover:not(.active) {
+        color: var(--ink-soft);
+    }
 }
 
 /* ── 表单区域 ─────────────────────────────────── */
@@ -597,8 +665,12 @@ async function handleLogout() {
         box-shadow: 0 0 0 1px var(--line);
         transition: box-shadow 0.18s ease-out;
 
-        &:hover { box-shadow: 0 0 0 1px var(--jade-light); }
-        &.is-focus { box-shadow: 0 0 0 1.5px var(--jade) !important; }
+        &:hover {
+            box-shadow: 0 0 0 1px var(--jade-light);
+        }
+        &.is-focus {
+            box-shadow: 0 0 0 1.5px var(--jade) !important;
+        }
     }
 
     :deep(.el-textarea__inner) {
@@ -609,7 +681,10 @@ async function handleLogout() {
         font-family: inherit;
         resize: vertical;
 
-        &:focus { box-shadow: 0 0 0 1.5px var(--jade) !important; outline: none; }
+        &:focus {
+            box-shadow: 0 0 0 1.5px var(--jade) !important;
+            outline: none;
+        }
     }
 
     :deep(.el-radio__input.is-checked .el-radio__inner) {
@@ -636,9 +711,15 @@ async function handleLogout() {
     letter-spacing: 0.04em;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: background 0.18s ease-out, transform 0.12s ease-out;
+    transition:
+        background 0.18s ease-out,
+        transform 0.12s ease-out;
 
-    &:disabled { opacity: 0.55; cursor: default; transform: none !important; }
+    &:disabled {
+        opacity: 0.55;
+        cursor: default;
+        transform: none !important;
+    }
 
     &.primary {
         background: var(--jade);
@@ -687,5 +768,26 @@ async function handleLogout() {
 .danger-zone {
     padding-top: 40px;
     border-top: 1px solid var(--line-soft);
+}
+
+@media (max-width: 640px) {
+    .profile-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .profile-info {
+        width: 100%;
+        max-width: none;
+    }
+
+    .profile-name {
+        font-size: 28px;
+    }
+
+    .profile-account {
+        font-size: 14px;
+    }
 }
 </style>

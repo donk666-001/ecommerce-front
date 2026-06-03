@@ -12,7 +12,9 @@ export function useExpertOnlineSocket() {
      * 建立连接并订阅在线状态广播。
      * @param onStatusChange  (expertId: number, online: boolean) => void
      */
-    function subscribe(onStatusChange: (expertId: number, online: boolean) => void): void {
+    function subscribe(
+        onStatusChange: (expertId: number, online: boolean) => void,
+    ): void {
         if (onlineStatusClient) return; // 已订阅，幂等
 
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -33,17 +35,20 @@ export function useExpertOnlineSocket() {
                             ) {
                                 onStatusChange(
                                     Number(frame.data.expertId),
-                                    Boolean(frame.data.online)
+                                    Boolean(frame.data.online),
                                 );
                             }
                         } catch {
                             // 忽略非 JSON 帧
                         }
-                    }
+                    },
                 );
             },
             onStompError: (frame) => {
-                console.error("[STOMP-OnlineStatus] 错误:", frame.headers["message"]);
+                console.error(
+                    "[STOMP-OnlineStatus] 错误:",
+                    frame.headers["message"],
+                );
             },
         });
         onlineStatusClient.activate();

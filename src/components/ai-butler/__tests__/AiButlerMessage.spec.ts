@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { mount } from "@vue/test-utils";
 import AiButlerMessage from "@/components/ai-butler/AiButlerMessage.vue";
+import { mount } from "@vue/test-utils";
+import { describe, it, expect, vi } from "vitest";
 
 vi.mock("vue-router", () => ({
     useRouter: () => ({
@@ -138,7 +138,11 @@ describe("AiButlerMessage", () => {
     it("渲染引用列表", () => {
         const citationData = JSON.stringify({
             citations: [
-                { title: "春季养生食谱", sourceType: "节气养生", tags: ["春季", "食疗"] },
+                {
+                    title: "春季养生食谱",
+                    sourceType: "节气养生",
+                    tags: ["春季", "食疗"],
+                },
                 { title: "八段锦教程", sourceType: "运动养生", tags: ["运动"] },
             ],
         });

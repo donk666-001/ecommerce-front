@@ -1,5 +1,5 @@
 <template>
-    <footer class="footer glass-section">
+    <footer class="footer">
         <div class="footer-glow drifting-3" />
         <div class="footer-inner">
             <div>

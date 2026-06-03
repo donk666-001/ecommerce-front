@@ -1,301 +1,371 @@
-<template>
+﻿<template>
     <div class="page-wrapper">
         <HeaderLayout />
 
         <main class="hub">
-            <!-- Slim Hero -->
             <section class="hero">
                 <div class="hero-text">
-                    <div class="hero-label">AI WELLNESS STEWARD · 私人养生 AI 助理</div>
+                    <div class="hero-label">
+                        AI WELLNESS STEWARD · 私人养生 AI 助理
+                    </div>
                     <h1 class="font-serif">AI 管家</h1>
-                    <p class="hero-sub">{{ greetingName }}，{{ currentSolarTermName }}快乐 ☀️ 我可以帮你<strong style="color:var(--jade);">答养生疑问、做个性化计划、推荐适合的好物</strong> —— 在同一段对话里都能完成。</p>
+                    <p class="hero-sub">
+                        {{ greetingName }}，{{ currentSolarTermName }}快乐。
+                        <strong style="color: var(--jade)"
+                            >答养生疑问、做个性化计划、分析睡眠数据</strong
+                        >
+                        都可以在这一段对话里完成。
+                    </p>
                 </div>
                 <div class="hero-meta">
-                    <span class="meta-item">💬 今日 <strong>3 次</strong></span>
-                    <span class="meta-item">🌿 计划 <strong>第 14 / 30 天</strong></span>
-                    <span class="meta-item">⭐ 完成率 <strong>78%</strong></span>
+                    <span class="meta-item"
+                        >今日对话 <strong>已开启</strong></span
+                    >
+                    <span class="meta-item"
+                        >节气 <strong>{{ currentSolarTermName }}</strong></span
+                    >
                 </div>
             </section>
 
             <div class="chat-app">
-                <!-- Left Sidebar -->
                 <aside class="side">
                     <div class="side-top">
-                        <button class="new-chat-btn" @click="newChat">＋ 开启新对话</button>
+                        <button
+                            class="new-chat-btn"
+                            :disabled="isCreatingSession"
+                            @click="newChat"
+                        >
+                            {{
+                                isCreatingSession ? "创建中..." : "+ 开启新对话"
+                            }}
+                        </button>
                     </div>
 
                     <div class="side-main">
-                        <div class="side-title side-title--compact">历史对话</div>
+                        <div class="side-title side-title--compact">
+                            历史对话
+                        </div>
                         <div class="history-list">
-                            <div class="history-item" :class="{ active: activeHistory === 0 }" @click="activeHistory = 0">
+                            <div
+                                v-for="session in sessions"
+                                :key="session.sessionId"
+                                class="history-item"
+                                :class="{
+                                    active:
+                                        currentSessionId === session.sessionId,
+                                }"
+                                @click="switchSession(session.sessionId)"
+                            >
                                 <div class="history-line">
-                                    <h6>立夏养心 + 7 天计划</h6>
-                                    <span class="history-time">14:32</span>
+                                    <h6>{{ session.title }}</h6>
+                                    <div class="history-actions">
+                                        <span class="history-time">{{
+                                            formatTime(session.lastMessageAt)
+                                        }}</span>
+                                        <button
+                                            class="history-delete-btn"
+                                            type="button"
+                                            :disabled="
+                                                isBusy || isDeletingSession
+                                            "
+                                            @click.stop="
+                                                openDeleteSessionDialog(
+                                                    session.sessionId,
+                                                )
+                                            "
+                                        >
+                                            删除
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="history-sub">今天</div>
+                                <div class="history-sub">
+                                    {{ formatDate(session.lastMessageAt) }}
+                                </div>
+                            </div>
+                            <div
+                                v-if="!sessions.length && !isLoadingSessions"
+                                class="history-empty"
+                            >
+                                暂无历史对话
                             </div>
                         </div>
                     </div>
                 </aside>
 
-                <!-- Main chat -->
                 <div class="main">
                     <div class="chat-body" ref="chatBodyEl">
-                        <!-- Initial static messages -->
-                        <template v-if="!isNewChat">
-                            <div class="msg-row me">
-                                <div class="msg-avatar user">荷</div>
-                                <div class="bubble-wrap">
-                                    <div class="bubble bub-me">立夏到了，我这种江南体质应该怎么养心呀？</div>
-                                </div>
-                            </div>
+                        <div v-if="!currentSessionId" class="welcome-state">
+                            <div class="welcome-icon">智</div>
+                            <p>
+                                点击“开启新对话”或选择历史对话，开始与 AI
+                                管家交流。
+                            </p>
+                        </div>
 
-                            <div class="msg-row">
-                                <div class="msg-avatar ai">智</div>
-                                <div class="bubble-wrap">
-                                    <span class="bub-tag">AI 管家 · 回答问题</span>
-                                    <div class="bubble bub-ai">
-                                        立夏时节人体心阳偏旺。结合你的<strong style="color:var(--jade);">江南体质（气虚偏湿）</strong>，养心建议从这三方面：<br><br>
-                                        <strong>① 饮食</strong>：清淡、多吃红色养心食材（红豆、桂圆、莲子），少吃生冷油腻。<br>
-                                        <strong>② 作息</strong>：晚睡早起（22:30 - 06:30），中午小憩 20 分钟养心阳。<br>
-                                        <strong>③ 运动</strong>：避免大汗淋漓，推荐八段锦、太极、傍晚散步。
-                                        <div class="artifact-citations">
-                                            <div class="citation-card">
-                                                <div class="ico">📜</div>
-                                                <div class="info"><h6>立夏养心三要点 · 张景行</h6><div class="meta">养生智库 · 节气专题</div></div>
-                                                <div class="arrow">›</div>
-                                            </div>
-                                            <div class="citation-card">
-                                                <div class="ico" style="background:var(--jade-soft);color:var(--jade);">🌿</div>
-                                                <div class="info"><h6>江南体质 · 调养手册</h6><div class="meta">养生智库 · 体质辨识</div></div>
-                                                <div class="arrow">›</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="msg-actions">
-                                        <button class="msg-action" @click="toast('感谢反馈 🙏')">👍 有用</button>
-                                        <button class="msg-action" @click="toast('已收到，AI 会改进')">👎</button>
-                                        <button class="msg-action" @click="toast('🔄 AI 重新生成中…')">🔄 换一种说法</button>
-                                        <button class="msg-action" @click="toast('⭐ 已收藏')">⭐ 收藏</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row me">
-                                <div class="msg-avatar user">荷</div>
-                                <div class="bubble-wrap">
-                                    <div class="bubble bub-me">那就帮我做一份这周的养心计划吧</div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row full">
-                                <div class="msg-avatar ai">智</div>
-                                <div class="bubble-wrap">
-                                    <span class="bub-tag" style="background:var(--gold-soft);color:var(--gold-deep);">AI 管家 · 制定计划</span>
-                                    <div class="bubble bub-ai">
-                                        已综合你的体质、立夏节气和近 7 天打卡数据，为你生成下面这份 7 天养心计划。可以一键加入打卡、随时让我替换某一项。
-
-                                        <div class="artifact-plan">
-                                            <div class="artifact-head">
-                                                <span class="seal">7 天计划</span>
-                                                <h5>立夏养心 · 个性化养生方案</h5>
-                                                <div class="meta">5/5 - 5/11 · 江南体质</div>
-                                            </div>
-                                            <div class="plan-dims">
-                                                <div class="plan-dim diet">
-                                                    <div class="dim-head"><div class="ico">🍵</div>饮食</div>
-                                                    <div class="row"><span class="t">早餐</span><span class="c"><strong>莲子百合粥</strong> · 黄芪枸杞茶</span></div>
-                                                    <div class="row"><span class="t">午餐</span><span class="c"><strong>薏米山药排骨汤</strong> · 时蔬</span></div>
-                                                    <div class="row"><span class="t">晚餐</span><span class="c"><strong>小米南瓜粥</strong> · 凉拌木耳</span></div>
-                                                    <div class="row"><span class="t">忌口</span><span class="c" style="color:var(--cinnabar);">冰镇饮料 / 辛辣火锅 / 生冷海鲜</span></div>
-                                                </div>
-                                                <div class="plan-dim solar">
-                                                    <div class="dim-head"><div class="ico">🌿</div>节气调养</div>
-                                                    <div class="row"><span class="t">主调</span><span class="c"><strong>养心阳，护脾胃</strong></span></div>
-                                                    <div class="row"><span class="t">情志</span><span class="c">戒怒戒躁，心情舒畅</span></div>
-                                                    <div class="row"><span class="t">穴位</span><span class="c">每日按揉 <strong>内关 · 神门</strong> 各 3 分钟</span></div>
-                                                    <div class="row"><span class="t">茶饮</span><span class="c">麦冬玉竹茶（养心阴）</span></div>
-                                                </div>
-                                                <div class="plan-dim sleep">
-                                                    <div class="dim-head"><div class="ico">🌙</div>睡眠</div>
-                                                    <div class="row"><span class="t">就寝</span><span class="c"><strong>22:30 - 23:00</strong></span></div>
-                                                    <div class="row"><span class="t">起床</span><span class="c"><strong>06:30</strong> 顺应阳气升发</span></div>
-                                                    <div class="row"><span class="t">午休</span><span class="c">12:30 小憩 20-30 分钟</span></div>
-                                                    <div class="row"><span class="t">睡前</span><span class="c">温水泡脚 15 分钟，加艾叶</span></div>
-                                                </div>
-                                                <div class="plan-dim exercise">
-                                                    <div class="dim-head"><div class="ico">🧘</div>运动</div>
-                                                    <div class="row"><span class="t">每日</span><span class="c"><strong>八段锦 15 分钟</strong>（早间 6:45）</span></div>
-                                                    <div class="row"><span class="t">周三六</span><span class="c">傍晚快走 30 分钟（19:00 后）</span></div>
-                                                    <div class="row"><span class="t">周末</span><span class="c">瑜伽 / 太极任选 45 分钟</span></div>
-                                                    <div class="row"><span class="t">提醒</span><span class="c" style="color:var(--cinnabar);">避免大汗后立即洗冷水澡</span></div>
-                                                </div>
-                                            </div>
-                                            <div class="artifact-actions">
-                                                <button class="btn-sm gold" @click="toast('📌 已加入元气社区打卡')">📌 加入元气社区每日打卡</button>
-                                                <button class="btn-sm ghost" @click="toast('🔄 重新生成中…')">🔄 重新生成</button>
-                                                <button class="btn-sm ghost" @click="toast('✏️ 进入微调模式')">✏️ 微调</button>
-                                                <button class="btn-sm ghost" @click="toast('📤 生成分享海报')">📤 分享海报</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row me">
-                                <div class="msg-avatar user">荷</div>
-                                <div class="bubble-wrap">
-                                    <div class="bubble bub-me">这个计划用得上的食材推荐我买几个？</div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row full">
-                                <div class="msg-avatar ai">智</div>
-                                <div class="bubble-wrap">
-                                    <span class="bub-tag" style="background:var(--pink-soft);color:var(--pink);">AI 管家 · 智能推荐</span>
-                                    <div class="bubble bub-ai">
-                                        基于你的方案 + 江南体质 + 立夏节气，从平台精选了 4 款好物。每件下方都说明了"为什么推给你"。
-
-                                        <div class="artifact-recos">
-                                            <div class="reco-grid">
-                                                <div class="reco-card">
-                                                    <div class="thumb" style="background:linear-gradient(135deg,var(--jade-soft),var(--gold-soft));">🌸</div>
-                                                    <div class="body">
-                                                        <h6>有机莲子 500g · 福建建宁</h6>
-                                                        <div class="reason">你的早餐"莲子百合粥"需要</div>
-                                                        <div class="price-row"><span class="price">¥48</span><button class="add-btn" @click="addToCart($event)">+ 加购</button></div>
-                                                    </div>
-                                                </div>
-                                                <div class="reco-card">
-                                                    <div class="thumb" style="background:linear-gradient(135deg,var(--bamboo-soft),var(--jade-soft));">🍵</div>
-                                                    <div class="body">
-                                                        <h6>麦冬玉竹养心茶 · 立夏限定</h6>
-                                                        <div class="reason">就是你方案里的茶饮</div>
-                                                        <div class="price-row"><span class="price">¥98</span><button class="add-btn" @click="addToCart($event)">+ 加购</button></div>
-                                                    </div>
-                                                </div>
-                                                <div class="reco-card">
-                                                    <div class="thumb" style="background:linear-gradient(135deg,var(--gold-soft),var(--bamboo-soft));">🌿</div>
-                                                    <div class="body">
-                                                        <h6>艾叶足浴包 · 12 袋</h6>
-                                                        <div class="reason">你的方案"睡前泡脚"</div>
-                                                        <div class="price-row"><span class="price">¥38</span><button class="add-btn" @click="addToCart($event)">+ 加购</button></div>
-                                                    </div>
-                                                </div>
-                                                <div class="reco-card">
-                                                    <div class="thumb" style="background:linear-gradient(135deg,var(--gold-soft),var(--jade-soft));">🌾</div>
-                                                    <div class="body">
-                                                        <h6>黄芪片 250g · 内蒙古道地</h6>
-                                                        <div class="reason">补气虚 + 早餐茶饮可用</div>
-                                                        <div class="price-row"><span class="price">¥88</span><button class="add-btn" @click="addToCart($event)">+ 加购</button></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="artifact-actions" style="margin-top:12px;">
-                                                <button class="btn-sm" @click="toast('🛒 已全部加入购物车')">🛒 全部加入购物车（¥272）</button>
-                                                <button class="btn-sm ghost" @click="toast('🔄 重新选品中…')">🔄 换一组</button>
-                                                <button class="btn-sm ghost" @click="toast('已标记不感兴趣')">🚫 不感兴趣</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row me">
-                                <div class="msg-avatar user">荷</div>
-                                <div class="bubble-wrap">
-                                    <div class="bubble bub-me">对了，我最近还有点胸闷，会不会是心脏出问题了？</div>
-                                </div>
-                            </div>
-
-                            <div class="msg-row">
-                                <div class="msg-avatar ai">智</div>
-                                <div class="bubble-wrap">
-                                    <span class="bub-tag" style="background:var(--cinnabar-soft);color:var(--cinnabar);">AI 管家 · 转专家</span>
-                                    <div class="bubble bub-ai">
-                                        胸闷可能与多种原因有关，<strong>具体诊断需由专业医师判断</strong>。AI 不作医疗结论，但我可以帮你直接转到名医健康圈，由医师团队的 AI 先做预问诊：
-                                        <div class="handoff-card">
-                                            <h6>🩺 该问题建议向医师咨询</h6>
-                                            <p>胸闷涉及心血管判断。你可以前往「名医健康圈」向擅长该方向的医师咨询，医师那一侧会有专属 AI 先帮你预问诊。</p>
-                                            <button class="handoff-btn" @click="toast('→ 跳转到名医健康圈（演示）')">前往名医健康圈 →</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- Dynamic messages -->
-                        <template v-for="(msg, idx) in messages" :key="idx">
-                            <div v-if="msg.kind === 'me'" class="msg-row me">
-                                <div class="msg-avatar user">荷</div>
-                                <div class="bubble-wrap">
-                                    <div class="bubble bub-me">{{ msg.text }}</div>
-                                </div>
-                            </div>
-
-                            <div v-else class="msg-row" :class="{ full: msg.cap === 'plan' || msg.cap === 'reco' }">
-                                <div class="msg-avatar ai">智</div>
-                                <div class="bubble-wrap">
-                                    <span class="bub-tag" :style="msg.tagStyle">{{ msg.tagText }}</span>
-                                    <div class="bubble bub-ai" v-html="msg.html"></div>
-                                </div>
-                            </div>
-                        </template>
+                        <AiButlerMessage
+                            v-for="(msg, index) in messages"
+                            :key="
+                                msg.messageId ??
+                                msg.tempId ??
+                                msg.requestId ??
+                                `${msg.role}-${index}`
+                            "
+                            :role="msg.role"
+                            :content-type="msg.contentType"
+                            :content="msg.content"
+                            :structured-json="msg.structuredJson"
+                            :is-streaming="msg.isStreaming"
+                            :is-thinking="msg.isThinking"
+                            :user-initial="userInitial"
+                            :user-avatar="userAvatar"
+                        />
                     </div>
 
-                    <!-- Quick prompts -->
                     <div class="quick-prompts">
-                        <button class="quick-prompt" @click="send('给我做一份这个月的养生计划')"><span class="tagico">🌿</span> 做一份本月计划</button>
-                        <button class="quick-prompt" @click="send('推荐适合气虚体质的药材')"><span class="tagico">🛒</span> 推荐适合的药材</button>
-                        <button class="quick-prompt" @click="send('夏季失眠怎么调理')"><span class="tagico">💬</span> 失眠调理</button>
-                        <button class="quick-prompt" @click="send('八段锦哪一式护肝')"><span class="tagico">💬</span> 八段锦护肝</button>
-                        <button class="quick-prompt" @click="send('孩子积食怎么按摩')"><span class="tagico">💬</span> 小儿积食</button>
-                        <button class="quick-prompt" @click="send('给我推荐节气养生礼盒')"><span class="tagico">🛒</span> 节气礼盒</button>
+                        <button
+                            class="quick-prompt"
+                            @click="send('给我做一份这个月的养生计划')"
+                        >
+                            <span class="tagico">🌿</span> 做一份本月计划
+                        </button>
+                        <button
+                            class="quick-prompt"
+                            @click="send('帮我分析最近 7 天睡眠')"
+                        >
+                            <span class="tagico">🌙</span> 睡眠分析
+                        </button>
+                        <button
+                            class="quick-prompt"
+                            @click="send('夏季失眠怎么调理')"
+                        >
+                            <span class="tagico">💬</span> 失眠调理
+                        </button>
+                        <button
+                            class="quick-prompt"
+                            @click="send('八段锦哪一式护肝')"
+                        >
+                            <span class="tagico">🍃</span> 八段锦护肝
+                        </button>
+                        <button
+                            class="quick-prompt"
+                            @click="send('根据我的体质推荐养生食材')"
+                        >
+                            <span class="tagico">🥗</span> 体质食材推荐
+                        </button>
+                        <button
+                            class="quick-prompt quick-prompt--coming-soon"
+                            type="button"
+                            @click="showProductRecommendationComingSoon"
+                        >
+                            <span class="tagico">🛍️</span>
+                            商品推荐
+                            <span class="quick-prompt__badge">开发中</span>
+                        </button>
                     </div>
 
-                    <!-- Input -->
                     <div class="chat-input-wrap">
                         <div class="chat-input-row">
-                            <button class="icon-btn" title="语音输入" @click="toast('🎙 语音输入（演示）')">🎙</button>
-                            <input type="text" v-model="chatInput" placeholder="问养生问题 / 让 AI 做计划 / 让 AI 推荐商品 —— 都在这里说" @keydown.enter="send()" />
-                            <button class="icon-btn" title="附件" @click="toast('📎 附件（演示）')">📎</button>
-                            <button class="send-btn" @click="send()">发送 →</button>
+                            <input
+                                type="text"
+                                v-model="chatInput"
+                                :placeholder="inputPlaceholder"
+                                :disabled="isBusy || !currentSessionId"
+                                @keydown.enter="send()"
+                            />
+                            <button
+                                v-if="isBusy"
+                                class="send-btn stop-btn"
+                                @click="stopGeneration"
+                            >
+                                停止
+                            </button>
+                            <button
+                                v-else
+                                class="send-btn"
+                                :disabled="
+                                    !currentSessionId || !chatInput.trim()
+                                "
+                                @click="send()"
+                            >
+                                发送
+                            </button>
                         </div>
-                        <div class="disclaimer">⚠️ AI 生成内容，仅供参考。涉及诊断 / 用药请咨询专业医师。</div>
+                        <div class="disclaimer">
+                            AI 生成内容，仅供参考。涉及诊断 /
+                            用药请咨询专业医师。
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
+
+        <div
+            v-if="deleteDialogVisible"
+            class="session-dialog-overlay"
+            @click.self="closeDeleteSessionDialog"
+        >
+            <div
+                class="session-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-session-title"
+            >
+                <div class="session-dialog__glow"></div>
+                <div class="session-dialog__header">
+                    <div class="session-dialog__eyebrow">历史会话管理</div>
+                    <button
+                        class="session-dialog__close"
+                        type="button"
+                        :disabled="isDeletingSession"
+                        aria-label="关闭删除弹窗"
+                        @click="closeDeleteSessionDialog"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="session-dialog__body">
+                    <h3 id="delete-session-title" class="session-dialog__title">
+                        确认删除这段对话吗？
+                    </h3>
+                    <p class="session-dialog__desc">
+                        删除后这条历史会话将不会再显示，你仍可以继续使用其他会话。
+                    </p>
+                    <div class="session-dialog__session-card">
+                        <span class="session-dialog__session-label"
+                            >即将删除</span
+                        >
+                        <strong class="session-dialog__session-title">{{
+                            deleteSessionDialogTitle
+                        }}</strong>
+                    </div>
+                </div>
+                <div class="session-dialog__actions">
+                    <button
+                        class="session-dialog__btn session-dialog__btn--ghost"
+                        type="button"
+                        :disabled="isDeletingSession"
+                        @click="closeDeleteSessionDialog"
+                    >
+                        取消
+                    </button>
+                    <button
+                        class="session-dialog__btn session-dialog__btn--danger"
+                        type="button"
+                        :disabled="isDeletingSession"
+                        @click="confirmDeleteSession"
+                    >
+                        {{ isDeletingSession ? "删除中..." : "确认删除" }}
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div class="toast" :class="{ show: toastVisible }">{{ toastMsg }}</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from "vue";
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
-import { ApiSeasonalHealth } from "@/network";
+import AiButlerMessage from "@/components/ai-butler/AiButlerMessage.vue";
+import { ApiSeasonalHealth, ApiAiButler } from "@/network";
+import type { AiButlerSessionVO, AiButlerMessageVO } from "@/network";
+import { useAiButlerStream } from "@/composables/useAiButlerStream";
+import type { SseCallbacks } from "@/composables/useAiButlerStream";
 import { useUserStore } from "@/store/user";
 
-// ---- Keywords ----
-const EMERGENCY = ['胸痛', '呼吸困难', '出血', '昏迷', '剧烈痛'];
-const MEDICAL = ['胸闷', '头晕', '腹痛', '心悸', '皮疹', '诊断', '处方', '吃什么药'];
-const PLAN = ['计划', '方案', '安排', '7 天', '一周', '本月', '怎么吃', '怎么作息'];
-const RECO = ['推荐', '买', '购买', '商品', '药材', '茶', '礼盒'];
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鍐呴儴娑堟伅绫诲瀷 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
-// ---- State ----
+interface ChatMessage {
+    messageId?: number | undefined;
+    tempId?: string; // 鏈垎閰?messageId 鍓嶇殑涓存椂 ID
+    requestId?: string | undefined;
+    role: "USER" | "ASSISTANT";
+    contentType: string;
+    status: string;
+    content: string;
+    structuredJson?: string | undefined;
+    isStreaming?: boolean | undefined;
+    isThinking?: boolean | undefined;
+}
+
+interface PendingStreamState {
+    sessionId: number;
+    requestId: string;
+    lastEventSeq: number;
+}
+
+interface StreamDisplayState {
+    startedAt: number;
+    hasRevealed: boolean;
+    revealTimer: ReturnType<typeof setTimeout> | null;
+}
+
+const ACTIVE_SESSION_STORAGE_KEY = "ai-butler-active-session";
+const PENDING_STREAM_STORAGE_KEY = "ai-butler-pending-stream";
+const THINKING_PLACEHOLDER = "\u601D\u8003\u4E2D........";
+const THINKING_MIN_DURATION_MS = 600;
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鐘舵€?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
 const userStore = useUserStore();
 const chatInput = ref("");
-const messages = ref<Message[]>([]);
-const isNewChat = ref(false);
-const activeHistory = ref(0);
+const messages = ref<ChatMessage[]>([]);
+const sessions = ref<AiButlerSessionVO[]>([]);
+const currentSessionId = ref<number | null>(null);
 const chatBodyEl = ref<HTMLElement | null>(null);
 const currentSolarTermName = ref("立夏");
+const isLoadingSessions = ref(false);
+const isCreatingSession = ref(false);
+const isRecoveringStream = ref(false);
+const activeRequestId = ref<string | null>(null);
+const deleteDialogVisible = ref(false);
+const pendingDeleteSessionId = ref<number | null>(null);
+const pendingDeleteSessionTitle = ref("");
+const isDeletingSession = ref(false);
+const hiddenStreamBuffers = new Map<string, string>();
+const streamDisplayStates = new Map<string, StreamDisplayState>();
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+const { isStreaming, lastEventSeq, startStream, reconnect, cancelStream } =
+    useAiButlerStream();
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 璁＄畻灞炴€?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
 const greetingName = computed(
-    () => userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account || "小荷",
+    () =>
+        userStore.G_LoginInfo.nickName ||
+        userStore.G_LoginInfo.account ||
+        "\u670B\u53CB",
 );
 
-// ---- Toast ----
+const userInitial = computed(() =>
+    (userStore.G_LoginInfo.nickName || "\u6211").charAt(0),
+);
+
+const userAvatar = computed(() => userStore.G_UserInfo.avatar || "");
+
+const isBusy = computed(() => isStreaming.value || isRecoveringStream.value);
+
+const deleteSessionDialogTitle = computed(
+    () => pendingDeleteSessionTitle.value || "该会话",
+);
+
+const inputPlaceholder = computed(() => {
+    if (isRecoveringStream.value)
+        return "\u7F51\u7EDC\u6062\u590D\u540E\u5C06\u7EE7\u7EED\u8F93\u51FA...";
+    if (!currentSessionId.value)
+        return "\u8BF7\u5148\u5F00\u542F\u4E00\u6BB5\u65B0\u5BF9\u8BDD";
+    if (isStreaming.value) return "AI \u7BA1\u5BB6\u6B63\u5728\u56DE\u590D...";
+    return "\u95EE\u517B\u751F\u95EE\u9898 / \u8BA9 AI \u505A\u8BA1\u5212 / \u5206\u6790\u7761\u7720 \u2014 \u90FD\u5728\u8FD9\u91CC\u8BF4";
+});
+
+function showProductRecommendationComingSoon() {
+    toast("商城正在开发中，商品推荐即将上线");
+}
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ Toast 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
 const toastVisible = ref(false);
 const toastMsg = ref("");
 let toastTimer: ReturnType<typeof setTimeout>;
@@ -303,151 +373,674 @@ function toast(msg: string) {
     toastMsg.value = msg;
     toastVisible.value = true;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toastVisible.value = false; }, 1800);
+    toastTimer = setTimeout(() => {
+        toastVisible.value = false;
+    }, 1800);
 }
 
-// ---- Scroll ----
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 婊氬姩 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
 function scrollDown() {
-    nextTick(() => {
-        if (chatBodyEl.value) chatBodyEl.value.scrollTop = chatBodyEl.value.scrollHeight;
+    void nextTick(() => {
+        if (chatBodyEl.value)
+            chatBodyEl.value.scrollTop = chatBodyEl.value.scrollHeight;
     });
 }
 
-// ---- Message types ----
-interface Message {
-    kind: 'me' | 'ai';
-    text?: string;
-    cap?: string;
-    tagStyle?: string;
-    tagText?: string;
-    html?: string;
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鏍煎紡鍖栨椂闂?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+function formatTime(iso?: string): string {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
-// ---- AI Response generators ----
-function makePlanArtifact(): string {
-    return `已综合你的体质、节气与作息为你生成方案：
-      <div class="artifact-plan">
-        <div class="artifact-head">
-          <span class="seal">7 天计划</span>
-          <h5>个性化养生方案</h5>
-          <div class="meta">演示版</div>
-        </div>
-        <div class="plan-dims">
-          <div class="plan-dim diet"><div class="dim-head"><div class="ico">🍵</div>饮食</div>
-            <div class="row"><span class="t">早</span><span class="c">莲子百合粥</span></div>
-            <div class="row"><span class="t">午</span><span class="c">薏米山药排骨汤</span></div>
-            <div class="row"><span class="t">晚</span><span class="c">小米南瓜粥</span></div></div>
-          <div class="plan-dim solar"><div class="dim-head"><div class="ico">🌿</div>节气</div>
-            <div class="row"><span class="t">主调</span><span class="c">养心阳，护脾胃</span></div>
-            <div class="row"><span class="t">穴位</span><span class="c">内关 · 神门</span></div></div>
-          <div class="plan-dim sleep"><div class="dim-head"><div class="ico">🌙</div>睡眠</div>
-            <div class="row"><span class="t">就寝</span><span class="c">22:30</span></div>
-            <div class="row"><span class="t">起床</span><span class="c">06:30</span></div></div>
-          <div class="plan-dim exercise"><div class="dim-head"><div class="ico">🧘</div>运动</div>
-            <div class="row"><span class="t">每日</span><span class="c">八段锦 15 分钟</span></div></div>
-        </div>
-        <div class="artifact-actions">
-          <button class="btn-sm gold">📌 加入打卡</button>
-          <button class="btn-sm ghost">🔄 重新生成</button>
-        </div>
-      </div>`;
+function formatDate(iso?: string): string {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return "今天";
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "昨天";
+    return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function makeRecoArtifact(): string {
-    return `为你精选了几款，每件附推荐理由：
-      <div class="artifact-recos">
-        <div class="reco-grid">
-          <div class="reco-card"><div class="thumb" style="background:var(--jade-soft);">🌸</div>
-            <div class="body"><h6>有机莲子 500g</h6><div class="reason">养心首选</div>
-            <div class="price-row"><span class="price">¥48</span><button class="add-btn">+ 加购</button></div></div></div>
-          <div class="reco-card"><div class="thumb" style="background:var(--bamboo-soft);">🍵</div>
-            <div class="body"><h6>麦冬玉竹养心茶</h6><div class="reason">立夏节气限定</div>
-            <div class="price-row"><span class="price">¥98</span><button class="add-btn">+ 加购</button></div></div></div>
-          <div class="reco-card"><div class="thumb" style="background:var(--gold-soft);">🌿</div>
-            <div class="body"><h6>艾叶足浴包</h6><div class="reason">配合睡前泡脚</div>
-            <div class="price-row"><span class="price">¥38</span><button class="add-btn">+ 加购</button></div></div></div>
-          <div class="reco-card"><div class="thumb" style="background:var(--pink-soft);">🌾</div>
-            <div class="body"><h6>黄芪片 250g</h6><div class="reason">补气虚体质</div>
-            <div class="price-row"><span class="price">¥88</span><button class="add-btn">+ 加购</button></div></div></div>
-        </div>
-        <div class="artifact-actions" style="margin-top:12px;">
-          <button class="btn-sm">🛒 全部加购</button>
-          <button class="btn-sm ghost">🔄 换一组</button>
-        </div>
-      </div>`;
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 浼氳瘽绠＄悊 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+function getStoredActiveSessionId(): number | null {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const sessionId = Number(raw);
+    return Number.isInteger(sessionId) && sessionId > 0 ? sessionId : null;
 }
 
-function makeHandoffArtifact(): string {
-    return `这个问题已偏向医疗诊断范畴，AI 管家不作结论。建议你转到名医健康圈，由专业医师那一侧的 AI 先做预问诊：
-      <div class="handoff-card">
-        <h6>🩺 该问题建议向医师咨询</h6>
-        <p>涉及医疗判断需要专业医师，AI 不作诊断。</p>
-        <button class="handoff-btn">前往名医健康圈 →</button>
-      </div>`;
+function storeActiveSessionId(sessionId: number | null): void {
+    if (typeof window === "undefined") return;
+    if (sessionId == null) {
+        window.sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+        return;
+    }
+    window.sessionStorage.setItem(
+        ACTIVE_SESSION_STORAGE_KEY,
+        String(sessionId),
+    );
 }
 
-function makeQAArtifact(): string {
-    return `已收到。基于你的<strong>江南体质 + 立夏节气</strong>，我会从养生智库找出最相关的内容为你回答（演示）。
-      <div class="artifact-citations">
-        <div class="citation-card"><div class="ico">📜</div>
-          <div class="info"><h6>相关文献</h6><div class="meta">养生智库</div></div><div class="arrow">›</div></div>
-      </div>`;
+function getPendingStreamState(): PendingStreamState | null {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem(PENDING_STREAM_STORAGE_KEY);
+    if (!raw) return null;
+
+    try {
+        const parsed = JSON.parse(raw) as Partial<PendingStreamState>;
+        if (!parsed.requestId || typeof parsed.sessionId !== "number")
+            return null;
+        return {
+            sessionId: parsed.sessionId,
+            requestId: parsed.requestId,
+            lastEventSeq: Number(parsed.lastEventSeq) || 0,
+        };
+    } catch {
+        return null;
+    }
 }
 
-function aiReply(userText: string) {
-    let cap: string, tagStyle: string, tagText: string, html: string;
+function storePendingStreamState(state: PendingStreamState): void {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(
+        PENDING_STREAM_STORAGE_KEY,
+        JSON.stringify(state),
+    );
+}
 
-    if (EMERGENCY.some(k => userText.includes(k))) {
-        cap = 'handoff';
-        tagStyle = 'background:var(--cinnabar-soft);color:var(--cinnabar);';
-        tagText = 'AI 管家 · 转专家';
-        html = `⚠️ <strong style="color:var(--cinnabar);">检测到危急信号</strong>，请立即停止使用 AI 问答，<strong>线下就医或拨打 120</strong>。`;
-    } else if (MEDICAL.some(k => userText.includes(k))) {
-        cap = 'handoff';
-        tagStyle = 'background:var(--cinnabar-soft);color:var(--cinnabar);';
-        tagText = 'AI 管家 · 转专家';
-        html = makeHandoffArtifact();
-    } else if (PLAN.some(k => userText.includes(k))) {
-        cap = 'plan';
-        tagStyle = 'background:var(--gold-soft);color:var(--gold-deep);';
-        tagText = 'AI 管家 · 制定计划';
-        html = makePlanArtifact();
-    } else if (RECO.some(k => userText.includes(k))) {
-        cap = 'reco';
-        tagStyle = 'background:var(--pink-soft);color:var(--pink);';
-        tagText = 'AI 管家 · 智能推荐';
-        html = makeRecoArtifact();
-    } else {
-        cap = 'qa';
-        tagStyle = '';
-        tagText = 'AI 管家 · 回答问题';
-        html = makeQAArtifact();
+function clearPendingStreamState(requestId?: string | null): void {
+    if (typeof window === "undefined") return;
+    const pending = getPendingStreamState();
+    if (requestId && pending?.requestId && pending.requestId !== requestId)
+        return;
+    window.sessionStorage.removeItem(PENDING_STREAM_STORAGE_KEY);
+}
+
+function rememberPendingStream(sessionId: number, requestId: string): void {
+    storePendingStreamState({
+        sessionId,
+        requestId,
+        lastEventSeq: lastEventSeq.value,
+    });
+}
+
+function clearReconnectTimer(): void {
+    if (!reconnectTimer) return;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+}
+
+function syncPendingStreamState(requestId: string): void {
+    if (!currentSessionId.value) return;
+    rememberPendingStream(currentSessionId.value, requestId);
+}
+
+function finishPendingStream(requestId?: string | null): void {
+    clearReconnectTimer();
+    isRecoveringStream.value = false;
+    if (!requestId || activeRequestId.value === requestId) {
+        activeRequestId.value = null;
+    }
+    clearBufferedStreamState(requestId);
+    clearStreamDisplayState(requestId);
+    clearPendingStreamState(requestId);
+}
+
+function createRequestId(): string {
+    if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+    ) {
+        return crypto.randomUUID();
+    }
+    return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function bufferStreamDelta(
+    requestId: string,
+    delta: string,
+    replaced?: boolean,
+): void {
+    if (replaced) {
+        hiddenStreamBuffers.set(requestId, delta);
+        return;
     }
 
-    messages.value.push({ kind: 'ai', cap, tagStyle, tagText, html });
-    scrollDown();
+    const currentBuffer = hiddenStreamBuffers.get(requestId) ?? "";
+    hiddenStreamBuffers.set(requestId, `${currentBuffer}${delta}`);
 }
 
-function send(prefill?: string) {
-    const text = (prefill || chatInput.value).trim();
-    if (!text) return;
-    messages.value.push({ kind: 'me', text });
-    chatInput.value = '';
-    scrollDown();
-    setTimeout(() => aiReply(text), 600);
+function getBufferedStreamContent(requestId: string): string {
+    return hiddenStreamBuffers.get(requestId) ?? "";
 }
 
-// ---- New chat ----
-function newChat() {
-    isNewChat.value = true;
+function hasBufferedStreamContent(requestId: string): boolean {
+    return hiddenStreamBuffers.has(requestId);
+}
+
+function clearBufferedStreamState(requestId?: string | null): void {
+    if (!requestId) return;
+    hiddenStreamBuffers.delete(requestId);
+}
+
+function getOrCreateStreamDisplayState(requestId: string): StreamDisplayState {
+    const existing = streamDisplayStates.get(requestId);
+    if (existing) return existing;
+
+    const state: StreamDisplayState = {
+        startedAt: Date.now(),
+        hasRevealed: false,
+        revealTimer: null,
+    };
+
+    state.revealTimer = setTimeout(() => {
+        const latestState = streamDisplayStates.get(requestId);
+        if (!latestState || latestState.hasRevealed) return;
+        latestState.revealTimer = null;
+        if (!hasBufferedStreamContent(requestId)) return;
+        syncStreamingMessageContent(requestId);
+        scrollDown();
+    }, THINKING_MIN_DURATION_MS);
+
+    streamDisplayStates.set(requestId, state);
+    return state;
+}
+
+function clearStreamDisplayState(requestId?: string | null): void {
+    if (!requestId) return;
+    const state = streamDisplayStates.get(requestId);
+    if (state?.revealTimer) {
+        clearTimeout(state.revealTimer);
+    }
+    streamDisplayStates.delete(requestId);
+}
+
+function clearAllStreamDisplayStates(): void {
+    for (const requestId of streamDisplayStates.keys()) {
+        clearStreamDisplayState(requestId);
+    }
+}
+
+async function loadSessions() {
+    isLoadingSessions.value = true;
+    try {
+        const res = await ApiAiButler.listSessions();
+        // 缁熶竴澶勭悊 axios 鍝嶅簲鏍煎紡
+        const data = (res as unknown as { data: { data: AiButlerSessionVO[] } })
+            .data?.data;
+        sessions.value = Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.error("加载会话列表失败", e);
+    } finally {
+        isLoadingSessions.value = false;
+    }
+}
+
+async function newChat() {
+    if (isCreatingSession.value || isBusy.value) return;
+    isCreatingSession.value = true;
+    try {
+        const res = await ApiAiButler.createSession();
+        const newSession = (
+            res as unknown as { data: { data: AiButlerSessionVO } }
+        ).data?.data;
+        if (newSession) {
+            sessions.value.unshift(newSession);
+            await switchSession(newSession.sessionId);
+        }
+    } catch (e) {
+        console.error("创建会话失败", e);
+        toast("创建会话失败，请重试");
+    } finally {
+        isCreatingSession.value = false;
+    }
+}
+
+function clearCurrentSessionSelection(): void {
+    currentSessionId.value = null;
     messages.value = [];
-    toast('已开启新对话');
+    chatInput.value = "";
+    storeActiveSessionId(null);
+    clearPendingStreamState();
+    activeRequestId.value = null;
+    isRecoveringStream.value = false;
+    clearAllStreamDisplayStates();
 }
 
-// ---- Delegated click handler for dynamic v-html content ----
-onMounted(() => {
-    chatBodyEl.value?.addEventListener('click', handleArtifactClick);
-    void loadCurrentSolarTerm();
+function openDeleteSessionDialog(sessionId: number): void {
+    if (isBusy.value) {
+        toast("当前正在生成，请稍后再删除会话");
+        return;
+    }
+
+    const targetSession = sessions.value.find(
+        (session) => session.sessionId === sessionId,
+    );
+    if (!targetSession) return;
+
+    pendingDeleteSessionId.value = sessionId;
+    pendingDeleteSessionTitle.value = targetSession.title || "该会话";
+    deleteDialogVisible.value = true;
+}
+
+function closeDeleteSessionDialog(): void {
+    if (isDeletingSession.value) return;
+    deleteDialogVisible.value = false;
+    pendingDeleteSessionId.value = null;
+    pendingDeleteSessionTitle.value = "";
+}
+
+async function confirmDeleteSession() {
+    const sessionId = pendingDeleteSessionId.value;
+    if (!sessionId || isDeletingSession.value) return;
+
+    try {
+        isDeletingSession.value = true;
+        await ApiAiButler.deleteSession(sessionId);
+        deleteDialogVisible.value = false;
+
+        const remainingSessions = sessions.value.filter(
+            (session) => session.sessionId !== sessionId,
+        );
+        sessions.value = remainingSessions;
+
+        if (currentSessionId.value === sessionId) {
+            const nextSessionId = remainingSessions[0]?.sessionId;
+            if (nextSessionId) {
+                await switchSession(nextSessionId);
+            } else {
+                clearCurrentSessionSelection();
+            }
+        }
+
+        toast("历史会话已删除");
+    } catch (error) {
+        console.error("删除会话失败", error);
+        toast("删除会话失败，请重试");
+    } finally {
+        isDeletingSession.value = false;
+        pendingDeleteSessionId.value = null;
+        pendingDeleteSessionTitle.value = "";
+    }
+}
+
+async function switchSession(sessionId: number) {
+    if (isBusy.value) {
+        toast(
+            "\u5F53\u524D\u6B63\u5728\u751F\u6210\uFF0C\u8BF7\u7B49\u5F85\u5B8C\u6210\u6216\u505C\u6B62\u540E\u518D\u5207\u6362",
+        );
+        return;
+    }
+    currentSessionId.value = sessionId;
+    storeActiveSessionId(sessionId);
+    messages.value = [];
+    await loadMessages(sessionId);
+    scrollDown();
+}
+
+function mapChatMessage(message: AiButlerMessageVO): ChatMessage {
+    return {
+        messageId: message.messageId,
+        requestId: message.requestId,
+        role: message.role === "USER" ? "USER" : "ASSISTANT",
+        contentType: message.contentType || "TEXT",
+        status: message.status,
+        content: message.content || "",
+        structuredJson: message.structuredJson,
+        isStreaming: false,
+        isThinking: false,
+    };
+}
+
+function findStreamingMessage(requestId: string): ChatMessage | undefined {
+    return messages.value.find(
+        (message) =>
+            message.requestId === requestId && message.role === "ASSISTANT",
+    );
+}
+
+function ensureStreamingMessage(
+    requestId: string,
+    messageId?: number,
+): ChatMessage {
+    const displayState = getOrCreateStreamDisplayState(requestId);
+    const existing = findStreamingMessage(requestId);
+    if (existing) {
+        if (messageId) existing.messageId = messageId;
+        existing.isStreaming = true;
+        if (existing.status !== "COMPLETED") existing.status = "GENERATING";
+        if (existing.content && existing.content !== THINKING_PLACEHOLDER) {
+            displayState.hasRevealed = true;
+            if (displayState.revealTimer) {
+                clearTimeout(displayState.revealTimer);
+                displayState.revealTimer = null;
+            }
+        }
+        if (existing.status === "GENERATING") {
+            existing.isThinking = !displayState.hasRevealed;
+            if (!existing.content) existing.content = THINKING_PLACEHOLDER;
+        }
+        return existing;
+    }
+
+    const message: ChatMessage = {
+        tempId: `ai-${requestId}`,
+        requestId,
+        messageId,
+        role: "ASSISTANT",
+        contentType: "TEXT",
+        status: "GENERATING",
+        content: THINKING_PLACEHOLDER,
+        isStreaming: true,
+        isThinking: !displayState.hasRevealed,
+    };
+    messages.value.push(message);
+    return message;
+}
+
+function syncStreamingMessageContent(
+    requestId: string,
+    fallbackText = "",
+): ChatMessage {
+    const displayState = getOrCreateStreamDisplayState(requestId);
+    const message = ensureStreamingMessage(requestId);
+    const bufferedContent = getBufferedStreamContent(requestId);
+
+    displayState.hasRevealed = true;
+    if (displayState.revealTimer) {
+        clearTimeout(displayState.revealTimer);
+        displayState.revealTimer = null;
+    }
+    message.isThinking = false;
+    if (bufferedContent) {
+        message.content = bufferedContent;
+    } else if (message.content === THINKING_PLACEHOLDER) {
+        message.content = fallbackText;
+    }
+
+    return message;
+}
+
+function tryRevealStreamingContent(requestId: string): void {
+    if (!hasBufferedStreamContent(requestId)) return;
+
+    const displayState = getOrCreateStreamDisplayState(requestId);
+    if (displayState.hasRevealed) {
+        syncStreamingMessageContent(requestId);
+        return;
+    }
+
+    if (Date.now() - displayState.startedAt < THINKING_MIN_DURATION_MS) return;
+    syncStreamingMessageContent(requestId);
+}
+
+function isRecoverableStreamError(code: string): boolean {
+    return code === "AI_NETWORK_ERROR";
+}
+
+function scheduleReconnect(requestId: string): void {
+    if (
+        typeof window === "undefined" ||
+        !currentSessionId.value ||
+        isStreaming.value
+    )
+        return;
+    if (!window.navigator.onLine) return;
+
+    clearReconnectTimer();
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void reconnectPendingStream(requestId);
+    }, 600);
+}
+
+function handleRecoverableStreamError(requestId: string): void {
+    ensureStreamingMessage(requestId);
+    isRecoveringStream.value = true;
+    syncPendingStreamState(requestId);
+    toast("网络短暂中断，正在为你恢复输出");
+    scheduleReconnect(requestId);
+}
+
+function buildStreamCallbacks(requestId: string): SseCallbacks {
+    return {
+        onRawEvent() {
+            syncPendingStreamState(requestId);
+        },
+        onDelta({ messageId, delta, replaced }) {
+            isRecoveringStream.value = false;
+            ensureStreamingMessage(requestId, messageId);
+            bufferStreamDelta(requestId, delta, replaced);
+            tryRevealStreamingContent(requestId);
+            scrollDown();
+        },
+        onCompleted({ messageId, contentType, structuredJson }) {
+            const message = syncStreamingMessageContent(requestId);
+            message.messageId = messageId;
+            message.contentType = contentType || message.contentType || "TEXT";
+            message.structuredJson = structuredJson ?? message.structuredJson;
+            message.isStreaming = false;
+            message.isThinking = false;
+            message.status = "COMPLETED";
+            isRecoveringStream.value = false;
+            scrollDown();
+            void loadSessions();
+        },
+        onInterrupted() {
+            const message = syncStreamingMessageContent(
+                requestId,
+                "\uFF08\u751F\u6210\u5DF2\u4E2D\u65AD\uFF09",
+            );
+            message.isStreaming = false;
+            message.isThinking = false;
+            message.status = "INTERRUPTED";
+            if (!message.content)
+                message.content = "\uFF08\u751F\u6210\u5DF2\u4E2D\u65AD\uFF09";
+            finishPendingStream(requestId);
+        },
+        onStreamCompleted() {
+            finishPendingStream(requestId);
+        },
+        onError({ code, message }) {
+            console.error(`[SSE] ${code}: ${message}`);
+
+            if (isRecoverableStreamError(code)) {
+                handleRecoverableStreamError(requestId);
+                return;
+            }
+
+            const streamingMessage = ensureStreamingMessage(requestId);
+            const partialContent = getBufferedStreamContent(requestId);
+            streamingMessage.isStreaming = false;
+            streamingMessage.isThinking = false;
+            streamingMessage.status = "FAILED";
+            if (partialContent) {
+                streamingMessage.contentType = "TEXT";
+                streamingMessage.content = `${partialContent}\n\n\u56DE\u7B54\u672A\u5B8C\u6574\u751F\u6210\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`;
+            } else {
+                streamingMessage.contentType = "ERROR";
+                streamingMessage.content =
+                    message ||
+                    "\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5";
+            }
+            finishPendingStream(requestId);
+            toast(
+                "⚠️ " +
+                    (message ||
+                        "\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5"),
+            );
+        },
+    };
+}
+
+async function reconnectPendingStream(requestId: string, afterSeq?: number) {
+    if (!currentSessionId.value || isStreaming.value) return;
+
+    const pending = getPendingStreamState();
+    const replayFromSeq =
+        afterSeq ??
+        (pending?.requestId === requestId ? pending.lastEventSeq : 0);
+
+    activeRequestId.value = requestId;
+    isRecoveringStream.value = true;
+    getOrCreateStreamDisplayState(requestId);
+    ensureStreamingMessage(requestId);
+
+    await reconnect(requestId, replayFromSeq, buildStreamCallbacks(requestId));
+
+    if (activeRequestId.value === requestId && !isStreaming.value) {
+        isRecoveringStream.value = false;
+    }
+}
+
+async function resumePendingStreamIfNeeded(sessionId: number) {
+    const pending = getPendingStreamState();
+    const latestGeneratingAssistant = [...messages.value]
+        .reverse()
+        .find(
+            (message) =>
+                message.role === "ASSISTANT" &&
+                Boolean(message.requestId) &&
+                message.status === "GENERATING",
+        );
+
+    const requestId =
+        pending?.sessionId === sessionId
+            ? pending.requestId
+            : latestGeneratingAssistant?.requestId;
+
+    if (!requestId) return;
+
+    const targetMessage = findStreamingMessage(requestId);
+    if (targetMessage && targetMessage.status !== "GENERATING") {
+        clearPendingStreamState(requestId);
+        return;
+    }
+
+    const replayFromSeq =
+        pending?.requestId === requestId && hasBufferedStreamContent(requestId)
+            ? pending.lastEventSeq
+            : 0;
+
+    await reconnectPendingStream(requestId, replayFromSeq);
+}
+
+async function loadMessages(sessionId: number) {
+    try {
+        const res = await ApiAiButler.listMessages(sessionId);
+        const data = (res as unknown as { data: { data: AiButlerMessageVO[] } })
+            .data?.data;
+        messages.value = Array.isArray(data) ? data.map(mapChatMessage) : [];
+        await resumePendingStreamIfNeeded(sessionId);
+    } catch (e) {
+        console.error("加载消息失败", e);
+    }
+}
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鍙戦€佹秷鎭?/ SSE 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+async function send(prefill?: string) {
+    const text = (prefill || chatInput.value).trim();
+    if (!text || !currentSessionId.value || isBusy.value) return;
+
+    chatInput.value = "";
+    clearReconnectTimer();
+    const requestId = createRequestId();
+    activeRequestId.value = requestId;
+    isRecoveringStream.value = false;
+
+    messages.value.push({
+        tempId: `user-${requestId}`,
+        role: "USER",
+        contentType: "TEXT",
+        status: "COMPLETED",
+        content: text,
+    });
+
+    rememberPendingStream(currentSessionId.value, requestId);
+    getOrCreateStreamDisplayState(requestId);
+    ensureStreamingMessage(requestId);
+    scrollDown();
+
+    await startStream(
+        {
+            sessionId: currentSessionId.value,
+            requestId,
+            message: text,
+        },
+        buildStreamCallbacks(requestId),
+    );
+
+    if (activeRequestId.value === requestId && !isStreaming.value) {
+        isRecoveringStream.value = false;
+    }
+}
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鍋滄鐢熸垚 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+async function stopGeneration() {
+    if (!activeRequestId.value) return;
+    const requestId = activeRequestId.value;
+    clearReconnectTimer();
+    cancelStream();
+    try {
+        await ApiAiButler.cancelGeneration(requestId);
+    } catch {
+        // 忽略取消接口错误
+    }
+    const msg = findStreamingMessage(requestId);
+    if (msg) {
+        const partialContent = getBufferedStreamContent(requestId);
+        msg.isStreaming = false;
+        msg.isThinking = false;
+        msg.status = "INTERRUPTED";
+        msg.content =
+            partialContent || "\uFF08\u751F\u6210\u5DF2\u505C\u6B62\uFF09";
+    }
+    finishPendingStream(requestId);
+}
+
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 鍒濆鍖?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+async function restoreSessionAfterRefresh() {
+    const preferredSessionId =
+        getPendingStreamState()?.sessionId ?? getStoredActiveSessionId();
+    if (!preferredSessionId) return;
+    if (
+        !sessions.value.some(
+            (session) => session.sessionId === preferredSessionId,
+        )
+    )
+        return;
+    await switchSession(preferredSessionId);
+}
+
+function handleBrowserOnline() {
+    const pending = getPendingStreamState();
+    if (!pending || pending.sessionId !== currentSessionId.value) return;
+    const replayFromSeq = hasBufferedStreamContent(pending.requestId)
+        ? pending.lastEventSeq
+        : 0;
+    void reconnectPendingStream(pending.requestId, replayFromSeq);
+}
+
+onMounted(async () => {
+    await Promise.all([loadSessions(), loadCurrentSolarTerm()]);
+    await restoreSessionAfterRefresh();
+    window.addEventListener("online", handleBrowserOnline);
+});
+
+onBeforeUnmount(() => {
+    clearReconnectTimer();
+    clearAllStreamDisplayStates();
+    window.removeEventListener("online", handleBrowserOnline);
 });
 
 async function loadCurrentSolarTerm() {
@@ -456,84 +1049,112 @@ async function loadCurrentSolarTerm() {
         if (data?.solarTerm?.termName) {
             currentSolarTermName.value = data.solarTerm.termName;
         }
-    } catch (error) {
-        console.error("AI 管家节气加载失败", error);
-    }
-}
-
-// ---- Add to cart ----
-function addToCart(event: Event) {
-    event.stopPropagation();
-    const btn = event.target as HTMLButtonElement;
-    btn.textContent = '✓ 已加购';
-    btn.style.background = 'var(--bamboo)';
-    toast('🛒 已加入购物车');
-}
-
-// ---- Handle artifact button clicks in dynamic content ----
-function handleArtifactClick(event: Event) {
-    const t = event.target as HTMLElement;
-    if (t.classList.contains('add-btn')) {
-        event.stopPropagation();
-        t.textContent = '✓ 已加购';
-        t.style.background = 'var(--bamboo)';
-        toast('🛒 已加入购物车');
-    } else if (t.classList.contains('handoff-btn')) {
-        toast('→ 跳转到名医健康圈（演示）');
-    } else if (t.classList.contains('btn-sm')) {
-        const txt = t.textContent || '';
-        if (txt.includes('打卡')) toast('📌 已加入元气社区打卡');
-        else if (txt.includes('重新生成')) toast('🔄 重新生成中…');
-        else if (txt.includes('全部加购')) toast('🛒 已全部加入购物车');
-        else if (txt.includes('换一组')) toast('🔄 重新选品中…');
-        else if (txt.includes('微调')) toast('✏️ 进入微调模式');
-        else if (txt.includes('分享')) toast('📤 生成分享海报');
+    } catch {
+        // use default value
     }
 }
 </script>
 
 <style scoped lang="scss">
-.page-wrapper { min-height: 100vh; }
+.page-wrapper {
+    min-height: 100vh;
+}
 
-.hub { max-width: 1200px; margin: 0 auto; padding: 32px 40px 80px; }
+.hub {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+}
 
 // Hero
 .hero {
-    background: linear-gradient(135deg, #E4EFE8 0%, #EDF4EF 60%, #FDFAF3 100%);
+    background: linear-gradient(135deg, #e4efe8 0%, #edf4ef 60%, #fdfaf3 100%);
     border: 1px solid var(--jade-soft);
-    border-radius: 20px; padding: 36px 40px; margin-bottom: 28px;
-    position: relative; overflow: hidden;
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
 }
 .hero::before {
-    content: '智'; position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
-    font-family: "STKaiti", serif; font-size: 200px;
-    color: var(--jade); opacity: 0.10; line-height: 1; font-weight: 900;
+    content: "\667A";
+    position: absolute;
+    right: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: "STKaiti", serif;
+    font-size: 200px;
+    color: var(--jade);
+    opacity: 0.1;
+    line-height: 1;
+    font-weight: 900;
 }
-.hero-text { position: relative; z-index: 1; }
-.hero-label { font-size: 13px; color: var(--jade); letter-spacing: 3px; margin-bottom: 8px; }
-.hero h1 { font-family: "STKaiti", serif; font-size: 38px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
-.hero-sub { color: var(--ink-muted); font-size: 15px; max-width: 600px; }
-.hero-meta { display: flex; gap: 24px; margin-top: 24px; font-size: 13px; flex-wrap: wrap; position: relative; z-index: 1; }
-.meta-item { display: flex; align-items: center; gap: 8px; color: var(--ink-muted); }
-.meta-item strong { color: var(--jade); font-weight: 600; }
+.hero-text {
+    position: relative;
+    z-index: 1;
+}
+.hero-label {
+    font-size: 13px;
+    color: var(--jade);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+}
+.hero h1 {
+    font-family: "STKaiti", serif;
+    font-size: 38px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+}
+.hero-sub {
+    color: var(--ink-muted);
+    font-size: 15px;
+    max-width: 600px;
+}
+.hero-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    font-size: 13px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+}
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-muted);
+}
+.meta-item strong {
+    color: var(--jade);
+    font-weight: 600;
+}
 
 // Chat App
 .chat-app {
-    background: var(--paper); border-radius: 16px; box-shadow: var(--shadow);
-    border: 1px solid rgba(232, 223, 208, 0.4); overflow: hidden;
-    display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 760px;
+    background: var(--paper);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(232, 223, 208, 0.4);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 252px minmax(0, 1fr);
+    min-height: 760px;
 }
 
 // Sidebar
 .side {
-    background: linear-gradient(180deg, #F9F3E7 0%, #F6EFE4 100%);
+    background: linear-gradient(180deg, #f9f3e7 0%, #f6efe4 100%);
     border-right: 1px solid var(--line-soft);
     display: flex;
     flex-direction: column;
     gap: 22px;
     padding: 24px 20px;
 }
-.side-top { flex-shrink: 0; }
+.side-top {
+    flex-shrink: 0;
+}
 .side-main {
     flex: 1;
     min-height: 0;
@@ -552,7 +1173,7 @@ function handleArtifactClick(event: Event) {
     gap: 8px;
 }
 .side-title::before {
-    content: '';
+    content: "";
     width: 4px;
     height: 16px;
     background: var(--jade);
@@ -573,31 +1194,39 @@ function handleArtifactClick(event: Event) {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all .2s;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     box-shadow: 0 10px 22px rgba(92, 131, 116, 0.18);
+    &:hover:not(:disabled) {
+        background: var(--ink);
+    }
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 }
-.new-chat-btn:hover { background: var(--ink); }
-
-.history-list { display: flex; flex-direction: column; }
+.history-list {
+    display: flex;
+    flex-direction: column;
+}
 .history-item {
     background: transparent;
     border: 1px solid transparent;
     border-radius: 14px;
     padding: 14px 14px;
     cursor: pointer;
-    transition: all .2s;
-}
-.history-item:hover {
-    background: rgba(255, 255, 255, 0.66);
-}
-.history-item.active {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(92, 131, 116, 0.14);
-    box-shadow: 0 10px 24px rgba(60, 50, 30, 0.06);
+    transition: all 0.2s;
+    &:hover {
+        background: rgba(255, 255, 255, 0.66);
+    }
+    &.active {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(92, 131, 116, 0.14);
+        box-shadow: 0 10px 24px rgba(60, 50, 30, 0.06);
+    }
 }
 .history-line {
     display: flex;
@@ -605,6 +1234,12 @@ function handleArtifactClick(event: Event) {
     justify-content: space-between;
     gap: 12px;
     min-width: 0;
+}
+.history-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 .history-item h6 {
     font-size: 15px;
@@ -622,336 +1257,754 @@ function handleArtifactClick(event: Event) {
     color: var(--ink-muted);
     font-size: 12px;
 }
+.history-delete-btn {
+    border: 1px solid transparent;
+    background: rgba(194, 96, 73, 0.08);
+    color: var(--cinnabar);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.history-item:hover .history-delete-btn,
+.history-item.active .history-delete-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+.history-delete-btn:hover:not(:disabled) {
+    background: rgba(194, 96, 73, 0.16);
+    border-color: rgba(194, 96, 73, 0.2);
+}
+.history-delete-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
 .history-sub {
     margin-top: 6px;
     color: var(--ink-muted);
     font-size: 12px;
 }
+.history-empty {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+.session-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(39, 41, 35, 0.18);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.session-dialog {
+    position: relative;
+    width: min(100%, 480px);
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid rgba(232, 223, 208, 0.8);
+    background: linear-gradient(
+        180deg,
+        rgba(255, 253, 249, 0.98) 0%,
+        rgba(252, 248, 240, 0.98) 100%
+    );
+    box-shadow:
+        0 28px 64px rgba(52, 43, 30, 0.16),
+        0 12px 24px rgba(52, 43, 30, 0.08);
+}
+
+.session-dialog__glow {
+    position: absolute;
+    inset: -40% auto auto -10%;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(
+        circle,
+        rgba(140, 176, 159, 0.2) 0%,
+        rgba(140, 176, 159, 0) 72%
+    );
+    pointer-events: none;
+}
+
+.session-dialog__header,
+.session-dialog__body,
+.session-dialog__actions {
+    position: relative;
+    z-index: 1;
+}
+
+.session-dialog__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 24px 0;
+}
+
+.session-dialog__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--jade);
+    font-weight: 700;
+}
+
+.session-dialog__eyebrow::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--jade), var(--jade-light));
+    box-shadow: 0 0 0 6px rgba(140, 176, 159, 0.12);
+}
+
+.session-dialog__close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(232, 223, 208, 0.95);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.session-dialog__close:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: rgba(140, 176, 159, 0.35);
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.session-dialog__close:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.session-dialog__body {
+    padding: 12px 24px 8px;
+}
+
+.session-dialog__title {
+    margin: 0;
+    font-family: "STKaiti", serif;
+    font-size: 28px;
+    line-height: 1.25;
+    color: var(--ink);
+}
+
+.session-dialog__desc {
+    margin: 12px 0 0;
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.session-dialog__session-card {
+    margin-top: 18px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(194, 96, 73, 0.14);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 250, 246, 0.96) 0%,
+        rgba(255, 244, 238, 0.98) 100%
+    );
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.session-dialog__session-label {
+    font-size: 12px;
+    color: var(--cinnabar);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.session-dialog__session-title {
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.session-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px 24px;
+}
+
+.session-dialog__btn {
+    min-width: 108px;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.session-dialog__btn--ghost {
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(232, 223, 208, 0.95);
+    color: var(--ink-soft);
+}
+
+.session-dialog__btn--ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--ink);
+}
+
+.session-dialog__btn--danger {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, #d46d54 0%, var(--cinnabar) 100%);
+    color: #fff;
+    box-shadow: 0 12px 22px rgba(194, 96, 73, 0.22);
+}
+
+.session-dialog__btn--danger:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(194, 96, 73, 0.26);
+}
+
+.session-dialog__btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
+}
 
 // Main chat
 .main {
-    background: linear-gradient(to bottom, var(--cream) 0%, var(--paper-warm) 100%);
-    display: flex; flex-direction: column;
+    background: linear-gradient(
+        to bottom,
+        var(--cream) 0%,
+        var(--paper-warm) 100%
+    );
+    display: flex;
+    flex-direction: column;
 }
 .chat-body {
-    flex: 1; padding: 32px 30px 36px; overflow-y: auto;
-    display: flex; flex-direction: column; gap: 28px;
+    flex: 1;
+    padding: 32px 30px 36px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
     max-height: 660px;
 }
-.msg-row { display: flex; gap: 18px; max-width: 98%; }
-.msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
-.msg-row.full { max-width: 100%; }
-.msg-avatar {
-    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 600;
+
+// Welcome state
+.welcome-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--ink-muted);
+    padding: 60px 20px;
+    .welcome-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--jade), var(--jade-light));
+        color: white;
+        font-family: "STKaiti", serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 600;
+    }
+    p {
+        font-size: 14px;
+        text-align: center;
+        max-width: 240px;
+        line-height: 1.7;
+    }
 }
-.msg-avatar.ai {
+
+// Message rows (shared with AiButlerMessage component via global styles)
+:deep(.msg-row) {
+    display: flex;
+    gap: 18px;
+    max-width: 98%;
+}
+:deep(.msg-row.me) {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+:deep(.msg-row.full) {
+    max-width: 100%;
+}
+:deep(.msg-avatar) {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+}
+:deep(.msg-avatar-img) {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: inherit;
+}
+:deep(.msg-avatar.ai) {
     background: linear-gradient(135deg, var(--jade), var(--jade-light));
-    color: white; font-family: "STKaiti", serif;
-}
-.msg-avatar.user { background: var(--gold-soft); color: var(--gold-deep); }
-.bubble-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
-.msg-row.me .bubble-wrap { align-items: flex-end; }
-.bub-tag {
-    display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px;
-    background: var(--jade-soft); color: var(--jade); font-weight: 600;
-}
-.bubble {
-    padding: 18px 22px; border-radius: 16px; font-size: 14px; line-height: 1.85;
-    box-shadow: 0 6px 18px rgba(60, 50, 30, 0.05);
-}
-.bub-ai { background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-top-left-radius: 4px; }
-.bub-me { background: var(--jade); color: white; border-top-right-radius: 4px; }
-
-.msg-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-.msg-action {
-    background: transparent; border: 1px solid var(--line); border-radius: 6px;
-    padding: 5px 10px; font-family: inherit; color: var(--ink-muted); cursor: pointer;
-    transition: all .2s; font-size: 11px;
-}
-.msg-action:hover { background: var(--cream); color: var(--ink); border-color: var(--ink-muted); }
-
-// Citations
-.artifact-citations { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.citation-card {
-    background: var(--paper-warm); border-radius: 10px; padding: 8px 12px;
-    display: flex; align-items: center; gap: 10px; border-left: 3px solid var(--gold);
-    cursor: pointer; transition: all .2s;
-}
-.citation-card:hover { background: var(--gold-soft); }
-.citation-card .ico {
-    width: 26px; height: 26px; border-radius: 6px; background: var(--gold-soft);
-    color: var(--gold-deep); display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex-shrink: 0;
-}
-.citation-card .info { flex: 1; min-width: 0; }
-.citation-card .info h6 { font-size: 12px; color: var(--ink); margin-bottom: 2px; }
-.citation-card .info .meta { font-size: 11px; color: var(--ink-muted); }
-.citation-card .arrow { color: var(--ink-muted); }
-
-// Plan artifact
-.artifact-plan {
-    background: linear-gradient(135deg, #FDFAF3 0%, #EDF4EF 100%);
-    border: 1.5px solid var(--jade-light); border-radius: 14px;
-    padding: 22px; margin-top: 16px;
-}
-.artifact-head {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
-    padding-bottom: 12px; border-bottom: 1px dashed var(--line);
-}
-.artifact-head .seal {
-    background: var(--jade); color: white; border-radius: 6px;
-    padding: 3px 10px; font-size: 11px; font-weight: 600;
+    color: white;
     font-family: "STKaiti", serif;
 }
-.artifact-head h5 { font-family: "STKaiti", serif; font-size: 16px; flex: 1; }
-.artifact-head .meta { font-size: 11px; color: var(--ink-muted); }
-
-.plan-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.plan-dim {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    padding: 12px 14px;
+:deep(.msg-avatar.user) {
+    background: var(--gold-soft);
+    color: var(--gold-deep);
 }
-.plan-dim .dim-head {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    font-family: "STKaiti", serif; font-size: 13px; font-weight: 600;
+:deep(.bubble-wrap) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
 }
-.plan-dim .ico {
-    width: 24px; height: 24px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center; font-size: 13px;
+:deep(.msg-row.me .bubble-wrap) {
+    align-items: flex-end;
 }
-.plan-dim.diet .ico { background: var(--gold-soft); color: var(--gold-deep); }
-.plan-dim.solar .ico { background: var(--jade-soft); color: var(--jade); }
-.plan-dim.sleep .ico { background: var(--moon-soft); color: var(--moon); }
-.plan-dim.exercise .ico { background: var(--bamboo-soft); color: var(--bamboo); }
-.plan-dim .row {
-    font-size: 12px; padding: 4px 0; color: var(--ink-soft); line-height: 1.6;
-    display: flex; gap: 6px; align-items: flex-start;
+:deep(.bub-tag) {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--jade-soft);
+    color: var(--jade);
+    font-weight: 600;
 }
-.plan-dim .row .t {
-    font-family: "STKaiti", serif; color: var(--ink-muted); flex-shrink: 0; width: 36px;
+:deep(.bubble) {
+    padding: 18px 22px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.85;
+    box-shadow: 0 6px 18px rgba(60, 50, 30, 0.05);
 }
-.plan-dim .row .c strong { color: var(--ink); }
-
-.artifact-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-.artifact-actions .btn-sm {
-    background: var(--jade); color: white; border: none; border-radius: 18px;
-    padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500;
-    display: inline-flex; align-items: center; gap: 4px;
+:deep(.bub-ai) {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-top-left-radius: 4px;
 }
-.artifact-actions .btn-sm:hover { background: var(--ink); }
-.artifact-actions .btn-sm.ghost { background: transparent; border: 1px solid var(--jade); color: var(--jade); }
-.artifact-actions .btn-sm.ghost:hover { background: var(--jade-soft); }
-.artifact-actions .btn-sm.gold { background: linear-gradient(135deg, var(--gold), var(--gold-deep)); }
-
-// Product reco
-.artifact-recos {
-    background: var(--paper-warm); border-radius: 14px; padding: 14px;
-    margin-top: 16px; border: 1px solid var(--line);
-}
-.reco-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.reco-card {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    overflow: hidden; cursor: pointer; transition: all .2s; display: flex; flex-direction: column;
-}
-.reco-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-.reco-card .thumb {
-    height: 70px; display: flex; align-items: center; justify-content: center; font-size: 32px;
-}
-.reco-card .body { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; }
-.reco-card h6 { font-size: 12px; line-height: 1.4; margin-bottom: 4px; }
-.reco-card .reason {
-    font-size: 10px; color: var(--ink-muted); margin-bottom: 6px;
-    line-height: 1.4; padding-left: 6px; border-left: 2px solid var(--jade);
-}
-.reco-card .price-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-.reco-card .price { color: var(--cinnabar); font-family: "STKaiti", serif; font-size: 14px; font-weight: 700; }
-.reco-card .add-btn {
-    background: var(--jade); color: white; border: none; border-radius: 5px;
-    padding: 3px 8px; font-size: 10px; cursor: pointer; font-family: inherit;
-}
-.reco-card .add-btn:hover { background: var(--ink); }
-
-// Handoff
-.handoff-card {
-    background: linear-gradient(135deg, #FBEEF1 0%, var(--cinnabar-soft) 100%);
-    border: 1.5px dashed var(--cinnabar); border-radius: 12px;
-    padding: 18px; margin-top: 16px;
-}
-.handoff-card h6 { font-family: "STKaiti", serif; font-size: 13px; color: var(--cinnabar); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.handoff-card p { font-size: 12px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.6; }
-.handoff-btn {
-    background: var(--cinnabar); color: white; border: none; border-radius: 18px;
-    padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600;
+:deep(.bub-me) {
+    background: var(--jade);
+    color: white;
+    border-top-right-radius: 4px;
 }
 
 // Quick prompts
 .quick-prompts {
-    padding: 16px 30px 14px; background: var(--paper);
-    display: flex; gap: 10px; overflow-x: auto; border-top: 1px solid var(--line-soft);
+    padding: 16px 30px 14px;
+    background: var(--paper);
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    border-top: 1px solid var(--line-soft);
 }
-.quick-prompts::-webkit-scrollbar { height: 4px; }
-.quick-prompts::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+.quick-prompts::-webkit-scrollbar {
+    height: 4px;
+}
+.quick-prompts::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 2px;
+}
 .quick-prompt {
-    flex-shrink: 0; padding: 8px 16px; background: var(--cream);
-    border: 1px solid var(--line); border-radius: 16px; font-size: 12px;
-    color: var(--ink-soft); cursor: pointer; transition: all .2s; font-family: inherit;
-    display: inline-flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+    padding: 8px 16px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    &:hover {
+        background: var(--jade-soft);
+        border-color: var(--jade);
+        color: var(--jade);
+    }
 }
-.quick-prompt:hover { background: var(--jade-soft); border-color: var(--jade); color: var(--jade); }
-.quick-prompt .tagico { font-size: 11px; }
+.quick-prompt .tagico {
+    font-size: 11px;
+}
+.quick-prompt--coming-soon {
+    position: relative;
+    border-style: dashed;
+    border-color: rgba(92, 131, 116, 0.35);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 252, 246, 0.96) 0%,
+        rgba(247, 251, 248, 0.98) 100%
+    );
+    color: var(--jade);
+}
+.quick-prompt--coming-soon:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(233, 243, 237, 0.96) 0%,
+        rgba(244, 249, 245, 0.98) 100%
+    );
+    border-color: var(--jade);
+    color: var(--jade);
+}
+.quick-prompt__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(92, 131, 116, 0.12);
+    color: var(--jade);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
 
 // Chat Input
-.chat-input-wrap { background: var(--paper); border-top: 1px solid var(--line-soft); padding: 18px 30px 24px; }
+.chat-input-wrap {
+    background: var(--paper);
+    border-top: 1px solid var(--line-soft);
+    padding: 18px 30px 24px;
+}
 .chat-input-row {
-    background: var(--paper-warm); border: 1.5px solid var(--line); border-radius: 18px;
-    display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+    background: var(--paper-warm);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    &:focus-within {
+        border-color: var(--jade);
+        box-shadow: 0 0 0 3px rgba(92, 131, 116, 0.1);
+    }
 }
-.chat-input-row:focus-within { border-color: var(--jade); box-shadow: 0 0 0 3px rgba(92, 131, 116, 0.1); }
 .chat-input-row input {
-    flex: 1; border: none; outline: none; padding: 8px;
-    font-size: 15px; font-family: inherit; background: transparent;
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    &::placeholder {
+        color: var(--ink-muted);
+    }
+    &:disabled {
+        color: var(--ink-muted);
+        cursor: not-allowed;
+    }
 }
-.chat-input-row input::placeholder { color: var(--ink-muted); }
-.icon-btn {
-    width: 32px; height: 32px; border-radius: 8px; background: transparent;
-    border: none; cursor: pointer; font-size: 16px; color: var(--ink-muted);
-    display: flex; align-items: center; justify-content: center; transition: all .2s;
-}
-.icon-btn:hover { background: var(--cream); color: var(--jade); }
 .send-btn {
-    background: var(--jade); color: white; border: none; border-radius: 12px;
-    padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
-    display: flex; align-items: center; gap: 4px;
+    background: var(--jade);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    &:hover:not(:disabled) {
+        background: var(--ink);
+    }
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 }
-.send-btn:hover { background: var(--ink); }
-.disclaimer { font-size: 11px; color: var(--ink-muted); margin-top: 10px; text-align: center; }
+.stop-btn {
+    background: var(--cinnabar) !important;
+    &:hover {
+        background: #c0392b !important;
+    }
+}
+.disclaimer {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 10px;
+    text-align: center;
+}
 
 // Toast
 .toast {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: white; padding: 12px 24px; border-radius: 24px;
-    font-size: 13px; box-shadow: var(--shadow-lg); opacity: 0; transition: all .3s;
-    z-index: 1000; pointer-events: none;
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 1000;
+    pointer-events: none;
+    &.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-6px);
+    }
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 
 @media (max-width: 1024px) {
-    .chat-app { grid-template-columns: 1fr; }
-    .side { display: none; }
-    .plan-dims { grid-template-columns: 1fr; }
-    .reco-grid { grid-template-columns: repeat(2, 1fr); }
-    .chat-body, .quick-prompts, .chat-input-wrap { padding-left: 20px; padding-right: 20px; }
-    .hero { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .chat-app {
+        grid-template-columns: 1fr;
+    }
+    .side {
+        display: none;
+    }
+    .chat-body,
+    .quick-prompts,
+    .chat-input-wrap {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    .hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .session-dialog-overlay {
+        padding: 16px;
+    }
+    .session-dialog {
+        border-radius: 24px;
+    }
+    .session-dialog__header {
+        padding: 18px 18px 0;
+    }
+    .session-dialog__body {
+        padding: 10px 18px 6px;
+    }
+    .session-dialog__title {
+        font-size: 24px;
+    }
+    .session-dialog__actions {
+        padding: 18px;
+        flex-direction: column-reverse;
+    }
+    .session-dialog__btn {
+        width: 100%;
+    }
 }
 </style>
 
-<!-- 以下样式不加 scoped，给 v-html 动态内容使用 -->
+<!-- 浠ヤ笅鏍峰紡涓嶅姞 scoped锛岀粰 AiButlerMessage 瀛愮粍浠朵腑鐨勫崱鐗囦娇鐢?-->
 <style lang="scss">
-// v-html 动态内容样式（与原型严格一致）
-.artifact-citations { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.artifact-citations {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+}
 .citation-card {
-    background: var(--paper-warm); border-radius: 10px; padding: 8px 12px;
-    display: flex; align-items: center; gap: 10px; border-left: 3px solid var(--gold);
+    background: var(--paper-warm);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 3px solid var(--gold);
     cursor: pointer;
+    .ico {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        background: var(--gold-soft);
+        color: var(--gold-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .info {
+        flex: 1;
+        min-width: 0;
+        h6 {
+            font-size: 12px;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+        .meta {
+            font-size: 11px;
+            color: var(--ink-muted);
+        }
+    }
+    .arrow {
+        color: var(--ink-muted);
+    }
 }
-.citation-card .ico {
-    width: 26px; height: 26px; border-radius: 6px; background: var(--gold-soft);
-    color: var(--gold-deep); display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex-shrink: 0;
-}
-.citation-card .info { flex: 1; min-width: 0; }
-.citation-card .info h6 { font-size: 12px; color: var(--ink); margin-bottom: 2px; }
-.citation-card .info .meta { font-size: 11px; color: var(--ink-muted); }
-.citation-card .arrow { color: var(--ink-muted); }
 
 .artifact-plan {
-    background: linear-gradient(135deg, #FDFAF3 0%, #EDF4EF 100%);
-    border: 1.5px solid var(--jade-light); border-radius: 14px;
-    padding: 18px; margin-top: 12px;
+    background: linear-gradient(135deg, #fdfaf3 0%, #edf4ef 100%);
+    border: 1.5px solid var(--jade-light);
+    border-radius: 14px;
+    padding: 18px;
+    margin-top: 12px;
 }
 .artifact-head {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
-    padding-bottom: 10px; border-bottom: 1px dashed var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--line);
+    .seal {
+        background: var(--jade);
+        color: white;
+        border-radius: 6px;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: "STKaiti", serif;
+    }
+    h5 {
+        font-family: "STKaiti", serif;
+        font-size: 16px;
+        flex: 1;
+    }
+    .meta {
+        font-size: 11px;
+        color: var(--ink-muted);
+    }
 }
-.artifact-head .seal {
-    background: var(--jade); color: white; border-radius: 6px;
-    padding: 3px 10px; font-size: 11px; font-weight: 600;
-    font-family: "STKaiti", serif;
+.plan-dims {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
-.artifact-head h5 { font-family: "STKaiti", serif; font-size: 16px; flex: 1; }
-.artifact-head .meta { font-size: 11px; color: var(--ink-muted); }
-
-.plan-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .plan-dim {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
     padding: 12px 14px;
-}
-.plan-dim .dim-head {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    font-family: "STKaiti", serif; font-size: 13px; font-weight: 600;
-}
-.plan-dim .ico {
-    width: 24px; height: 24px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center; font-size: 13px;
-}
-.plan-dim.diet .ico { background: var(--gold-soft); color: var(--gold-deep); }
-.plan-dim.solar .ico { background: var(--jade-soft); color: var(--jade); }
-.plan-dim.sleep .ico { background: var(--moon-soft); color: var(--moon); }
-.plan-dim.exercise .ico { background: var(--bamboo-soft); color: var(--bamboo); }
-.plan-dim .row {
-    font-size: 12px; padding: 4px 0; color: var(--ink-soft); line-height: 1.6;
-    display: flex; gap: 6px; align-items: flex-start;
-}
-.plan-dim .row .t {
-    font-family: "STKaiti", serif; color: var(--ink-muted); flex-shrink: 0; width: 36px;
-}
-.plan-dim .row .c strong { color: var(--ink); }
-
-.artifact-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-.artifact-actions .btn-sm {
-    background: var(--jade); color: white; border: none; border-radius: 18px;
-    padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500;
-    display: inline-flex; align-items: center; gap: 4px;
-}
-.artifact-actions .btn-sm.ghost { background: transparent; border: 1px solid var(--jade); color: var(--jade); }
-.artifact-actions .btn-sm.gold { background: linear-gradient(135deg, var(--gold), var(--gold-deep)); }
-
-.artifact-recos {
-    background: var(--paper-warm); border-radius: 14px; padding: 14px;
-    margin-top: 12px; border: 1px solid var(--line);
-}
-.reco-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.reco-card {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
-    overflow: hidden; cursor: pointer; display: flex; flex-direction: column;
-}
-.reco-card .thumb {
-    height: 70px; display: flex; align-items: center; justify-content: center; font-size: 32px;
-}
-.reco-card .body { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; }
-.reco-card h6 { font-size: 12px; line-height: 1.4; margin-bottom: 4px; }
-.reco-card .reason {
-    font-size: 10px; color: var(--ink-muted); margin-bottom: 6px;
-    line-height: 1.4; padding-left: 6px; border-left: 2px solid var(--jade);
-}
-.reco-card .price-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-.reco-card .price { color: var(--cinnabar); font-family: "STKaiti", serif; font-size: 14px; font-weight: 700; }
-.reco-card .add-btn {
-    background: var(--jade); color: white; border: none; border-radius: 5px;
-    padding: 3px 8px; font-size: 10px; cursor: pointer; font-family: inherit;
+    .dim-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-family: "STKaiti", serif;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .ico {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+    .row {
+        font-size: 12px;
+        padding: 4px 0;
+        color: var(--ink-soft);
+        line-height: 1.6;
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+    }
+    .row .t {
+        font-family: "STKaiti", serif;
+        color: var(--ink-muted);
+        flex-shrink: 0;
+        width: 36px;
+    }
+    .row .c strong {
+        color: var(--ink);
+    }
+    &.diet .ico {
+        background: var(--gold-soft);
+        color: var(--gold-deep);
+    }
+    &.solar .ico {
+        background: var(--jade-soft);
+        color: var(--jade);
+    }
+    &.sleep .ico {
+        background: var(--moon-soft, #f0f0ff);
+        color: #7c6fa8;
+    }
+    &.exercise .ico {
+        background: var(--bamboo-soft);
+        color: var(--bamboo);
+    }
 }
 
 .handoff-card {
-    background: linear-gradient(135deg, #FBEEF1 0%, var(--cinnabar-soft) 100%);
-    border: 1.5px dashed var(--cinnabar); border-radius: 12px;
-    padding: 14px; margin-top: 12px;
+    background: linear-gradient(135deg, #fbeef1 0%, var(--cinnabar-soft) 100%);
+    border: 1.5px dashed var(--cinnabar);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 12px;
+    h6 {
+        font-family: "STKaiti", serif;
+        font-size: 13px;
+        color: var(--cinnabar);
+        margin-bottom: 6px;
+    }
+    p {
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin-bottom: 10px;
+        line-height: 1.6;
+    }
 }
-.handoff-card h6 { font-family: "STKaiti", serif; font-size: 13px; color: var(--cinnabar); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.handoff-card p { font-size: 12px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.6; }
 .handoff-btn {
-    background: var(--cinnabar); color: white; border: none; border-radius: 18px;
-    padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--cinnabar);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    &:hover {
+        background: #c0392b;
+    }
 }
 </style>

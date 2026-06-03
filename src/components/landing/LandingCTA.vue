@@ -1,9 +1,8 @@
 <template>
-    <section ref="sectionEl" class="cta-section glass-section">
+    <section ref="sectionEl" class="cta-section">
         <div class="cta-glow" />
         <div class="container">
             <div class="cta-content">
-                <div class="cta-tag" data-animate>🌿 开始你的自然养生之旅</div>
                 <h2 class="cta-title" data-animate style="--delay: 80ms">
                     与自然同频<br />从今天开始
                 </h2>
@@ -51,9 +50,8 @@ const ctaFeatures = [
 
 <style lang="scss" scoped>
 .cta-section {
-    padding: 110px 0;
-    background: rgba(6, 10, 5, 0.72);
-    backdrop-filter: blur(5px);
+    padding: 120px 0;
+    background: rgba(6, 10, 5, 0.7);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -69,10 +67,10 @@ const ctaFeatures = [
     top: 0;
     transform: translateX(-50%);
     width: 600px;
-    height: 300px;
+    height: 320px;
     background: radial-gradient(
         ellipse at 50% 0%,
-        rgba(93, 112, 82, 0.18) 0%,
+        rgba(93, 112, 82, 0.12) 0%,
         transparent 70%
     );
     pointer-events: none;
@@ -82,33 +80,20 @@ const ctaFeatures = [
     z-index: 1;
     text-align: center;
 }
-.cta-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(93, 112, 82, 0.18);
-    border: 1px solid rgba(93, 112, 82, 0.3);
-    border-radius: 999px;
-    padding: 6px 16px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.75);
-    letter-spacing: 0.5px;
-    margin-bottom: 28px;
-}
 .cta-title {
-    font-size: 56px;
-    font-weight: 800;
+    font-size: clamp(2.5rem, 4.5vw, 3.5rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.1;
-    letter-spacing: -1.5px;
-    font-family: Georgia, serif;
-    margin-bottom: 16px;
-    text-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+    text-wrap: balance;
 }
 .cta-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.48);
-    line-height: 1.8;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.85;
     margin-bottom: 44px;
 }
 .cta-btns {

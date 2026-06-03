@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>设计范围选择</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: #fdfcf8;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                color: #2c2c24;
+                padding: 40px 24px 80px;
+                min-height: 100vh;
+            }
+            .page-header {
+                text-align: center;
+                margin-bottom: 48px;
+            }
+            .page-header h1 {
+                font-size: 28px;
+                font-weight: 700;
+                color: #2c2c24;
+                margin-bottom: 10px;
+            }
+            .page-header p {
+                color: #78786c;
+                font-size: 15px;
+            }
+
+            .options-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+                max-width: 1100px;
+                margin: 0 auto;
+            }
+
+            .option-card {
+                border: 2px solid #ded8cf;
+                border-radius: 24px;
+                overflow: hidden;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                background: #fefefa;
+            }
+            .option-card:hover {
+                border-color: #5d7052;
+                transform: translateY(-4px);
+                box-shadow: 0 16px 40px rgba(93, 112, 82, 0.15);
+            }
+            .option-card.selected {
+                border-color: #5d7052;
+                box-shadow:
+                    0 0 0 3px rgba(93, 112, 82, 0.25),
+                    0 16px 40px rgba(93, 112, 82, 0.15);
+            }
+
+            .preview-area {
+                height: 260px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            /* 方案A预览：全新有机风格首页 */
+            .preview-a {
+                background: #fdfcf8;
+                padding: 0;
+            }
+            .preview-a .nav-bar {
+                background: rgba(255, 255, 255, 0.8);
+                backdrop-filter: blur(8px);
+                padding: 10px 20px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                border-bottom: 1px solid rgba(222, 216, 207, 0.5);
+            }
+            .preview-a .logo-blob {
+                width: 28px;
+                height: 28px;
+                background: #5d7052;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .preview-a .nav-logo-text {
+                font-size: 13px;
+                font-weight: 700;
+                color: #2c2c24;
+            }
+            .preview-a .nav-links {
+                display: flex;
+                gap: 12px;
+                margin-left: auto;
+                font-size: 10px;
+                color: #78786c;
+            }
+            .preview-a .nav-btn {
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 5px 12px;
+                font-size: 10px;
+            }
+            .preview-a .hero-section {
+                padding: 24px 20px 0;
+                position: relative;
+            }
+            .preview-a .blob-bg {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                width: 100px;
+                height: 80px;
+                background: rgba(93, 112, 82, 0.12);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(16px);
+            }
+            .preview-a .blob-bg2 {
+                position: absolute;
+                right: 60px;
+                top: 30px;
+                width: 60px;
+                height: 60px;
+                background: rgba(193, 140, 93, 0.1);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(12px);
+            }
+            .preview-a .hero-label {
+                font-size: 9px;
+                color: #c18c5d;
+                letter-spacing: 3px;
+                margin-bottom: 6px;
+            }
+            .preview-a .hero-title {
+                font-size: 26px;
+                font-weight: 800;
+                color: #2c2c24;
+                line-height: 1.15;
+                margin-bottom: 8px;
+            }
+            .preview-a .hero-sub {
+                font-size: 10px;
+                color: #78786c;
+                line-height: 1.6;
+                max-width: 160px;
+                margin-bottom: 12px;
+            }
+            .preview-a .hero-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 7px 14px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .preview-a .stats-row {
+                display: flex;
+                gap: 8px;
+                margin-top: 16px;
+                padding: 0 20px;
+                flex-wrap: wrap;
+            }
+            .preview-a .stat-chip {
+                background: rgba(93, 112, 82, 0.08);
+                border: 1px solid rgba(93, 112, 82, 0.15);
+                border-radius: 999px;
+                padding: 4px 10px;
+                font-size: 9px;
+                color: #5d7052;
+            }
+
+            /* 方案B预览：功能页改造 */
+            .preview-b {
+                background: #fdfcf8;
+                padding: 12px;
+            }
+            .preview-b .inner-nav {
+                background: rgba(255, 255, 255, 0.75);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                border-radius: 999px;
+                padding: 7px 14px;
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+            .preview-b .seal {
+                width: 22px;
+                height: 22px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: #b33c2c;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+                font-weight: 700;
+            }
+            .preview-b .nav-name {
+                font-size: 11px;
+                font-weight: 700;
+                color: #2c3639;
+            }
+            .preview-b .nav-items {
+                display: flex;
+                gap: 10px;
+                margin-left: auto;
+                font-size: 9px;
+                color: #6b7c7a;
+            }
+            .preview-b .hero-card {
+                background: linear-gradient(
+                    135deg,
+                    rgba(92, 131, 116, 0.08),
+                    rgba(201, 165, 92, 0.06)
+                );
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                border-radius: 20px;
+                padding: 14px 16px;
+                margin-bottom: 10px;
+                position: relative;
+                overflow: hidden;
+            }
+            .preview-b .hero-card-blob {
+                position: absolute;
+                right: -10px;
+                top: -10px;
+                width: 70px;
+                height: 60px;
+                background: rgba(93, 112, 82, 0.1);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(10px);
+            }
+            .preview-b .hero-card-label {
+                font-size: 8px;
+                color: #c9a55c;
+                letter-spacing: 2px;
+                margin-bottom: 4px;
+            }
+            .preview-b .hero-card-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #2c3639;
+                margin-bottom: 6px;
+            }
+            .preview-b .hero-card-sub {
+                font-size: 9px;
+                color: #6b7c7a;
+                line-height: 1.5;
+            }
+            .preview-b .tabs-pill {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 10px;
+                flex-wrap: wrap;
+            }
+            .preview-b .tab-pill {
+                background: white;
+                border: 1px solid rgba(222, 216, 207, 0.6);
+                border-radius: 999px;
+                padding: 5px 10px;
+                font-size: 9px;
+                color: #6b7c7a;
+            }
+            .preview-b .tab-pill.active {
+                background: #5c8374;
+                color: white;
+                border-color: #5c8374;
+            }
+            .preview-b .content-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .preview-b .content-card {
+                background: white;
+                border: 1px solid rgba(232, 223, 208, 0.5);
+                border-radius: 14px;
+                padding: 10px;
+            }
+            .preview-b .content-card-title {
+                font-size: 9px;
+                font-weight: 600;
+                color: #2c3639;
+                margin-bottom: 4px;
+            }
+            .preview-b .content-card-body {
+                font-size: 8px;
+                color: #6b7c7a;
+                line-height: 1.5;
+            }
+
+            /* 方案C预览：独立营销页 */
+            .preview-c {
+                background: #5d7052;
+                padding: 0;
+                position: relative;
+                overflow: hidden;
+            }
+            .preview-c .blob-1 {
+                position: absolute;
+                top: -20px;
+                right: -20px;
+                width: 120px;
+                height: 100px;
+                background: rgba(255, 255, 255, 0.08);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(8px);
+            }
+            .preview-c .blob-2 {
+                position: absolute;
+                bottom: -10px;
+                left: -10px;
+                width: 90px;
+                height: 80px;
+                background: rgba(193, 140, 93, 0.2);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(10px);
+            }
+            .preview-c .grain {
+                position: absolute;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+                opacity: 0.4;
+                pointer-events: none;
+                mix-blend-mode: multiply;
+            }
+            .preview-c .content {
+                position: relative;
+                z-index: 1;
+                padding: 28px 20px 16px;
+                text-align: center;
+            }
+            .preview-c .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 999px;
+                padding: 4px 10px;
+                font-size: 9px;
+                color: rgba(255, 255, 255, 0.85);
+                margin-bottom: 14px;
+            }
+            .preview-c .title {
+                font-size: 24px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.2;
+                margin-bottom: 10px;
+            }
+            .preview-c .sub {
+                font-size: 10px;
+                color: rgba(255, 255, 255, 0.7);
+                line-height: 1.6;
+                max-width: 200px;
+                margin: 0 auto 16px;
+            }
+            .preview-c .cta-row {
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+            }
+            .preview-c .cta-primary {
+                background: white;
+                color: #5d7052;
+                border-radius: 999px;
+                padding: 7px 14px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .preview-c .cta-outline {
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                border-radius: 999px;
+                padding: 7px 14px;
+                font-size: 10px;
+            }
+            .preview-c .features-row {
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                margin-top: 16px;
+                flex-wrap: wrap;
+                padding: 0 8px;
+            }
+            .preview-c .feature-chip {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 12px;
+                padding: 6px 10px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.85);
+                text-align: center;
+            }
+            .feature-chip .icon {
+                font-size: 13px;
+                display: block;
+                margin-bottom: 3px;
+            }
+
+            .card-info {
+                padding: 20px;
+                border-top: 1px solid rgba(222, 216, 207, 0.5);
+            }
+            .card-label {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(93, 112, 82, 0.08);
+                border: 1px solid rgba(93, 112, 82, 0.15);
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 11px;
+                color: #5d7052;
+                font-weight: 600;
+                margin-bottom: 10px;
+            }
+            .card-title {
+                font-size: 16px;
+                font-weight: 700;
+                color: #2c2c24;
+                margin-bottom: 8px;
+            }
+            .card-desc {
+                font-size: 13px;
+                color: #78786c;
+                line-height: 1.65;
+                margin-bottom: 14px;
+            }
+            .tag-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .tag {
+                font-size: 11px;
+                padding: 3px 9px;
+                border-radius: 999px;
+                background: #f0ebe5;
+                color: #78786c;
+                border: 1px solid #ded8cf;
+            }
+
+            .select-hint {
+                text-align: center;
+                margin-top: 40px;
+                font-size: 13px;
+                color: #78786c;
+            }
+            .select-hint span {
+                background: rgba(93, 112, 82, 0.1);
+                border: 1px solid rgba(93, 112, 82, 0.2);
+                border-radius: 999px;
+                padding: 6px 16px;
+                color: #5d7052;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page-header">
+            <h1>你想设计什么？</h1>
+            <p>三种方向各有侧重，选择最符合你目标的那个</p>
+        </div>
+
+        <div class="options-grid">
+            <!-- 方案A：全新有机风格品牌首页 -->
+            <div class="option-card" onclick="selectOption(this, 'A')">
+                <div class="preview-area preview-a">
+                    <div class="nav-bar">
+                        <div class="logo-blob">颐</div>
+                        <span class="nav-logo-text">颐养阁</span>
+                        <div class="nav-links">
+                            <span>养生智库</span>
+                            <span>社区</span>
+                            <span>AI管家</span>
+                            <span class="nav-btn">立即体验</span>
+                        </div>
+                    </div>
+                    <div class="hero-section">
+                        <div class="blob-bg"></div>
+                        <div class="blob-bg2"></div>
+                        <div class="hero-label">
+                            YI YANG GE · 自然养生 顺时而为
+                        </div>
+                        <div class="hero-title">让每一天<br />与自然同频</div>
+                        <div class="hero-sub">
+                            节气养生 · 中医智慧 · 个性调养<br />一站式东方健康生活平台
+                        </div>
+                        <div class="hero-btn">🌿 开启养生之旅</div>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stat-chip">🌿 节气养生</span>
+                        <span class="stat-chip">🌙 睡眠作息</span>
+                        <span class="stat-chip">🍵 中医智慧</span>
+                        <span class="stat-chip">✨ 个性推荐</span>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div class="card-label">方案 A</div>
+                    <div class="card-title">全新品牌展示首页</div>
+                    <div class="card-desc">
+                        新建一个独立的营销/展示落地页，采用完整有机自然设计系统。不改动现有功能页面。
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag">新建页面</span>
+                        <span class="tag">品牌营销</span>
+                        <span class="tag">有机风格</span>
+                        <span class="tag">零改动现有代码</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方案B：现有功能页融合改造 -->
+            <div class="option-card" onclick="selectOption(this, 'B')">
+                <div class="preview-area preview-b">
+                    <div class="inner-nav">
+                        <div class="seal">颐</div>
+                        <span class="nav-name">颐养阁</span>
+                        <div class="nav-items">
+                            <span>养生智库</span><span>社区</span
+                            ><span>AI管家</span><span>商城</span>
+                        </div>
+                    </div>
+                    <div class="hero-card">
+                        <div class="hero-card-blob"></div>
+                        <div class="hero-card-label">
+                            YǍNG SHĒNG · 顺应节气 调和阴阳
+                        </div>
+                        <div class="hero-card-title">养生智库</div>
+                        <div class="hero-card-sub">
+                            集节气、睡眠、经期、中医于一体的养生平台
+                        </div>
+                    </div>
+                    <div class="tabs-pill">
+                        <span class="tab-pill active">🌿 节气养生</span>
+                        <span class="tab-pill">🌙 睡眠</span>
+                        <span class="tab-pill">🌸 经期</span>
+                        <span class="tab-pill">🍵 中医</span>
+                        <span class="tab-pill">✨ 推荐</span>
+                    </div>
+                    <div class="content-grid">
+                        <div class="content-card">
+                            <div class="content-card-title">📅 今日节气</div>
+                            <div class="content-card-body">
+                                立夏第3日 · 宜食酸、补心气
+                            </div>
+                        </div>
+                        <div class="content-card">
+                            <div class="content-card-title">🌙 睡眠报告</div>
+                            <div class="content-card-body">
+                                昨夜 7h 42min · 深睡 2h 15min
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div class="card-label">方案 B</div>
+                    <div class="card-title">现有功能页改造升级</div>
+                    <div class="card-desc">
+                        将有机自然设计元素融入现有页面（首页、导航栏、组件等），在中式美学基础上叠加自然质感。
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag">改造现有页面</span>
+                        <span class="tag">东西风格融合</span>
+                        <span class="tag">改动量中等</span>
+                        <span class="tag">保留功能不变</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 方案C：沉浸式品牌营销页 -->
+            <div class="option-card" onclick="selectOption(this, 'C')">
+                <div class="preview-area preview-c">
+                    <div class="grain"></div>
+                    <div class="blob-1"></div>
+                    <div class="blob-2"></div>
+                    <div class="content">
+                        <div class="badge">🌿 传承东方养生智慧</div>
+                        <div class="title">颐养阁<br />自然·健康·生活</div>
+                        <div class="sub">
+                            二十四节气 × 中医古方 × 现代科学<br />重新定义你的养生方式
+                        </div>
+                        <div class="cta-row">
+                            <span class="cta-primary">立即体验 →</span>
+                            <span class="cta-outline">了解更多</span>
+                        </div>
+                        <div class="features-row">
+                            <div class="feature-chip">
+                                <span class="icon">🌿</span>节气养生
+                            </div>
+                            <div class="feature-chip">
+                                <span class="icon">🌙</span>睡眠优化
+                            </div>
+                            <div class="feature-chip">
+                                <span class="icon">🍵</span>中医智慧
+                            </div>
+                            <div class="feature-chip">
+                                <span class="icon">🤖</span>AI管家
+                            </div>
+                            <div class="feature-chip">
+                                <span class="icon">👩‍⚕️</span>名医问诊
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <div class="card-label">方案 C</div>
+                    <div class="card-title">沉浸式品牌营销长页</div>
+                    <div class="card-desc">
+                        完整的一页式营销展示，包含
+                        Hero、功能介绍、专家团队、用户评价等多个区块，高视觉冲击力。
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag">新建长页面</span>
+                        <span class="tag">高视觉冲击</span>
+                        <span class="tag">多区块</span>
+                        <span class="tag">品牌推广</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="select-hint">点击选择方案，或直接在终端告诉我你的想法</div>
+
+        <script>
+            let selected = null;
+            function selectOption(el, choice) {
+                document
+                    .querySelectorAll(".option-card")
+                    .forEach((c) => c.classList.remove("selected"));
+                el.classList.add("selected");
+                selected = choice;
+                if (window.__companion)
+                    window.__companion.record({
+                        type: "click",
+                        choice,
+                        text: el.querySelector(".card-title").textContent,
+                    });
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,2489 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>颐养阁 · v7</title>
+        <style>
+            :root {
+                --moss: #5d7052;
+                --moss-dark: #4a5e42;
+                --moss-light: #8fa882;
+                --moss-soft: rgba(93, 112, 82, 0.12);
+                --terra: #c18c5d;
+                --terra-soft: rgba(193, 140, 93, 0.1);
+                --sand: #e6dccd;
+                --sand-light: #f0ebe5;
+                --bg: #fdfcf8;
+                --paper: #fefefa;
+                --ink: #2c2c24;
+                --ink-soft: #4a4a40;
+                --ink-muted: #78786c;
+                --border: #ded8cf;
+                --shadow-moss: 0 4px 20px -2px rgba(93, 112, 82, 0.15);
+                --shadow-float: 0 10px 40px -10px rgba(193, 140, 93, 0.2);
+                --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                font-family:
+                    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                    sans-serif;
+                color: var(--ink);
+                line-height: 1.6;
+                overflow-x: hidden;
+                background: #0c180a;
+            }
+
+            /* ── 全局固定森林场景 ── */
+            .scene {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+                overflow: hidden;
+                pointer-events: none;
+            }
+            .scene-bg {
+                position: absolute;
+                inset: -8%;
+                background-image: url("https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=85&auto=format&fit=crop");
+                background-size: cover;
+                background-position: center 30%;
+                animation: kenBurns 28s ease-in-out infinite alternate;
+                filter: brightness(0.65) saturate(1.12);
+            }
+            @keyframes kenBurns {
+                0% {
+                    transform: scale(1) translateX(0%) translateY(0%);
+                }
+                100% {
+                    transform: scale(1.08) translateX(-2%) translateY(-1.5%);
+                }
+            }
+
+            /* 全局暗角叠层，底部加深让滚动时内容区更沉稳 */
+            .scene-vignette {
+                position: absolute;
+                inset: 0;
+                background:
+                    radial-gradient(
+                        ellipse at 20% 0%,
+                        transparent 40%,
+                        rgba(0, 0, 0, 0.28) 100%
+                    ),
+                    linear-gradient(
+                        to bottom,
+                        transparent 0%,
+                        rgba(10, 16, 8, 0.18) 100%
+                    );
+            }
+
+            /* God Rays —— 固定在视口左上区域 */
+            .god-rays {
+                position: absolute;
+                top: -10%;
+                left: 18%;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+            }
+            .ray {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 220vh;
+                transform-origin: top center;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 235, 160, 0.55) 0%,
+                    rgba(255, 235, 160, 0.18) 20%,
+                    rgba(255, 235, 160, 0.04) 50%,
+                    transparent 70%
+                );
+                animation: rayPulse var(--dur, 5s) ease-in-out infinite;
+                animation-delay: var(--delay, 0s);
+                filter: blur(var(--blur, 3px));
+            }
+            .ray-1 {
+                width: 80px;
+                transform: rotate(-28deg);
+                --dur: 6s;
+                --delay: 0s;
+                --blur: 6px;
+                opacity: 0.7;
+            }
+            .ray-2 {
+                width: 40px;
+                transform: rotate(-22deg);
+                --dur: 8s;
+                --delay: 0.8s;
+                --blur: 4px;
+                opacity: 0.5;
+            }
+            .ray-3 {
+                width: 120px;
+                transform: rotate(-18deg);
+                --dur: 7s;
+                --delay: 1.5s;
+                --blur: 8px;
+                opacity: 0.6;
+            }
+            .ray-4 {
+                width: 30px;
+                transform: rotate(-14deg);
+                --dur: 5.5s;
+                --delay: 2.2s;
+                --blur: 3px;
+                opacity: 0.45;
+            }
+            .ray-5 {
+                width: 60px;
+                transform: rotate(-10deg);
+                --dur: 9s;
+                --delay: 0.4s;
+                --blur: 5px;
+                opacity: 0.4;
+            }
+            .ray-6 {
+                width: 20px;
+                transform: rotate(-6deg);
+                --dur: 6.5s;
+                --delay: 3s;
+                --blur: 2px;
+                opacity: 0.35;
+            }
+            .ray-7 {
+                width: 50px;
+                transform: rotate(-2deg);
+                --dur: 7.5s;
+                --delay: 1s;
+                --blur: 4px;
+                opacity: 0.3;
+            }
+            .ray-8 {
+                width: 15px;
+                transform: rotate(3deg);
+                --dur: 10s;
+                --delay: 2s;
+                --blur: 2px;
+                opacity: 0.25;
+            }
+            @keyframes rayPulse {
+                0%,
+                100% {
+                    opacity: 0.12;
+                }
+                40%,
+                60% {
+                    opacity: 1;
+                }
+            }
+
+            /* 太阳光晕 */
+            .sun-bloom {
+                position: absolute;
+                top: -10%;
+                left: 18%;
+                transform: translate(-50%, -50%);
+                width: 320px;
+                height: 320px;
+                background: radial-gradient(
+                    circle,
+                    rgba(255, 248, 180, 0.55) 0%,
+                    rgba(255, 220, 100, 0.22) 18%,
+                    rgba(255, 190, 80, 0.08) 36%,
+                    transparent 60%
+                );
+                border-radius: 50%;
+                animation: bloomPulse 6s ease-in-out infinite;
+                mix-blend-mode: screen;
+                filter: blur(8px);
+            }
+            @keyframes bloomPulse {
+                0%,
+                100% {
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 0.7;
+                }
+                50% {
+                    transform: translate(-50%, -50%) scale(1.15);
+                    opacity: 1;
+                }
+            }
+
+            /* 漂浮尘埃粒子 —— 全页可见 */
+            .particles {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                overflow: hidden;
+            }
+            .particle {
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 240, 180, 0.7);
+                animation: floatUp var(--dur, 12s) ease-in-out infinite;
+                animation-delay: var(--delay, 0s);
+                width: var(--size, 3px);
+                height: var(--size, 3px);
+                left: var(--x, 20%);
+                bottom: -10px;
+                filter: blur(0.5px);
+            }
+            @keyframes floatUp {
+                0% {
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 0.8;
+                }
+                90% {
+                    opacity: 0.3;
+                }
+                100% {
+                    transform: translateY(-100vh) translateX(var(--drift, 30px));
+                    opacity: 0;
+                }
+            }
+            .p1 {
+                --x: 8%;
+                --size: 2px;
+                --dur: 14s;
+                --delay: 0s;
+                --drift: 20px;
+            }
+            .p2 {
+                --x: 15%;
+                --size: 3px;
+                --dur: 11s;
+                --delay: 2s;
+                --drift: -15px;
+            }
+            .p3 {
+                --x: 22%;
+                --size: 2px;
+                --dur: 16s;
+                --delay: 0.5s;
+                --drift: 25px;
+            }
+            .p4 {
+                --x: 30%;
+                --size: 4px;
+                --dur: 13s;
+                --delay: 4s;
+                --drift: -10px;
+            }
+            .p5 {
+                --x: 38%;
+                --size: 2px;
+                --dur: 18s;
+                --delay: 1s;
+                --drift: 18px;
+            }
+            .p6 {
+                --x: 45%;
+                --size: 3px;
+                --dur: 12s;
+                --delay: 6s;
+                --drift: -22px;
+            }
+            .p7 {
+                --x: 55%;
+                --size: 2px;
+                --dur: 15s;
+                --delay: 3s;
+                --drift: 12px;
+            }
+            .p8 {
+                --x: 62%;
+                --size: 4px;
+                --dur: 10s;
+                --delay: 7s;
+                --drift: -18px;
+            }
+            .p9 {
+                --x: 72%;
+                --size: 2px;
+                --dur: 17s;
+                --delay: 1.5s;
+                --drift: 8px;
+            }
+            .p10 {
+                --x: 80%;
+                --size: 3px;
+                --dur: 13s;
+                --delay: 5s;
+                --drift: 28px;
+            }
+            .p11 {
+                --x: 88%;
+                --size: 2px;
+                --dur: 19s;
+                --delay: 3.5s;
+                --drift: -12px;
+            }
+            .p12 {
+                --x: 94%;
+                --size: 3px;
+                --dur: 14s;
+                --delay: 8s;
+                --drift: 16px;
+            }
+
+            /* 全局纸质纹理 */
+            body::after {
+                content: "";
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 9999;
+                opacity: 0.028;
+                mix-blend-mode: multiply;
+                background-image: var(--grain);
+            }
+
+            /* ── 通用 ── */
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 48px;
+            }
+            .section-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(255, 255, 255, 0.14);
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                border-radius: 999px;
+                padding: 5px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.9);
+                letter-spacing: 0.5px;
+                margin-bottom: 16px;
+                backdrop-filter: blur(6px);
+            }
+            .section-title {
+                font-size: 42px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.15;
+                letter-spacing: -0.5px;
+                font-family: Georgia, "STSong", serif;
+                text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+            }
+            .section-sub {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.72);
+                line-height: 1.75;
+                max-width: 520px;
+                margin-top: 12px;
+                text-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+            }
+
+            /* ── 导航栏 ── */
+            .navbar {
+                position: fixed;
+                top: 16px;
+                left: 0;
+                right: 0;
+                z-index: 200;
+                padding: 0 40px;
+            }
+            .navbar-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 999px;
+                padding: 10px 20px;
+                display: flex;
+                align-items: center;
+                gap: 24px;
+                box-shadow:
+                    0 4px 24px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+                transition: all 0.4s ease;
+            }
+            .navbar-inner.scrolled {
+                background: rgba(20, 26, 16, 0.72);
+                border-color: rgba(93, 112, 82, 0.25);
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+            }
+            .nav-logo {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                text-decoration: none;
+                flex-shrink: 0;
+            }
+            .nav-logo-blob {
+                width: 34px;
+                height: 34px;
+                background: #b33c2c;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 13px;
+                font-weight: 800;
+                box-shadow: 0 2px 8px rgba(179, 60, 44, 0.4);
+            }
+            .nav-logo-name {
+                font-size: 16px;
+                font-weight: 700;
+                color: white;
+            }
+            .nav-links {
+                display: flex;
+                gap: 4px;
+                flex: 1;
+            }
+            .nav-link {
+                padding: 6px 14px;
+                border-radius: 999px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.8);
+                text-decoration: none;
+                transition: all 0.2s;
+                cursor: pointer;
+            }
+            .nav-link:hover {
+                background: rgba(255, 255, 255, 0.12);
+                color: white;
+            }
+            .nav-actions {
+                display: flex;
+                gap: 8px;
+                margin-left: auto;
+            }
+            .btn-ghost-nav {
+                padding: 8px 18px;
+                border-radius: 999px;
+                border: 1.5px solid rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.07);
+                color: rgba(255, 255, 255, 0.88);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.25s;
+            }
+            .btn-ghost-nav:hover {
+                background: rgba(255, 255, 255, 0.14);
+            }
+            .btn-primary-nav {
+                padding: 8px 20px;
+                border-radius: 999px;
+                background: white;
+                color: var(--moss);
+                border: none;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+                transition: all 0.25s;
+            }
+            .btn-primary-nav:hover {
+                transform: scale(1.04);
+            }
+
+            /* ── 页面内容层（z-index 高于 scene）── */
+            .page-content {
+                position: relative;
+                z-index: 1;
+            }
+
+            /* ── Hero ── */
+            .hero {
+                position: relative;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                overflow: hidden;
+            }
+            /* Hero 底部渐出，与下方区块自然融合 */
+            .hero::after {
+                content: "";
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 180px;
+                background: linear-gradient(
+                    to bottom,
+                    transparent 0%,
+                    rgba(10, 16, 8, 0.15) 100%
+                );
+                pointer-events: none;
+            }
+            .scroll-hint {
+                position: absolute;
+                bottom: 56px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            .scroll-hint-text {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.45);
+                letter-spacing: 2px;
+                text-transform: uppercase;
+            }
+            .scroll-line {
+                width: 1px;
+                height: 36px;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.55),
+                    transparent
+                );
+                animation: scrollLine 2s ease-in-out infinite;
+            }
+            @keyframes scrollLine {
+                0%,
+                100% {
+                    transform: scaleY(1);
+                    opacity: 1;
+                }
+                50% {
+                    transform: scaleY(0.6) translateY(6px);
+                    opacity: 0.4;
+                }
+            }
+            .hero-content {
+                position: relative;
+                z-index: 2;
+                max-width: 1240px;
+                margin: 0 auto;
+                padding: 140px 48px 110px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 52px;
+                align-items: center;
+            }
+            .hero-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 999px;
+                padding: 7px 18px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.9);
+                letter-spacing: 1.5px;
+                margin-bottom: 32px;
+                backdrop-filter: blur(8px);
+            }
+            .hero-title {
+                font-size: 86px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.02;
+                letter-spacing: -3px;
+                margin-bottom: 24px;
+                font-family: Georgia, "STSong", serif;
+                text-shadow: 0 4px 40px rgba(0, 0, 0, 0.45);
+            }
+            .hero-title .light {
+                font-weight: 300;
+                font-size: 58px;
+                display: block;
+                opacity: 0.78;
+                margin-bottom: 4px;
+                letter-spacing: -1.5px;
+            }
+            .hero-sub {
+                font-size: 17px;
+                color: rgba(255, 255, 255, 0.72);
+                line-height: 1.9;
+                max-width: 420px;
+                margin-bottom: 40px;
+                text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            }
+            .hero-btns {
+                display: flex;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .hero-btn-p {
+                background: rgba(255, 255, 255, 0.95);
+                color: var(--moss);
+                border-radius: 999px;
+                padding: 16px 34px;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+                transition: all 0.25s;
+                border: none;
+            }
+            .hero-btn-p:hover {
+                transform: scale(1.04) translateY(-2px);
+            }
+            .hero-btn-o {
+                border: 1.5px solid rgba(255, 255, 255, 0.35);
+                background: rgba(255, 255, 255, 0.07);
+                color: white;
+                border-radius: 999px;
+                padding: 16px 30px;
+                font-size: 16px;
+                cursor: pointer;
+                backdrop-filter: blur(8px);
+                transition: all 0.25s;
+            }
+            .hero-btn-o:hover {
+                background: rgba(255, 255, 255, 0.16);
+            }
+
+            /* 毛玻璃卡片 */
+            .hero-right {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+            }
+            .fg-card {
+                position: relative;
+                border-radius: 22px;
+                padding: 26px 20px 22px;
+                overflow: hidden;
+                cursor: default;
+                transition:
+                    transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1),
+                    box-shadow 0.3s ease;
+                background: rgba(255, 255, 255, 0.11);
+                backdrop-filter: blur(18px) saturate(1.45);
+                -webkit-backdrop-filter: blur(18px) saturate(1.45);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow:
+                    0 6px 24px rgba(0, 0, 0, 0.18),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.07);
+            }
+            .fg-card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 42%;
+                border-radius: 22px 22px 50% 50% / 22px 22px 32% 32%;
+                background: linear-gradient(
+                    175deg,
+                    rgba(255, 255, 255, 0.16) 0%,
+                    rgba(255, 255, 255, 0.05) 40%,
+                    transparent 70%
+                );
+                pointer-events: none;
+            }
+            .fg-card:hover {
+                transform: translateY(-7px) scale(1.028);
+                box-shadow:
+                    0 18px 44px rgba(0, 0, 0, 0.26),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+                background: rgba(255, 255, 255, 0.16);
+            }
+            .fg-card:nth-child(2) {
+                border-radius: 22px 48px 22px 22px;
+            }
+            .fg-card:nth-child(3) {
+                border-radius: 22px 22px 22px 48px;
+            }
+            .fg-card.wide {
+                grid-column: span 2;
+                border-radius: 999px;
+                padding: 20px 32px;
+                display: flex;
+                align-items: center;
+                gap: 18px;
+            }
+            .fg-card.wide::before {
+                border-radius: 999px;
+                height: 55%;
+            }
+            .fg-card.wide:hover {
+                transform: translateY(-5px) scale(1.012);
+            }
+            .fg-icon-wrap {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 14px;
+            }
+            .fg-icon {
+                font-size: 28px;
+                line-height: 1;
+                filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
+            }
+            .fg-icon-wrap::after {
+                content: "";
+                width: 1px;
+                height: 24px;
+                background: rgba(255, 255, 255, 0.2);
+                flex-shrink: 0;
+            }
+            .fg-card.wide .fg-icon-wrap {
+                margin-bottom: 0;
+            }
+            .fg-card.wide .fg-icon-wrap::after {
+                display: none;
+            }
+            .fg-card.wide .fg-icon {
+                font-size: 26px;
+            }
+            .fg-name {
+                font-size: 14px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.96);
+                margin-bottom: 5px;
+                text-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+            }
+            .fg-card.wide .fg-name {
+                margin-bottom: 3px;
+            }
+            .fg-desc {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1.6;
+            }
+
+            /* ══════════════════════════════════════
+   下方各区块：全部使用半透明毛玻璃叠层
+   森林背景透过各区块隐约可见，消除割裂感
+══════════════════════════════════════ */
+
+            /* 区块通用：相对定位，内容在 z-index:1 层 */
+            .glass-section {
+                position: relative;
+                overflow: hidden;
+            }
+            /* blob 装饰（颜色比 v6 更淡，因为背景本身已有绿意）*/
+            .blob {
+                position: absolute;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(60px);
+                pointer-events: none;
+                opacity: 0.55;
+            }
+
+            /* ── Stats ── */
+            .stats {
+                padding: 72px 0;
+                background: rgba(8, 18, 6, 0.42);
+                backdrop-filter: blur(2px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                position: relative;
+                z-index: 1;
+            }
+            .stat-item {
+                text-align: center;
+                padding: 36px 24px;
+                position: relative;
+            }
+            .stat-item + .stat-item::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 20%;
+                bottom: 20%;
+                width: 1px;
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .stat-num {
+                font-size: 52px;
+                font-weight: 800;
+                color: rgba(255, 255, 255, 0.95);
+                line-height: 1;
+                font-family: Georgia, serif;
+                margin-bottom: 8px;
+                text-shadow: 0 0 30px rgba(93, 112, 82, 0.5);
+            }
+            .stat-unit {
+                font-size: 24px;
+                font-weight: 400;
+                opacity: 0.65;
+            }
+            .stat-label {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.52);
+            }
+
+            /* ── Features ── */
+            .features {
+                padding: 108px 0;
+                background: rgba(15, 22, 12, 0.58);
+                backdrop-filter: blur(3px);
+                position: relative;
+                overflow: hidden;
+            }
+            .features-header {
+                text-align: center;
+                margin-bottom: 64px;
+                position: relative;
+                z-index: 1;
+            }
+            .features-header .section-sub {
+                margin: 12px auto 0;
+                text-align: center;
+            }
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+                position: relative;
+                z-index: 1;
+            }
+            .feature-card {
+                background: rgba(255, 255, 255, 0.07);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 1.5rem;
+                padding: 32px;
+                box-shadow:
+                    0 4px 24px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                transition: all 0.3s;
+                cursor: default;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+            .feature-card:hover {
+                transform: translateY(-6px);
+                background: rgba(255, 255, 255, 0.12);
+                border-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
+            .feature-icon-wrap {
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+                background: rgba(93, 112, 82, 0.25);
+                border: 1px solid rgba(93, 112, 82, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 26px;
+                margin-bottom: 20px;
+                transition: all 0.3s;
+            }
+            .feature-card:hover .feature-icon-wrap {
+                background: rgba(93, 112, 82, 0.45);
+            }
+            .feature-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.92);
+                margin-bottom: 10px;
+            }
+            .feature-desc {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.55);
+                line-height: 1.7;
+                margin-bottom: 16px;
+            }
+            .feature-tags {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .feature-tag {
+                font-size: 11px;
+                padding: 3px 10px;
+                border-radius: 999px;
+                background: rgba(93, 112, 82, 0.2);
+                color: var(--moss-light);
+                border: 1px solid rgba(93, 112, 82, 0.25);
+            }
+
+            /* ── AI 管家 ── */
+            .ai-butler {
+                padding: 108px 0;
+                background: rgba(6, 14, 5, 0.5);
+                backdrop-filter: blur(3px);
+                position: relative;
+                overflow: hidden;
+            }
+            .ai-butler-inner {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 64px;
+                align-items: center;
+            }
+            /* 左侧特性列表 */
+            .ai-feats {
+                list-style: none;
+                margin-top: 36px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .ai-feat {
+                display: flex;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            .ai-feat-icon {
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+                border-radius: 12px;
+                background: rgba(93, 112, 82, 0.2);
+                border: 1px solid rgba(93, 112, 82, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+            }
+            .ai-feat-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 3px;
+            }
+            .ai-feat-desc {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.5);
+                line-height: 1.6;
+            }
+
+            /* 右侧聊天窗口 */
+            .ai-butler-right {
+                display: flex;
+                justify-content: center;
+            }
+            .chat-window {
+                width: 100%;
+                max-width: 440px;
+                border-radius: 24px;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                box-shadow:
+                    0 24px 64px rgba(0, 0, 0, 0.45),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                background: rgba(12, 20, 10, 0.72);
+            }
+            /* 顶栏 */
+            .chat-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px 20px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                background: rgba(255, 255, 255, 0.04);
+            }
+            .chat-avatar {
+                width: 38px;
+                height: 38px;
+                border-radius: 12px;
+                flex-shrink: 0;
+                background: linear-gradient(
+                    135deg,
+                    rgba(93, 112, 82, 0.7),
+                    rgba(70, 90, 60, 0.9)
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                border: 1px solid rgba(93, 112, 82, 0.4);
+            }
+            .chat-name {
+                font-size: 14px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .chat-status {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+            }
+            .chat-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #4ade80;
+                animation: pulse 2s ease-in-out infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.4;
+                }
+            }
+            .chat-header-tag {
+                margin-left: auto;
+                font-size: 10px;
+                color: rgba(255, 255, 255, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 999px;
+                padding: 3px 10px;
+            }
+            /* 消息区 */
+            .chat-body {
+                padding: 20px 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .chat-sys {
+                text-align: center;
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.04);
+                border-radius: 999px;
+                padding: 5px 14px;
+                margin: 0 auto;
+            }
+            .chat-row {
+                display: flex;
+            }
+            .chat-row.ai {
+                justify-content: flex-start;
+            }
+            .chat-row.user {
+                justify-content: flex-end;
+            }
+            .chat-bubble {
+                max-width: 88%;
+                border-radius: 16px;
+                padding: 12px 14px;
+                font-size: 13px;
+                line-height: 1.7;
+            }
+            .chat-bubble.ai {
+                background: rgba(93, 112, 82, 0.18);
+                border: 1px solid rgba(93, 112, 82, 0.25);
+                color: rgba(255, 255, 255, 0.82);
+                border-bottom-left-radius: 4px;
+            }
+            .chat-bubble.ai strong {
+                color: rgba(255, 255, 255, 0.95);
+            }
+            .chat-bubble.user {
+                background: rgba(93, 112, 82, 0.45);
+                border: 1px solid rgba(93, 112, 82, 0.5);
+                color: rgba(255, 255, 255, 0.9);
+                border-bottom-right-radius: 4px;
+            }
+            /* 转诊卡片 */
+            .chat-referral {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                background: rgba(193, 140, 93, 0.12);
+                border: 1px solid rgba(193, 140, 93, 0.25);
+                border-radius: 14px;
+                padding: 12px 14px;
+                max-width: 88%;
+            }
+            .referral-left {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .referral-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+                flex-shrink: 0;
+                background: linear-gradient(
+                    135deg,
+                    rgba(93, 112, 82, 0.6),
+                    rgba(193, 140, 93, 0.6)
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+            }
+            .referral-name {
+                font-size: 12px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.85);
+            }
+            .referral-org {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+            }
+            .referral-btn {
+                flex-shrink: 0;
+                background: rgba(193, 140, 93, 0.55);
+                border: 1px solid rgba(193, 140, 93, 0.5);
+                color: rgba(255, 255, 255, 0.9);
+                border-radius: 999px;
+                padding: 6px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.2s;
+            }
+            .referral-btn:hover {
+                background: rgba(193, 140, 93, 0.75);
+            }
+            /* 打字动画气泡 */
+            .typing-bubble {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                padding: 14px 18px;
+                min-width: 56px;
+            }
+            .typing-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.4);
+                animation: typingBounce 1.2s ease-in-out infinite;
+            }
+            .typing-dot:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+            .typing-dot:nth-child(3) {
+                animation-delay: 0.4s;
+            }
+            @keyframes typingBounce {
+                0%,
+                80%,
+                100% {
+                    transform: translateY(0);
+                }
+                40% {
+                    transform: translateY(-5px);
+                    opacity: 0.8;
+                }
+            }
+            /* 输入框 */
+            .chat-input-bar {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 16px;
+                border-top: 1px solid rgba(255, 255, 255, 0.07);
+                background: rgba(255, 255, 255, 0.03);
+            }
+            .chat-input {
+                flex: 1;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 999px;
+                padding: 9px 16px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.5);
+                outline: none;
+                font-family: inherit;
+            }
+            .chat-send {
+                width: 36px;
+                height: 36px;
+                border-radius: 999px;
+                flex-shrink: 0;
+                background: rgba(93, 112, 82, 0.6);
+                border: 1px solid rgba(93, 112, 82, 0.5);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .chat-send:hover {
+                background: rgba(93, 112, 82, 0.85);
+            }
+
+            /* ── How ── */
+            .how {
+                padding: 108px 0;
+                background: rgba(8, 16, 6, 0.48);
+                backdrop-filter: blur(2px);
+                position: relative;
+                overflow: hidden;
+            }
+            .how-header {
+                text-align: center;
+                margin-bottom: 72px;
+                position: relative;
+                z-index: 1;
+            }
+            .how-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .how-steps {
+                display: grid;
+                grid-template-columns: 1fr 80px 1fr 80px 1fr;
+                align-items: center;
+                max-width: 900px;
+                margin: 0 auto;
+                position: relative;
+                z-index: 1;
+            }
+            .how-connector {
+                text-align: center;
+            }
+            .how-connector svg {
+                width: 60px;
+                opacity: 0.4;
+            }
+            .how-step {
+                text-align: center;
+                padding: 0 20px;
+            }
+            .how-step-num {
+                width: 56px;
+                height: 56px;
+                border-radius: 999px;
+                background: rgba(93, 112, 82, 0.5);
+                border: 2px solid rgba(93, 112, 82, 0.7);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+                font-weight: 800;
+                margin: 0 auto 22px;
+                box-shadow:
+                    0 8px 24px -4px rgba(93, 112, 82, 0.4),
+                    0 0 20px rgba(93, 112, 82, 0.2);
+                font-family: Georgia, serif;
+                backdrop-filter: blur(8px);
+            }
+            .how-step-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.92);
+                margin-bottom: 10px;
+            }
+            .how-step-desc {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.52);
+                line-height: 1.7;
+            }
+
+            /* ── Experts ── */
+            .experts {
+                padding: 108px 0;
+                background: rgba(20, 12, 6, 0.52);
+                backdrop-filter: blur(3px);
+                position: relative;
+                overflow: hidden;
+            }
+            .experts-header {
+                text-align: center;
+                margin-bottom: 64px;
+                position: relative;
+                z-index: 1;
+            }
+            .experts-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .experts-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px;
+                position: relative;
+                z-index: 1;
+            }
+            .expert-card {
+                background: rgba(255, 255, 255, 0.07);
+                border: 1px solid rgba(255, 255, 255, 0.11);
+                border-radius: 2rem;
+                padding: 36px 28px;
+                text-align: center;
+                box-shadow:
+                    0 4px 24px rgba(0, 0, 0, 0.22),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                transition: all 0.3s;
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+            }
+            .expert-card:hover {
+                transform: rotate(1deg) translateY(-5px);
+                background: rgba(255, 255, 255, 0.11);
+                border-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
+            .expert-avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: linear-gradient(
+                    135deg,
+                    rgba(93, 112, 82, 0.8) 0%,
+                    rgba(193, 140, 93, 0.8) 100%
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 18px;
+                font-size: 28px;
+                font-weight: 800;
+                color: white;
+                font-family: Georgia, serif;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            }
+            .expert-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.92);
+                margin-bottom: 4px;
+            }
+            .expert-title {
+                font-size: 13px;
+                color: var(--moss-light);
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            .expert-org {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-bottom: 14px;
+            }
+            .expert-tags {
+                display: flex;
+                gap: 5px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .expert-tag {
+                font-size: 11px;
+                padding: 3px 9px;
+                border-radius: 999px;
+                background: rgba(93, 112, 82, 0.2);
+                color: var(--moss-light);
+                border: 1px solid rgba(93, 112, 82, 0.25);
+            }
+
+            /* ── Testimonials ── */
+            .testimonials {
+                padding: 108px 0;
+                background: rgba(8, 14, 6, 0.44);
+                backdrop-filter: blur(2px);
+                position: relative;
+                overflow: hidden;
+            }
+            .testimonials-header {
+                text-align: center;
+                margin-bottom: 64px;
+                position: relative;
+                z-index: 1;
+            }
+            .testimonials-header .section-sub {
+                margin: 12px auto 0;
+            }
+            .testi-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px;
+                position: relative;
+                z-index: 1;
+            }
+            .testi-card {
+                background: rgba(255, 255, 255, 0.07);
+                border: 1px solid rgba(255, 255, 255, 0.11);
+                border-radius: 2rem;
+                padding: 30px;
+                box-shadow:
+                    0 4px 20px rgba(0, 0, 0, 0.18),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                transition: all 0.3s;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+            .testi-card:hover {
+                transform: rotate(1deg);
+                background: rgba(255, 255, 255, 0.1);
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+            }
+            .testi-card:nth-child(2):hover {
+                transform: rotate(-1deg);
+            }
+            .testi-quote {
+                font-size: 36px;
+                line-height: 1;
+                color: rgba(143, 168, 130, 0.5);
+                font-family: Georgia, serif;
+                margin-bottom: 12px;
+            }
+            .testi-text {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.68);
+                line-height: 1.85;
+                margin-bottom: 20px;
+                font-style: italic;
+            }
+            .testi-user {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .testi-avatar {
+                width: 38px;
+                height: 38px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: linear-gradient(
+                    135deg,
+                    rgba(93, 112, 82, 0.7),
+                    rgba(193, 140, 93, 0.7)
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+                font-weight: 700;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            .testi-name {
+                font-size: 13px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.85);
+            }
+            .testi-role {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.4);
+            }
+            .testi-stars {
+                margin-left: auto;
+                color: var(--terra);
+                font-size: 13px;
+                letter-spacing: 1px;
+            }
+
+            /* ── CTA ── */
+            .cta-section {
+                padding: 110px 0;
+                background: rgba(6, 10, 5, 0.72);
+                backdrop-filter: blur(5px);
+                position: relative;
+                overflow: hidden;
+            }
+            /* CTA 区域额外的光晕装饰，让暗区也有生机 */
+            .cta-glow {
+                position: absolute;
+                left: 50%;
+                top: 0;
+                transform: translateX(-50%);
+                width: 600px;
+                height: 300px;
+                background: radial-gradient(
+                    ellipse at 50% 0%,
+                    rgba(93, 112, 82, 0.18) 0%,
+                    transparent 70%
+                );
+                pointer-events: none;
+            }
+            .cta-content {
+                position: relative;
+                z-index: 1;
+                text-align: center;
+            }
+            .cta-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(93, 112, 82, 0.18);
+                border: 1px solid rgba(93, 112, 82, 0.3);
+                border-radius: 999px;
+                padding: 6px 16px;
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.75);
+                letter-spacing: 0.5px;
+                margin-bottom: 28px;
+            }
+            .cta-title {
+                font-size: 56px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.1;
+                letter-spacing: -1.5px;
+                font-family: Georgia, serif;
+                margin-bottom: 16px;
+                text-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            }
+            .cta-sub {
+                font-size: 16px;
+                color: rgba(255, 255, 255, 0.48);
+                line-height: 1.8;
+                margin-bottom: 44px;
+            }
+            .cta-btns {
+                display: flex;
+                gap: 14px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .cta-btn-p {
+                background: rgba(93, 112, 82, 0.85);
+                color: white;
+                border-radius: 999px;
+                padding: 17px 38px;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                border: 1px solid rgba(93, 112, 82, 0.6);
+                box-shadow:
+                    0 8px 32px rgba(93, 112, 82, 0.3),
+                    0 0 24px rgba(93, 112, 82, 0.15);
+                transition: all 0.25s;
+                backdrop-filter: blur(8px);
+            }
+            .cta-btn-p:hover {
+                transform: scale(1.04);
+                background: rgba(93, 112, 82, 1);
+            }
+            .cta-btn-o {
+                border: 1.5px solid rgba(255, 255, 255, 0.18);
+                background: rgba(255, 255, 255, 0.05);
+                color: rgba(255, 255, 255, 0.78);
+                border-radius: 999px;
+                padding: 17px 38px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: all 0.25s;
+                backdrop-filter: blur(6px);
+            }
+            .cta-btn-o:hover {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.32);
+            }
+            .cta-features {
+                display: flex;
+                gap: 36px;
+                justify-content: center;
+                margin-top: 52px;
+                flex-wrap: wrap;
+            }
+            .cta-feature-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.38);
+            }
+            .cta-feature-item::before {
+                content: "✓";
+                width: 18px;
+                height: 18px;
+                border-radius: 999px;
+                background: rgba(93, 112, 82, 0.25);
+                color: var(--moss-light);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+            }
+
+            /* ── Footer ── */
+            .footer {
+                padding: 52px 0 36px;
+                background: rgba(4, 8, 3, 0.88);
+                backdrop-filter: blur(6px);
+                position: relative;
+                overflow: hidden;
+            }
+            .footer-glow {
+                position: absolute;
+                left: -40px;
+                top: -30px;
+                width: 200px;
+                height: 180px;
+                background: rgba(93, 112, 82, 0.06);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(48px);
+                pointer-events: none;
+            }
+            .footer-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 48px;
+                display: grid;
+                grid-template-columns: 1.4fr 1fr 1fr 1fr;
+                gap: 48px;
+                margin-bottom: 44px;
+                position: relative;
+                z-index: 1;
+            }
+            .footer-logo {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            .footer-logo-blob {
+                width: 32px;
+                height: 32px;
+                background: #b33c2c;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 12px;
+                font-weight: 800;
+                box-shadow: 0 2px 8px rgba(179, 60, 44, 0.35);
+            }
+            .footer-logo-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.78);
+            }
+            .footer-desc {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.28);
+                line-height: 1.8;
+            }
+            .footer-col-title {
+                font-size: 11px;
+                font-weight: 700;
+                color: rgba(255, 255, 255, 0.42);
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                margin-bottom: 18px;
+            }
+            .footer-links {
+                list-style: none;
+            }
+            .footer-links li {
+                margin-bottom: 11px;
+            }
+            .footer-links a {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.28);
+                text-decoration: none;
+                transition: color 0.2s;
+            }
+            .footer-links a:hover {
+                color: rgba(255, 255, 255, 0.68);
+            }
+            .footer-bottom {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px 48px 0;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: relative;
+                z-index: 1;
+            }
+            .footer-copy {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.2);
+            }
+            .footer-social {
+                display: flex;
+                gap: 10px;
+            }
+            .social-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: rgba(255, 255, 255, 0.4);
+            }
+            .social-icon:hover {
+                background: rgba(93, 112, 82, 0.2);
+                border-color: rgba(93, 112, 82, 0.3);
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            /* 注释条 */
+            .design-note {
+                background: rgba(74, 94, 66, 0.9);
+                color: white;
+                text-align: center;
+                padding: 10px;
+                font-size: 12px;
+                letter-spacing: 0.5px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 300;
+                backdrop-filter: blur(8px);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="design-note">
+            🌿 颐养阁 · v7 — 全页动态森林背景：forest fixed
+            铺底，各区块半透明毛玻璃叠层，滚动无割裂
+        </div>
+
+        <!-- ── 固定森林场景层 ── -->
+        <div class="scene">
+            <div class="scene-bg"></div>
+            <div class="scene-vignette"></div>
+
+            <!-- God Rays 固定在视口左上 -->
+            <div class="god-rays">
+                <div class="ray ray-1"></div>
+                <div class="ray ray-2"></div>
+                <div class="ray ray-3"></div>
+                <div class="ray ray-4"></div>
+                <div class="ray ray-5"></div>
+                <div class="ray ray-6"></div>
+                <div class="ray ray-7"></div>
+                <div class="ray ray-8"></div>
+            </div>
+            <div class="sun-bloom"></div>
+
+            <!-- 漂浮粒子 —— 全页持续 -->
+            <div class="particles">
+                <div class="particle p1"></div>
+                <div class="particle p2"></div>
+                <div class="particle p3"></div>
+                <div class="particle p4"></div>
+                <div class="particle p5"></div>
+                <div class="particle p6"></div>
+                <div class="particle p7"></div>
+                <div class="particle p8"></div>
+                <div class="particle p9"></div>
+                <div class="particle p10"></div>
+                <div class="particle p11"></div>
+                <div class="particle p12"></div>
+            </div>
+        </div>
+
+        <!-- ── 页面内容层 ── -->
+        <div class="page-content">
+            <!-- 导航 -->
+            <nav class="navbar">
+                <div class="navbar-inner" id="navbarInner">
+                    <a class="nav-logo" href="#"
+                        ><div class="nav-logo-blob">颐</div>
+                        <span class="nav-logo-name">颐养阁</span></a
+                    >
+                    <div class="nav-links">
+                        <span class="nav-link">功能介绍</span>
+                        <span class="nav-link">专家团队</span>
+                        <span class="nav-link">用户评价</span>
+                        <span class="nav-link">名医健康圈</span>
+                    </div>
+                    <div class="nav-actions">
+                        <button class="btn-primary-nav">前往登录 / 注册</button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Hero -->
+            <section class="hero">
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-badge">
+                            🌿 传承东方养生智慧 · 顺时而为
+                        </div>
+                        <h1 class="hero-title">
+                            <span class="light">让每一天</span>与自然同频
+                        </h1>
+                        <p class="hero-sub">
+                            二十四节气 × 中医古方 × AI个性推荐<br />一站式东方自然健康生活平台，<br />让养生回归最本真的节律。
+                        </p>
+                        <div class="hero-btns">
+                            <button class="hero-btn-p">🌿 开启养生之旅</button>
+                            <button class="hero-btn-o">了解更多</button>
+                        </div>
+                    </div>
+
+                    <div class="hero-right">
+                        <div class="fg-card">
+                            <div class="fg-icon-wrap">
+                                <span class="fg-icon">🌿</span>
+                            </div>
+                            <div class="fg-name">节气养生</div>
+                            <div class="fg-desc">
+                                随二十四节气变化，调整饮食起居，顺时而为
+                            </div>
+                        </div>
+                        <div class="fg-card">
+                            <div class="fg-icon-wrap">
+                                <span class="fg-icon">🌙</span>
+                            </div>
+                            <div class="fg-name">睡眠作息</div>
+                            <div class="fg-desc">
+                                追踪记录，优化你的自然睡眠节律
+                            </div>
+                        </div>
+                        <div class="fg-card">
+                            <div class="fg-icon-wrap">
+                                <span class="fg-icon">🍵</span>
+                            </div>
+                            <div class="fg-name">中医智慧</div>
+                            <div class="fg-desc">
+                                体质辨识，古法今用，调和阴阳平衡
+                            </div>
+                        </div>
+                        <div class="fg-card">
+                            <div class="fg-icon-wrap">
+                                <span class="fg-icon">🤖</span>
+                            </div>
+                            <div class="fg-name">AI 管家</div>
+                            <div class="fg-desc">
+                                专属健康顾问，智能分析每日状态
+                            </div>
+                        </div>
+                        <div class="fg-card wide">
+                            <div class="fg-icon-wrap">
+                                <span class="fg-icon">👩‍⚕️</span>
+                            </div>
+                            <div>
+                                <div class="fg-name">名医健康圈 · 在线问诊</div>
+                                <div class="fg-desc">
+                                    50+ 三甲医院认证专家，随时在线，专业守护
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="scroll-hint">
+                    <span class="scroll-hint-text">向下滚动</span>
+                    <div class="scroll-line"></div>
+                </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="stats glass-section">
+                <div class="container">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-num">
+                                24<span class="stat-unit">节</span>
+                            </div>
+                            <div class="stat-label">二十四节气完整覆盖</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-num">
+                                6<span class="stat-unit">+</span>
+                            </div>
+                            <div class="stat-label">健康管理功能模块</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-num">
+                                50<span class="stat-unit">+</span>
+                            </div>
+                            <div class="stat-label">三甲医院认证专家</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-num">
+                                10<span class="stat-unit">万+</span>
+                            </div>
+                            <div class="stat-label">活跃用户</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features -->
+            <section class="features glass-section">
+                <div class="container">
+                    <div class="features-header">
+                        <div class="section-tag">✦ 核心功能</div>
+                        <h2 class="section-title">
+                            六大模块，<br />守护你的自然节律
+                        </h2>
+                        <p class="section-sub">
+                            从节气饮食到睡眠优化，从经期管理到情绪疗愈——每一个模块都与你的身体深度协同。
+                        </p>
+                    </div>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">🌿</div>
+                            <div class="feature-name">节气养生</div>
+                            <p class="feature-desc">
+                                根据当前节气推送饮食、作息、经络调理建议，顺时而为。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">饮食推荐</span
+                                ><span class="feature-tag">作息指南</span>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">🌙</div>
+                            <div class="feature-name">睡眠作息</div>
+                            <p class="feature-desc">
+                                记录睡眠质量，AI分析规律，给出个性化改善建议。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">睡眠追踪</span
+                                ><span class="feature-tag">AI分析</span>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">🌸</div>
+                            <div class="feature-name">经期管理</div>
+                            <p class="feature-desc">
+                                智能预测经期，根据不同阶段推送养生建议。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">周期预测</span
+                                ><span class="feature-tag">阶段养生</span>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">🍵</div>
+                            <div class="feature-name">中医养生</div>
+                            <p class="feature-desc">
+                                九大体质辨识，推荐食疗、穴位与中药茶饮方案。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">体质辨识</span
+                                ><span class="feature-tag">食疗方案</span>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">🫂</div>
+                            <div class="feature-name">情绪疗愈</div>
+                            <p class="feature-desc">
+                                冥想引导、情绪日记与正念练习，找回内心平静。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">冥想引导</span
+                                ><span class="feature-tag">正念练习</span>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon-wrap">✨</div>
+                            <div class="feature-name">个性推荐</div>
+                            <p class="feature-desc">
+                                AI管家综合多维数据，每日生成专属养生日历。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">AI定制</span
+                                ><span class="feature-tag">每日日历</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI 管家 -->
+            <section class="ai-butler glass-section">
+                <div class="container">
+                    <div class="ai-butler-inner">
+                        <!-- 左：文字介绍 -->
+                        <div class="ai-butler-left">
+                            <div class="section-tag">✦ AI 管家</div>
+                            <h2 class="section-title">
+                                你的专属<br />东方健康顾问
+                            </h2>
+                            <p class="section-sub">
+                                基于中医体质理论 × 节气时令 ×
+                                大语言模型，随时为你解答健康问题、生成个性方案。
+                            </p>
+
+                            <ul class="ai-feats">
+                                <li class="ai-feat">
+                                    <div class="ai-feat-icon">🌿</div>
+                                    <div>
+                                        <div class="ai-feat-name">
+                                            节气健康日历
+                                        </div>
+                                        <div class="ai-feat-desc">
+                                            每日推送当令饮食、作息与穴位建议
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="ai-feat">
+                                    <div class="ai-feat-icon">🧬</div>
+                                    <div>
+                                        <div class="ai-feat-name">
+                                            体质辨识分析
+                                        </div>
+                                        <div class="ai-feat-desc">
+                                            问答式评估，生成九大体质专属方案
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="ai-feat">
+                                    <div class="ai-feat-icon">💬</div>
+                                    <div>
+                                        <div class="ai-feat-name">
+                                            实时健康问答
+                                        </div>
+                                        <div class="ai-feat-desc">
+                                            随时提问，中西医知识融合解答
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="ai-feat">
+                                    <div class="ai-feat-icon">👩‍⚕️</div>
+                                    <div>
+                                        <div class="ai-feat-name">
+                                            智能转诊推荐
+                                        </div>
+                                        <div class="ai-feat-desc">
+                                            识别需专业就诊情况，一键连接名医
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- 右：对话 UI mockup -->
+                        <div class="ai-butler-right">
+                            <div class="chat-window">
+                                <!-- 顶栏 -->
+                                <div class="chat-header">
+                                    <div class="chat-avatar">🤖</div>
+                                    <div>
+                                        <div class="chat-name">
+                                            颐养 AI 管家
+                                        </div>
+                                        <div class="chat-status">
+                                            <span class="chat-dot"></span
+                                            >在线服务中
+                                        </div>
+                                    </div>
+                                    <div class="chat-header-tag">
+                                        由 DeepSeek 驱动
+                                    </div>
+                                </div>
+
+                                <!-- 消息列表 -->
+                                <div class="chat-body">
+                                    <!-- 系统提示 -->
+                                    <div class="chat-sys">
+                                        今天是芒种节气 🌾 已为你生成专属建议
+                                    </div>
+
+                                    <!-- AI 主动 -->
+                                    <div class="chat-row ai">
+                                        <div class="chat-bubble ai">
+                                            芒种时节，暑热渐盛，湿气偏重。根据你的<strong>气虚体质</strong>，今日建议：<br /><br />
+                                            🍲
+                                            <strong>饮食</strong
+                                            >：薏仁赤小豆粥，健脾祛湿<br />
+                                            🛏 <strong>作息</strong>：午后小憩
+                                            20 分钟，补充阳气<br />
+                                            💧
+                                            <strong>补水</strong
+                                            >：温水为主，少喝冷饮
+                                        </div>
+                                    </div>
+
+                                    <!-- 用户 -->
+                                    <div class="chat-row user">
+                                        <div class="chat-bubble user">
+                                            最近容易胸闷气短，有什么调理方法吗？
+                                        </div>
+                                    </div>
+
+                                    <!-- AI 回复 -->
+                                    <div class="chat-row ai">
+                                        <div class="chat-bubble ai">
+                                            胸闷气短在气虚体质中较常见，芒种湿热更易加重。<br /><br />
+                                            ✅
+                                            可尝试<strong>黄芪枸杞茶</strong>，每日一杯补气固表<br />
+                                            ✅
+                                            练习<strong>腹式深呼吸</strong>，每次
+                                            5 分钟<br />
+                                            ✅
+                                            避免剧烈运动，选择<strong>八段锦</strong>代替
+                                        </div>
+                                    </div>
+
+                                    <!-- 转诊卡片 -->
+                                    <div class="chat-row ai">
+                                        <div class="chat-referral">
+                                            <div class="referral-left">
+                                                <div class="referral-icon">
+                                                    👩‍⚕️
+                                                </div>
+                                                <div>
+                                                    <div class="referral-name">
+                                                        张明慧 · 主任中医师
+                                                    </div>
+                                                    <div class="referral-org">
+                                                        北京协和医院 ·
+                                                        气虚调理专家
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button class="referral-btn">
+                                                立即问诊
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 用户输入中 -->
+                                    <div class="chat-row user">
+                                        <div
+                                            class="chat-bubble user typing-bubble"
+                                        >
+                                            <span class="typing-dot"></span>
+                                            <span class="typing-dot"></span>
+                                            <span class="typing-dot"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 输入框 -->
+                                <div class="chat-input-bar">
+                                    <input
+                                        class="chat-input"
+                                        type="text"
+                                        placeholder="向 AI 管家提问…"
+                                        readonly
+                                    />
+                                    <button class="chat-send">
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            width="16"
+                                            height="16"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
+                                            />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How -->
+            <section class="how glass-section">
+                <div class="container">
+                    <div class="how-header">
+                        <div class="section-tag">✦ 开始使用</div>
+                        <h2 class="section-title">
+                            三步开启<br />你的自然养生之旅
+                        </h2>
+                        <p class="section-sub">
+                            注册只需 60 秒，AI 管家完成体质评估并生成专属方案。
+                        </p>
+                    </div>
+                    <div class="how-steps">
+                        <div class="how-step">
+                            <div class="how-step-num">1</div>
+                            <div class="how-step-name">注册账号</div>
+                            <p class="how-step-desc">
+                                填写基本信息与体质问卷（约 3 分钟）
+                            </p>
+                        </div>
+                        <div class="how-connector">
+                            <svg viewBox="0 0 60 24" fill="none">
+                                <path
+                                    d="M4 12 C14 4,24 20,34 12 C44 4,54 16,58 12"
+                                    stroke="#8fa882"
+                                    stroke-width="2"
+                                    stroke-dasharray="4 3"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M54 8 L58 12 L54 16"
+                                    stroke="#8fa882"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+                        </div>
+                        <div class="how-step">
+                            <div class="how-step-num">2</div>
+                            <div class="how-step-name">探索功能</div>
+                            <p class="how-step-desc">
+                                查看节气指南，记录睡眠与情绪状态
+                            </p>
+                        </div>
+                        <div class="how-connector">
+                            <svg viewBox="0 0 60 24" fill="none">
+                                <path
+                                    d="M4 12 C14 20,24 4,34 12 C44 20,54 8,58 12"
+                                    stroke="#8fa882"
+                                    stroke-width="2"
+                                    stroke-dasharray="4 3"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M54 8 L58 12 L54 16"
+                                    stroke="#8fa882"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+                        </div>
+                        <div class="how-step">
+                            <div class="how-step-num">3</div>
+                            <div class="how-step-name">获取方案</div>
+                            <p class="how-step-desc">
+                                AI 生成每日养生日历 + 专家推荐
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Experts -->
+            <section class="experts glass-section">
+                <div class="container">
+                    <div class="experts-header">
+                        <div class="section-tag">✦ 专家团队</div>
+                        <h2 class="section-title">
+                            名医健康圈<br />50+ 认证专家在线
+                        </h2>
+                        <p class="section-sub">
+                            来自三甲医院的中西医专家，提供在线问诊与专业健康咨询。
+                        </p>
+                    </div>
+                    <div class="experts-grid">
+                        <div class="expert-card">
+                            <div class="expert-avatar">张</div>
+                            <div class="expert-name">张明慧</div>
+                            <div class="expert-title">主任中医师</div>
+                            <div class="expert-org">北京协和医院 · 中医科</div>
+                            <div class="expert-tags">
+                                <span class="expert-tag">体质调理</span
+                                ><span class="expert-tag">节气养生</span>
+                            </div>
+                        </div>
+                        <div class="expert-card">
+                            <div class="expert-avatar">李</div>
+                            <div class="expert-name">李春晓</div>
+                            <div class="expert-title">营养科主任</div>
+                            <div class="expert-org">上海中医药大学附属医院</div>
+                            <div class="expert-tags">
+                                <span class="expert-tag">食疗方案</span
+                                ><span class="expert-tag">减重管理</span>
+                            </div>
+                        </div>
+                        <div class="expert-card">
+                            <div class="expert-avatar">王</div>
+                            <div class="expert-name">王子轩</div>
+                            <div class="expert-title">睡眠科专家</div>
+                            <div class="expert-org">
+                                广州中医药大学第一附属医院
+                            </div>
+                            <div class="expert-tags">
+                                <span class="expert-tag">睡眠障碍</span
+                                ><span class="expert-tag">针灸理疗</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Testimonials -->
+            <section class="testimonials glass-section">
+                <div class="container">
+                    <div class="testimonials-header">
+                        <div class="section-tag">✦ 用户评价</div>
+                        <h2 class="section-title">真实用户<br />真实改变</h2>
+                        <p class="section-sub">来自社区用户的真实体验分享。</p>
+                    </div>
+                    <div class="testi-grid">
+                        <div class="testi-card">
+                            <div class="testi-quote">"</div>
+                            <p class="testi-text">
+                                按节气调整饮食后，整个人感觉轻盈了很多，春困也减轻了不少。
+                            </p>
+                            <div class="testi-user">
+                                <div class="testi-avatar">小</div>
+                                <div>
+                                    <div class="testi-name">小雨同学</div>
+                                    <div class="testi-role">
+                                        使用 3 个月 · 阴虚体质
+                                    </div>
+                                </div>
+                                <div class="testi-stars">★★★★★</div>
+                            </div>
+                        </div>
+                        <div class="testi-card">
+                            <div class="testi-quote">"</div>
+                            <p class="testi-text">
+                                AI
+                                管家帮我分析失眠根因，照做后睡眠明显改善，再也不用数羊了。
+                            </p>
+                            <div class="testi-user">
+                                <div class="testi-avatar">陈</div>
+                                <div>
+                                    <div class="testi-name">陈志远</div>
+                                    <div class="testi-role">
+                                        使用 5 个月 · 气郁体质
+                                    </div>
+                                </div>
+                                <div class="testi-stars">★★★★★</div>
+                            </div>
+                        </div>
+                        <div class="testi-card">
+                            <div class="testi-quote">"</div>
+                            <p class="testi-text">
+                                照着张医师的专属经期方案做了两个月，痛经减轻了很多，太感谢了。
+                            </p>
+                            <div class="testi-user">
+                                <div class="testi-avatar">月</div>
+                                <div>
+                                    <div class="testi-name">月牙儿</div>
+                                    <div class="testi-role">
+                                        使用 2 个月 · 寒湿体质
+                                    </div>
+                                </div>
+                                <div class="testi-stars">★★★★★</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA -->
+            <section class="cta-section glass-section">
+                <div class="cta-glow"></div>
+                <div class="container">
+                    <div class="cta-content">
+                        <div class="cta-tag">🌿 开始你的自然养生之旅</div>
+                        <h2 class="cta-title">与自然同频<br />从今天开始</h2>
+                        <p class="cta-sub">
+                            免费注册，立即体验六大功能模块<br />让 AI
+                            管家为你生成第一份专属养生日历
+                        </p>
+                        <div class="cta-btns">
+                            <button class="cta-btn-p">🌿 免费开始使用</button>
+                            <button class="cta-btn-o">查看全部功能</button>
+                        </div>
+                        <div class="cta-features">
+                            <span class="cta-feature-item">完全免费注册</span>
+                            <span class="cta-feature-item">AI 体质评估</span>
+                            <span class="cta-feature-item">专属养生日历</span>
+                            <span class="cta-feature-item">50+ 认证专家</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer glass-section">
+                <div class="footer-glow"></div>
+                <div class="footer-inner">
+                    <div>
+                        <div class="footer-logo">
+                            <div class="footer-logo-blob">颐</div>
+                            <span class="footer-logo-name">颐养阁</span>
+                        </div>
+                        <p class="footer-desc">
+                            传承东方养生智慧<br />让自然节律守护健康生活
+                        </p>
+                    </div>
+                    <div>
+                        <div class="footer-col-title">功能模块</div>
+                        <ul class="footer-links">
+                            <li><a href="#">节气养生</a></li>
+                            <li><a href="#">睡眠作息</a></li>
+                            <li><a href="#">经期管理</a></li>
+                            <li><a href="#">中医养生</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div class="footer-col-title">服务</div>
+                        <ul class="footer-links">
+                            <li><a href="#">名医健康圈</a></li>
+                            <li><a href="#">AI 管家</a></li>
+                            <li><a href="#">元气社区</a></li>
+                            <li><a href="#">健康商城</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div class="footer-col-title">关于</div>
+                        <ul class="footer-links">
+                            <li><a href="#">关于我们</a></li>
+                            <li><a href="#">隐私政策</a></li>
+                            <li><a href="#">联系我们</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <span class="footer-copy"
+                        >© 2026 颐养阁 · 传承东方养生智慧</span
+                    >
+                    <div class="footer-social">
+                        <!-- 微信 -->
+                        <div class="social-icon" title="微信">
+                            <svg
+                                viewBox="0 0 24 24"
+                                width="15"
+                                height="15"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M8.5 2C4.91 2 2 4.47 2 7.5c0 1.61.78 3.06 2.03 4.08L3.5 14l2.61-1.3c.73.24 1.54.3 2.39.3.14 0 .28 0 .42-.01C8.49 12.67 8.5 12.34 8.5 12c0-2.76 2.46-5 5.5-5 .2 0 .4.01.59.03C13.83 4.22 11.38 2 8.5 2zM6 7a1 1 0 110-2 1 1 0 010 2zm5 0a1 1 0 110-2 1 1 0 010 2zM14 8c-2.76 0-5 1.79-5 4s2.24 4 5 4c.65 0 1.26-.1 1.82-.28L18 17l-.85-2.33C18.29 13.8 19 12.96 19 12c0-2.21-2.24-4-5-4zm-1.5 3.5a.75.75 0 110-1.5.75.75 0 010 1.5zm3 0a.75.75 0 110-1.5.75.75 0 010 1.5z"
+                                />
+                            </svg>
+                        </div>
+                        <!-- 微博 -->
+                        <div class="social-icon" title="微博">
+                            <svg
+                                viewBox="0 0 24 24"
+                                width="15"
+                                height="15"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M10.1 20c-4.61 0-8.1-2.4-8.1-5.98 0-2.09 1.19-4.3 3.26-6.1C7.32 6.08 9.49 5.12 11.39 5.12c.78 0 1.33.155 1.68.424.15.12.24.29.24.462 0 .424-.5.824-1.21 1.127-.65.272-1.42.423-2.1.423-1.5 0-3.27.672-4.7 1.87-1.35 1.127-2.14 2.57-2.14 3.86 0 2.598 2.84 4.304 6.94 4.304 4.1 0 7.33-2.08 7.33-4.676 0-.484-.11-.935-.34-1.35a.44.44 0 01.06-.572.554.554 0 01.594-.059 3.05 3.05 0 011.454 2.556C19.2 16.754 15.36 20 10.1 20zm6.7-11.6a.8.8 0 110-1.6.8.8 0 010 1.6zm2.4-2.4a1.6 1.6 0 110-3.2 1.6 1.6 0 010 3.2zM10.2 11.4a3.6 3.6 0 013.6 3.6 3.6 3.6 0 01-3.6 3.6 3.6 3.6 0 01-3.6-3.6 3.6 3.6 0 013.6-3.6zm.6 3.6a.6.6 0 10-1.2 0 .6.6 0 001.2 0z"
+                                />
+                            </svg>
+                        </div>
+                        <!-- 抖音 -->
+                        <div class="social-icon" title="抖音">
+                            <svg
+                                viewBox="0 0 24 24"
+                                width="15"
+                                height="15"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.77 1.52V6.76a4.85 4.85 0 01-1-.07z"
+                                />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+        <!-- /page-content -->
+
+        <script>
+            const nav = document.getElementById("navbarInner");
+            window.addEventListener(
+                "scroll",
+                () => nav.classList.toggle("scrolled", scrollY > 80),
+                { passive: true },
+            );
+        </script>
+    </body>
+</html>

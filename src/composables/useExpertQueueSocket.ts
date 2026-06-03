@@ -1,4 +1,7 @@
-import { addExpertSubscription, removeExpertSubscription } from "./expertStompClient";
+import {
+    addExpertSubscription,
+    removeExpertSubscription,
+} from "./expertStompClient";
 import type { IMessage } from "@stomp/stompjs";
 
 /** 专家接诊队列实时更新订阅（复用共享 expertStompClient，不自行创建连接） */
@@ -24,7 +27,7 @@ export function useExpertQueueSocket() {
                 } catch {
                     // 忽略非 JSON 帧
                 }
-            }
+            },
         );
     }
 

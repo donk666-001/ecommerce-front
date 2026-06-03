@@ -1,6 +1,6 @@
+import { ApiUser } from "@/network/user";
 import type { ILoginInfo, IUserInfo } from "@/types";
 import { defineStore } from "pinia";
-import { ApiUser } from "@/network/user";
 
 const emptyLoginInfo = (): ILoginInfo => ({
     id: NaN,
@@ -46,12 +46,16 @@ export const useUserStore = defineStore("user", {
                     // sessionStorage 是 per-tab 的，不在标签页间共享。
                     // 若其他标签页用不同账号登录，会覆盖浏览器共享的 HttpOnly Cookie，
                     // 导致本 tab 刷新时拿到别人的 JWT。通过比对 userId 来检测这种情况。
-                    const storedTabUserId = sessionStorage.getItem("tab-user-id");
-                    if (storedTabUserId && storedTabUserId !== String(result.id)) {
+                    const storedTabUserId =
+                        sessionStorage.getItem("tab-user-id");
+                    if (
+                        storedTabUserId &&
+                        storedTabUserId !== String(result.id)
+                    ) {
                         // Cookie 已被其他标签页的登录覆盖，本 tab 强制退出
                         console.warn(
                             `[Auth] Session 冲突：本 tab 期望用户 ${storedTabUserId}，` +
-                            `但 Cookie 已被覆盖为用户 ${result.id}，强制退出登录。`
+                                `但 Cookie 已被覆盖为用户 ${result.id}，强制退出登录。`,
                         );
                         this.clearLoginInfo();
                         sessionStorage.removeItem("tab-user-id");
@@ -69,7 +73,11 @@ export const useUserStore = defineStore("user", {
                     };
                     // privileges 先行推导 role_id，loadUserInfo 会再精确覆盖一次
                     const codes: number[] = result.privileges ?? [];
-                    const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
+                    const role_id = codes.includes(100)
+                        ? 1
+                        : codes.includes(200)
+                          ? 2
+                          : 3;
                     this.G_UserInfo = { ...this.G_UserInfo, role_id };
                     // 刷新成功，更新本 tab 记录的用户 ID
                     sessionStorage.setItem("tab-user-id", String(result.id));
@@ -90,7 +98,11 @@ export const useUserStore = defineStore("user", {
             const result = await ApiUser.getUserInfo();
             if (result) {
                 const codes: number[] = result.roleCodes ?? [];
-                const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
+                const role_id = codes.includes(100)
+                    ? 1
+                    : codes.includes(200)
+                      ? 2
+                      : 3;
                 this.G_UserInfo = {
                     ...this.G_UserInfo,
                     ...result,

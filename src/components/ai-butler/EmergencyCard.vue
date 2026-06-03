@@ -46,9 +46,15 @@ const primaryAction = computed<EmergencyAction | null>(() => {
 });
 
 const title = computed(() => parsed.value.title?.trim() || DEFAULT_TITLE);
-const description = computed(() => parsed.value.description?.trim() || DEFAULT_DESC);
-const buttonLabel = computed(() => primaryAction.value?.label?.trim() || DEFAULT_LABEL);
-const phone = computed(() => primaryAction.value?.phone?.trim() || DEFAULT_PHONE);
+const description = computed(
+    () => parsed.value.description?.trim() || DEFAULT_DESC,
+);
+const buttonLabel = computed(
+    () => primaryAction.value?.label?.trim() || DEFAULT_LABEL,
+);
+const phone = computed(
+    () => primaryAction.value?.phone?.trim() || DEFAULT_PHONE,
+);
 </script>
 
 <style scoped lang="scss">

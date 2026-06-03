@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>页面区块选择</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: #fdfcf8;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                color: #2c2c24;
+                padding: 40px 24px 80px;
+                min-height: 100vh;
+            }
+            .page-header {
+                text-align: center;
+                margin-bottom: 12px;
+            }
+            .page-header h1 {
+                font-size: 26px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+            .page-header p {
+                color: #78786c;
+                font-size: 14px;
+            }
+
+            .hint {
+                text-align: center;
+                margin-bottom: 32px;
+                font-size: 12px;
+                color: #c18c5d;
+                background: rgba(193, 140, 93, 0.08);
+                border: 1px solid rgba(193, 140, 93, 0.2);
+                border-radius: 999px;
+                display: inline-block;
+                padding: 5px 14px;
+                left: 50%;
+                position: relative;
+                transform: translateX(-50%);
+            }
+
+            /* 页面流预览 */
+            .flow-preview {
+                max-width: 900px;
+                margin: 0 auto 40px;
+                display: grid;
+                grid-template-columns: 1fr 2fr;
+                gap: 24px;
+                align-items: start;
+            }
+
+            .flow-sidebar {
+                position: sticky;
+                top: 20px;
+            }
+
+            .flow-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #5d7052;
+                margin-bottom: 12px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .section-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 14px;
+                border-radius: 12px;
+                margin-bottom: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: 1.5px solid transparent;
+                background: white;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            }
+            .section-item:hover {
+                border-color: rgba(93, 112, 82, 0.3);
+            }
+            .section-item.required {
+                border-color: rgba(93, 112, 82, 0.25);
+                background: rgba(93, 112, 82, 0.04);
+            }
+            .section-item.required .req-badge {
+                display: inline-block;
+            }
+            .section-item.selected {
+                border-color: #5d7052;
+                background: rgba(93, 112, 82, 0.06);
+                box-shadow: 0 0 0 2px rgba(93, 112, 82, 0.15);
+            }
+            .section-item.selected .check {
+                background: #5d7052;
+                color: white;
+            }
+
+            .check {
+                width: 20px;
+                height: 20px;
+                border-radius: 6px;
+                background: #e6dccd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: transparent;
+                flex-shrink: 0;
+                transition: all 0.2s;
+            }
+            .check.locked {
+                background: rgba(93, 112, 82, 0.15);
+                color: #5d7052;
+            }
+
+            .section-name {
+                font-size: 13px;
+                font-weight: 600;
+                color: #2c2c24;
+            }
+            .section-desc {
+                font-size: 11px;
+                color: #78786c;
+            }
+            .req-badge {
+                display: none;
+                font-size: 9px;
+                font-weight: 600;
+                background: rgba(93, 112, 82, 0.12);
+                color: #5d7052;
+                border-radius: 999px;
+                padding: 2px 7px;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+
+            .divider {
+                height: 1px;
+                background: #e6dccd;
+                margin: 8px 0;
+            }
+
+            /* 页面流可视化 */
+            .page-flow {
+                border: 2px solid #ded8cf;
+                border-radius: 20px;
+                overflow: hidden;
+                background: white;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            }
+
+            .page-browser-bar {
+                background: #f0ebe5;
+                padding: 8px 14px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                border-bottom: 1px solid #ded8cf;
+            }
+            .dot-r {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #b33c2c;
+            }
+            .dot-y {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #c18c5d;
+            }
+            .dot-g {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #5d7052;
+            }
+            .url-bar {
+                flex: 1;
+                background: white;
+                border-radius: 999px;
+                padding: 3px 10px;
+                font-size: 10px;
+                color: #78786c;
+                border: 1px solid #ded8cf;
+                margin-left: 6px;
+            }
+
+            .flow-section {
+                border-bottom: 1px dashed #e6dccd;
+                position: relative;
+                overflow: hidden;
+                transition: all 0.3s;
+            }
+            .flow-section:last-child {
+                border-bottom: none;
+            }
+            .flow-section.hidden {
+                display: none;
+            }
+
+            /* 各区块样式 */
+            .s-nav {
+                padding: 10px 16px;
+                background: rgba(255, 255, 255, 0.85);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                backdrop-filter: blur(4px);
+            }
+            .s-nav-logo {
+                width: 18px;
+                height: 18px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: #5d7052;
+            }
+            .s-nav-name {
+                font-size: 10px;
+                font-weight: 700;
+            }
+            .s-nav-links {
+                display: flex;
+                gap: 8px;
+                margin-left: auto;
+                font-size: 8px;
+                color: #78786c;
+            }
+            .s-nav-btn {
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-size: 8px;
+            }
+
+            .s-hero {
+                background: linear-gradient(160deg, #5d7052 0%, #4a5e42 100%);
+                padding: 28px 20px;
+                position: relative;
+                overflow: hidden;
+                min-height: 120px;
+            }
+            .s-hero-blob1 {
+                position: absolute;
+                right: -10px;
+                top: -10px;
+                width: 80px;
+                height: 70px;
+                background: rgba(255, 255, 255, 0.08);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(8px);
+            }
+            .s-hero-blob2 {
+                position: absolute;
+                bottom: 0;
+                left: -5px;
+                width: 60px;
+                height: 50px;
+                background: rgba(193, 140, 93, 0.2);
+                border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
+                filter: blur(8px);
+            }
+            .s-hero-badge {
+                display: inline-flex;
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.85);
+                margin-bottom: 10px;
+            }
+            .s-hero-title {
+                font-size: 22px;
+                font-weight: 800;
+                color: white;
+                line-height: 1.2;
+                margin-bottom: 6px;
+            }
+            .s-hero-sub {
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.7);
+                line-height: 1.6;
+                margin-bottom: 10px;
+            }
+            .s-hero-btns {
+                display: flex;
+                gap: 6px;
+            }
+            .s-hero-btn-p {
+                background: white;
+                color: #5d7052;
+                border-radius: 999px;
+                padding: 5px 10px;
+                font-size: 8px;
+                font-weight: 700;
+            }
+            .s-hero-btn-o {
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                color: white;
+                border-radius: 999px;
+                padding: 5px 10px;
+                font-size: 8px;
+            }
+
+            .s-stats {
+                background: #fdfcf8;
+                padding: 16px 20px;
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+            .s-stat {
+                text-align: center;
+            }
+            .s-stat-num {
+                font-size: 16px;
+                font-weight: 800;
+                color: #5d7052;
+            }
+            .s-stat-label {
+                font-size: 8px;
+                color: #78786c;
+                margin-top: 2px;
+            }
+
+            .s-features {
+                background: #f0ebe5;
+                padding: 20px;
+            }
+            .s-features-title {
+                font-size: 12px;
+                font-weight: 700;
+                text-align: center;
+                margin-bottom: 12px;
+                color: #2c2c24;
+            }
+            .s-features-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+            .s-feature-card {
+                background: white;
+                border-radius: 14px;
+                padding: 10px;
+                border: 1px solid rgba(222, 216, 207, 0.5);
+            }
+            .s-feature-icon {
+                font-size: 16px;
+                margin-bottom: 5px;
+            }
+            .s-feature-name {
+                font-size: 9px;
+                font-weight: 600;
+                color: #2c2c24;
+                margin-bottom: 3px;
+            }
+            .s-feature-desc {
+                font-size: 8px;
+                color: #78786c;
+                line-height: 1.4;
+            }
+
+            .s-how {
+                padding: 20px;
+                background: white;
+            }
+            .s-how-title {
+                font-size: 12px;
+                font-weight: 700;
+                text-align: center;
+                margin-bottom: 12px;
+            }
+            .s-how-steps {
+                display: flex;
+                gap: 4px;
+                align-items: flex-start;
+                justify-content: center;
+            }
+            .s-how-step {
+                text-align: center;
+                flex: 1;
+            }
+            .s-how-num {
+                width: 22px;
+                height: 22px;
+                border-radius: 999px;
+                background: #5d7052;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+                font-weight: 700;
+                margin: 0 auto 5px;
+            }
+            .s-how-step-name {
+                font-size: 8px;
+                font-weight: 600;
+                margin-bottom: 3px;
+            }
+            .s-how-step-desc {
+                font-size: 7px;
+                color: #78786c;
+                line-height: 1.4;
+            }
+            .s-how-arrow {
+                padding-top: 8px;
+                color: #ded8cf;
+                font-size: 14px;
+            }
+
+            .s-experts {
+                padding: 20px;
+                background: #fdfcf8;
+            }
+            .s-experts-title {
+                font-size: 12px;
+                font-weight: 700;
+                text-align: center;
+                margin-bottom: 12px;
+            }
+            .s-experts-row {
+                display: flex;
+                gap: 8px;
+            }
+            .s-expert-card {
+                flex: 1;
+                background: white;
+                border-radius: 12px;
+                padding: 10px;
+                border: 1px solid rgba(222, 216, 207, 0.5);
+                text-align: center;
+            }
+            .s-expert-avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                background: linear-gradient(135deg, #5d7052, #c18c5d);
+                margin: 0 auto 6px;
+            }
+            .s-expert-name {
+                font-size: 9px;
+                font-weight: 600;
+            }
+            .s-expert-title {
+                font-size: 7px;
+                color: #78786c;
+            }
+
+            .s-testimonials {
+                background: #f0ebe5;
+                padding: 20px;
+            }
+            .s-testimonials-title {
+                font-size: 12px;
+                font-weight: 700;
+                text-align: center;
+                margin-bottom: 12px;
+            }
+            .s-testi-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .s-testi-card {
+                background: white;
+                border-radius: 12px;
+                padding: 10px;
+                border: 1px solid rgba(222, 216, 207, 0.5);
+            }
+            .s-testi-text {
+                font-size: 8px;
+                color: #4a4a40;
+                line-height: 1.5;
+                margin-bottom: 6px;
+                font-style: italic;
+            }
+            .s-testi-user {
+                font-size: 8px;
+                font-weight: 600;
+                color: #5d7052;
+            }
+
+            .s-cta {
+                background: linear-gradient(160deg, #2c2c24 0%, #3a3a2c 100%);
+                padding: 24px 20px;
+                text-align: center;
+                position: relative;
+                overflow: hidden;
+            }
+            .s-cta-blob {
+                position: absolute;
+                right: -5px;
+                top: -5px;
+                width: 60px;
+                height: 50px;
+                background: rgba(93, 112, 82, 0.2);
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+                filter: blur(8px);
+            }
+            .s-cta-title {
+                font-size: 16px;
+                font-weight: 800;
+                color: white;
+                margin-bottom: 6px;
+            }
+            .s-cta-sub {
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.6);
+                margin-bottom: 12px;
+            }
+            .s-cta-btn {
+                display: inline-block;
+                background: #5d7052;
+                color: white;
+                border-radius: 999px;
+                padding: 7px 14px;
+                font-size: 9px;
+                font-weight: 700;
+            }
+
+            .s-footer {
+                background: #2c2c24;
+                padding: 14px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .s-footer-logo {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.7);
+            }
+            .s-footer-links {
+                display: flex;
+                gap: 10px;
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.4);
+            }
+
+            .confirm-area {
+                max-width: 900px;
+                margin: 0 auto;
+                text-align: center;
+            }
+            .confirm-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: #5d7052;
+                color: white;
+                border: none;
+                border-radius: 999px;
+                padding: 12px 28px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                box-shadow: 0 4px 20px rgba(93, 112, 82, 0.25);
+            }
+            .confirm-btn:hover {
+                background: #4a5e42;
+                transform: translateY(-2px);
+            }
+
+            .section-label {
+                position: absolute;
+                top: 6px;
+                right: 8px;
+                font-size: 8px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.5);
+                letter-spacing: 1px;
+                text-transform: uppercase;
+            }
+            .section-label.dark {
+                color: rgba(0, 0, 0, 0.25);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page-header">
+            <h1>选择页面区块</h1>
+            <p>勾选你想要包含的内容区块，右侧实时预览页面结构</p>
+        </div>
+        <div style="text-align: center; margin-bottom: 32px">
+            <span class="hint">✓ 必选区块已锁定 · 可选区块自由勾选</span>
+        </div>
+
+        <div class="flow-preview">
+            <!-- 左侧清单 -->
+            <div class="flow-sidebar">
+                <div class="flow-title">区块清单</div>
+
+                <div class="section-item required" data-target="nav">
+                    <div class="check locked">✓</div>
+                    <div>
+                        <div class="section-name">导航栏</div>
+                        <div class="section-desc">
+                            Logo + 页面锚点导航 + CTA
+                        </div>
+                    </div>
+                    <span class="req-badge">必选</span>
+                </div>
+
+                <div class="section-item required" data-target="hero">
+                    <div class="check locked">✓</div>
+                    <div>
+                        <div class="section-name">Hero 主屏</div>
+                        <div class="section-desc">
+                            大标题 + 副标题 + 行动按钮
+                        </div>
+                    </div>
+                    <span class="req-badge">必选</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div
+                    class="section-item selected"
+                    data-target="stats"
+                    onclick="toggleSection(this)"
+                >
+                    <div class="check">✓</div>
+                    <div>
+                        <div class="section-name">核心数据</div>
+                        <div class="section-desc">用户数、节气数、专家数等</div>
+                    </div>
+                </div>
+
+                <div
+                    class="section-item selected"
+                    data-target="features"
+                    onclick="toggleSection(this)"
+                >
+                    <div class="check">✓</div>
+                    <div>
+                        <div class="section-name">功能介绍</div>
+                        <div class="section-desc">6大功能模块卡片展示</div>
+                    </div>
+                </div>
+
+                <div
+                    class="section-item selected"
+                    data-target="how"
+                    onclick="toggleSection(this)"
+                >
+                    <div class="check">✓</div>
+                    <div>
+                        <div class="section-name">使用步骤</div>
+                        <div class="section-desc">如何开始使用的3步流程</div>
+                    </div>
+                </div>
+
+                <div
+                    class="section-item"
+                    data-target="experts"
+                    onclick="toggleSection(this)"
+                >
+                    <div class="check"></div>
+                    <div>
+                        <div class="section-name">专家团队</div>
+                        <div class="section-desc">名医健康圈专家展示</div>
+                    </div>
+                </div>
+
+                <div
+                    class="section-item"
+                    data-target="testimonials"
+                    onclick="toggleSection(this)"
+                >
+                    <div class="check"></div>
+                    <div>
+                        <div class="section-name">用户评价</div>
+                        <div class="section-desc">真实用户使用感受</div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="section-item required" data-target="cta">
+                    <div class="check locked">✓</div>
+                    <div>
+                        <div class="section-name">行动召唤</div>
+                        <div class="section-desc">引导注册/进入平台</div>
+                    </div>
+                    <span class="req-badge">必选</span>
+                </div>
+
+                <div class="section-item required" data-target="footer">
+                    <div class="check locked">✓</div>
+                    <div>
+                        <div class="section-name">页脚</div>
+                        <div class="section-desc">版权 + 链接</div>
+                    </div>
+                    <span class="req-badge">必选</span>
+                </div>
+            </div>
+
+            <!-- 右侧预览 -->
+            <div class="page-flow">
+                <div class="page-browser-bar">
+                    <div class="dot-r"></div>
+                    <div class="dot-y"></div>
+                    <div class="dot-g"></div>
+                    <div class="url-bar">yiyanggee.com</div>
+                </div>
+
+                <div class="flow-section" id="flow-nav">
+                    <div class="s-nav">
+                        <div class="s-nav-logo"></div>
+                        <span class="s-nav-name">颐养阁</span>
+                        <div class="s-nav-links">
+                            <span>功能</span><span>专家</span><span>评价</span>
+                            <span class="s-nav-btn">立即体验</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-section" id="flow-hero">
+                    <div class="s-hero">
+                        <div class="s-hero-blob1"></div>
+                        <div class="s-hero-blob2"></div>
+                        <div class="s-hero-badge">🌿 传承东方养生智慧</div>
+                        <div class="s-hero-title">
+                            颐养阁<br />自然·健康·生活
+                        </div>
+                        <div class="s-hero-sub">
+                            二十四节气 × 中医古方 × 现代科学<br />重新定义你的养生方式
+                        </div>
+                        <div class="s-hero-btns">
+                            <span class="s-hero-btn-p">立即体验 →</span>
+                            <span class="s-hero-btn-o">了解更多</span>
+                        </div>
+                        <span class="section-label">HERO</span>
+                    </div>
+                </div>
+
+                <div class="flow-section" id="flow-stats">
+                    <div class="s-stats">
+                        <div class="s-stat">
+                            <div class="s-stat-num">24</div>
+                            <div class="s-stat-label">节气覆盖</div>
+                        </div>
+                        <div class="s-stat">
+                            <div class="s-stat-num">6+</div>
+                            <div class="s-stat-label">健康模块</div>
+                        </div>
+                        <div class="s-stat">
+                            <div class="s-stat-num">50+</div>
+                            <div class="s-stat-label">认证专家</div>
+                        </div>
+                        <div class="s-stat">
+                            <div class="s-stat-num">10万+</div>
+                            <div class="s-stat-label">活跃用户</div>
+                        </div>
+                    </div>
+                    <span class="section-label dark">数据</span>
+                </div>
+
+                <div class="flow-section" id="flow-features">
+                    <div class="s-features">
+                        <div class="s-features-title">六大功能模块</div>
+                        <div class="s-features-grid">
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">🌿</div>
+                                <div class="s-feature-name">节气养生</div>
+                                <div class="s-feature-desc">
+                                    顺时而为，调和阴阳
+                                </div>
+                            </div>
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">🌙</div>
+                                <div class="s-feature-name">睡眠作息</div>
+                                <div class="s-feature-desc">
+                                    智能追踪，优化睡眠
+                                </div>
+                            </div>
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">🌸</div>
+                                <div class="s-feature-name">经期管理</div>
+                                <div class="s-feature-desc">
+                                    周期记录，精准预测
+                                </div>
+                            </div>
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">🍵</div>
+                                <div class="s-feature-name">中医养生</div>
+                                <div class="s-feature-desc">
+                                    古方今用，体质调理
+                                </div>
+                            </div>
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">🫂</div>
+                                <div class="s-feature-name">情绪疗愈</div>
+                                <div class="s-feature-desc">
+                                    正念冥想，调节身心
+                                </div>
+                            </div>
+                            <div class="s-feature-card">
+                                <div class="s-feature-icon">✨</div>
+                                <div class="s-feature-name">个性推荐</div>
+                                <div class="s-feature-desc">
+                                    AI定制，专属方案
+                                </div>
+                            </div>
+                        </div>
+                        <span class="section-label dark">功能</span>
+                    </div>
+                </div>
+
+                <div class="flow-section hidden" id="flow-experts">
+                    <div class="s-experts">
+                        <div class="s-experts-title">专家团队</div>
+                        <div class="s-experts-row">
+                            <div class="s-expert-card">
+                                <div class="s-expert-avatar"></div>
+                                <div class="s-expert-name">张医师</div>
+                                <div class="s-expert-title">主任中医师</div>
+                            </div>
+                            <div class="s-expert-card">
+                                <div class="s-expert-avatar"></div>
+                                <div class="s-expert-name">李医师</div>
+                                <div class="s-expert-title">营养科主任</div>
+                            </div>
+                            <div class="s-expert-card">
+                                <div class="s-expert-avatar"></div>
+                                <div class="s-expert-name">王医师</div>
+                                <div class="s-expert-title">睡眠科专家</div>
+                            </div>
+                        </div>
+                        <span class="section-label dark">专家</span>
+                    </div>
+                </div>
+
+                <div class="flow-section" id="flow-how">
+                    <div class="s-how">
+                        <div class="s-how-title">三步开启健康之旅</div>
+                        <div class="s-how-steps">
+                            <div class="s-how-step">
+                                <div class="s-how-num">1</div>
+                                <div class="s-how-step-name">注册账号</div>
+                                <div class="s-how-step-desc">
+                                    填写体质信息<br />完成初始设置
+                                </div>
+                            </div>
+                            <div class="s-how-arrow">→</div>
+                            <div class="s-how-step">
+                                <div class="s-how-num">2</div>
+                                <div class="s-how-step-name">探索功能</div>
+                                <div class="s-how-step-desc">
+                                    查看节气指南<br />记录每日状态
+                                </div>
+                            </div>
+                            <div class="s-how-arrow">→</div>
+                            <div class="s-how-step">
+                                <div class="s-how-num">3</div>
+                                <div class="s-how-step-name">获取建议</div>
+                                <div class="s-how-step-desc">
+                                    AI管家分析<br />专属养生方案
+                                </div>
+                            </div>
+                        </div>
+                        <span class="section-label dark">步骤</span>
+                    </div>
+                </div>
+
+                <div class="flow-section hidden" id="flow-testimonials">
+                    <div class="s-testimonials">
+                        <div class="s-testimonials-title">用户真实评价</div>
+                        <div class="s-testi-grid">
+                            <div class="s-testi-card">
+                                <div class="s-testi-text">
+                                    "节气养生功能太实用了，每天按节气来调整饮食，感觉整个人都轻松了很多。"
+                                </div>
+                                <div class="s-testi-user">— 小雨同学</div>
+                            </div>
+                            <div class="s-testi-card">
+                                <div class="s-testi-text">
+                                    "睡眠追踪帮我发现了入睡时间太晚的问题，调整之后睡眠质量明显提升。"
+                                </div>
+                                <div class="s-testi-user">— 健身达人老王</div>
+                            </div>
+                        </div>
+                        <span class="section-label dark">评价</span>
+                    </div>
+                </div>
+
+                <div class="flow-section" id="flow-cta">
+                    <div class="s-cta">
+                        <div class="s-cta-blob"></div>
+                        <div class="s-cta-title">开启你的自然养生之旅</div>
+                        <div class="s-cta-sub">
+                            免费注册，立即体验六大功能模块
+                        </div>
+                        <div class="s-cta-btn">免费开始 →</div>
+                        <span class="section-label">CTA</span>
+                    </div>
+                </div>
+
+                <div class="flow-section" id="flow-footer">
+                    <div class="s-footer">
+                        <span class="s-footer-logo">颐养阁 © 2025</span>
+                        <div class="s-footer-links">
+                            <span>关于我们</span><span>隐私政策</span
+                            ><span>联系我们</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-area">
+            <p style="color: #78786c; font-size: 13px; margin-bottom: 16px">
+                勾选完成后，在终端告诉我你的选择，或直接说"确认"
+            </p>
+        </div>
+
+        <script>
+            function toggleSection(el) {
+                const target = el.dataset.target;
+                const flowEl = document.getElementById("flow-" + target);
+                const check = el.querySelector(".check");
+                const isSelected = el.classList.contains("selected");
+
+                if (isSelected) {
+                    el.classList.remove("selected");
+                    check.textContent = "";
+                    if (flowEl) flowEl.classList.add("hidden");
+                } else {
+                    el.classList.add("selected");
+                    check.textContent = "✓";
+                    if (flowEl) flowEl.classList.remove("hidden");
+                }
+
+                // Record selection state
+                const selected = [];
+                document
+                    .querySelectorAll(
+                        ".section-item.selected, .section-item.required",
+                    )
+                    .forEach((item) => {
+                        selected.push(item.dataset.target);
+                    });
+                if (window.__companion) {
+                    window.__companion.record({
+                        type: "click",
+                        choice: selected.join(","),
+                        text: "区块选择: " + selected.join(", "),
+                    });
+                }
+            }
+        </script>
+    </body>
+</html>

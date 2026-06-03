@@ -1,9 +1,8 @@
 <template>
-    <section ref="sectionEl" class="testimonials glass-section">
-        <div class="testi-blob drifting-2" />
+    <section ref="sectionEl" class="testimonials">
+        <div class="testi-blob" />
         <div class="container">
             <div class="testi-header">
-                <div class="section-tag" data-animate>✦ 用户评价</div>
                 <h2 class="section-title" data-animate style="--delay: 80ms">
                     真实用户<br />真实改变
                 </h2>
@@ -15,7 +14,7 @@
                 <div
                     v-for="(t, i) in testimonials"
                     :key="t.name"
-                    class="testi-card shimmer-card"
+                    class="testi-card"
                     data-animate
                     :style="{ '--delay': `${i * 110}ms` }"
                 >
@@ -68,9 +67,8 @@ const testimonials = [
 
 <style lang="scss" scoped>
 .testimonials {
-    padding: 108px 0;
-    background: rgba(8, 14, 6, 0.44);
-    backdrop-filter: blur(2px);
+    padding: 100px 0;
+    background: rgba(6, 12, 4, 0.46);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -82,13 +80,13 @@ const testimonials = [
 }
 .testi-blob {
     position: absolute;
-    right: -80px;
-    bottom: -60px;
-    width: 320px;
-    height: 280px;
-    background: rgba(193, 140, 93, 0.07);
+    right: -100px;
+    bottom: -80px;
+    width: 360px;
+    height: 320px;
+    background: rgba(193, 140, 93, 0.05);
     border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
-    filter: blur(64px);
+    filter: blur(70px);
 }
 .testi-header {
     text-align: center;
@@ -96,35 +94,21 @@ const testimonials = [
     position: relative;
     z-index: 1;
 }
-.section-tag {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(6px);
-}
 .section-title {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    font-family: Georgia, "STSong", serif;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
 }
 .section-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.68);
-    line-height: 1.75;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.8;
     max-width: 520px;
-    margin: 12px auto 0;
+    margin: 14px auto 0;
 }
 .testi-grid {
     display: grid;
@@ -132,32 +116,32 @@ const testimonials = [
     gap: 24px;
     position: relative;
     z-index: 1;
+
+    @media (max-width: 760px) {
+        grid-template-columns: 1fr;
+    }
 }
 .testi-card {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
     padding: 30px;
     box-shadow:
-        0 4px 20px rgba(0, 0, 0, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 4px 16px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition:
-        transform 0.3s,
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         background 0.3s;
-    backdrop-filter: blur(12px);
     &:hover {
-        transform: rotate(1.2deg) translateY(-4px);
+        transform: translateY(-4px);
         background: rgba(255, 255, 255, 0.1);
-    }
-    &:nth-child(2):hover {
-        transform: rotate(-1.2deg) translateY(-4px);
     }
 }
 .testi-quote {
     font-size: 36px;
     line-height: 1;
-    color: rgba(143, 168, 130, 0.5);
-    font-family: Georgia, serif;
+    color: rgba(143, 168, 130, 0.4);
+    font-family: "STKaiti", "KaiTi", serif;
     margin-bottom: 12px;
 }
 .testi-text {
@@ -165,7 +149,6 @@ const testimonials = [
     color: rgba(255, 255, 255, 0.68);
     line-height: 1.85;
     margin-bottom: 20px;
-    font-style: italic;
 }
 .testi-user {
     display: flex;

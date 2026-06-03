@@ -9,18 +9,38 @@
 
             <!-- Navigation -->
             <nav class="top-nav">
-                <router-link to="/" :class="{ active: route.path === '/' }">养生智库</router-link>
-                <router-link to="/community" :class="{ active: route.path.startsWith('/community') }">元气社区</router-link>
-                <router-link to="/ai-butler" :class="{ active: route.path.startsWith('/ai-butler') }">AI 管家</router-link>
-                <router-link to="/consultation" :class="{ active: route.path.startsWith('/consultation') }">名医健康圈</router-link>
-                <router-link to="/shop" :class="{ active: route.path.startsWith('/shop') }">商城</router-link>
+                <router-link to="/" :class="{ active: route.path === '/' }"
+                    >养生智库</router-link
+                >
+                <router-link
+                    to="/community"
+                    :class="{ active: route.path.startsWith('/community') }"
+                    >元气社区</router-link
+                >
+                <router-link
+                    to="/ai-butler"
+                    :class="{ active: route.path.startsWith('/ai-butler') }"
+                    >AI 管家</router-link
+                >
+                <router-link
+                    to="/consultation"
+                    :class="{ active: route.path.startsWith('/consultation') }"
+                    >名医健康圈</router-link
+                >
+                <router-link
+                    to="/shop"
+                    :class="{ active: route.path.startsWith('/shop') }"
+                    >商城</router-link
+                >
             </nav>
 
             <!-- Actions -->
             <div class="top-actions">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
-                    <span class="search-placeholder">搜索节气、食谱、穴位…</span>
+                    <span class="search-placeholder"
+                        >搜索节气、食谱、穴位…</span
+                    >
                 </div>
                 <el-dropdown
                     v-if="userStore.G_LoginInfo.isLogin"
@@ -33,22 +53,40 @@
                     <div ref="bellRef" class="top-bell">
                         🔔
                         <span v-if="unreadCount > 0" class="badge-dot"></span>
-                        <span v-if="unreadCount > 0" class="badge-count">{{ unreadCountLabel }}</span>
+                        <span v-if="unreadCount > 0" class="badge-count">{{
+                            unreadCountLabel
+                        }}</span>
                     </div>
                     <template #dropdown>
                         <el-dropdown-menu class="notification-menu">
-                            <div v-if="notifications.length > 0" class="notification-menu-header">
+                            <div
+                                v-if="notifications.length > 0"
+                                class="notification-menu-header"
+                            >
                                 <div>
-                                    <div class="notification-menu-title">通知中心</div>
+                                    <div class="notification-menu-title">
+                                        通知中心
+                                    </div>
                                     <div class="notification-menu-subtitle">
-                                        共 {{ totalNotificationCount }} 条，未读 {{ unreadCount }} 条
+                                        共 {{ totalNotificationCount }} 条，未读
+                                        {{ unreadCount }} 条
                                     </div>
                                 </div>
-                                <div class="notification-menu-chip" :class="{ hot: unreadCount > 0 }">
-                                    {{ unreadCount > 0 ? "有新消息" : "已全部读完" }}
+                                <div
+                                    class="notification-menu-chip"
+                                    :class="{ hot: unreadCount > 0 }"
+                                >
+                                    {{
+                                        unreadCount > 0
+                                            ? "有新消息"
+                                            : "已全部读完"
+                                    }}
                                 </div>
                             </div>
-                            <el-dropdown-item v-if="notifications.length === 0" disabled>
+                            <el-dropdown-item
+                                v-if="notifications.length === 0"
+                                disabled
+                            >
                                 暂无通知
                             </el-dropdown-item>
                             <el-dropdown-item
@@ -57,10 +95,23 @@
                                 :command="{ type: 'detail', id: item.id }"
                                 class="notification-menu-item"
                             >
-                                <div class="notification-item" :class="{ unread: !item.isRead }">
-                                    <div class="notification-title">{{ item.title }}</div>
-                                    <div class="notification-body">{{ item.body || '您有一条新通知' }}</div>
-                                    <div class="notification-time">{{ formatNotificationTime(item.createdAt) }}</div>
+                                <div
+                                    class="notification-item"
+                                    :class="{ unread: !item.isRead }"
+                                >
+                                    <div class="notification-title">
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="notification-body">
+                                        {{ item.body || "您有一条新通知" }}
+                                    </div>
+                                    <div class="notification-time">
+                                        {{
+                                            formatNotificationTime(
+                                                item.createdAt,
+                                            )
+                                        }}
+                                    </div>
                                 </div>
                             </el-dropdown-item>
                             <!-- 查看更多通知入口 -->
@@ -78,7 +129,9 @@
                                 </div>
                             </el-dropdown-item>
                             <el-dropdown-item
-                                v-if="notifications.length > 0 && unreadCount > 0"
+                                v-if="
+                                    notifications.length > 0 && unreadCount > 0
+                                "
                                 command="readAll"
                                 class="notification-menu-action"
                             >
@@ -90,12 +143,14 @@
                         </el-dropdown-menu>
                     </template>
                 </el-dropdown>
-                <div v-else class="top-bell">
-                    🔔
-                </div>
+                <div v-else class="top-bell">🔔</div>
 
                 <!-- 未登录：点击跳转登录页 -->
-                <div v-if="!userStore.G_LoginInfo.isLogin" class="avatar" @click="goToLogin">
+                <div
+                    v-if="!userStore.G_LoginInfo.isLogin"
+                    class="avatar"
+                    @click="goToLogin"
+                >
                     用
                 </div>
 
@@ -129,25 +184,43 @@
                                     <span v-else>{{ displayInitial }}</span>
                                 </div>
                                 <div class="user-menu-meta">
-                                    <div class="user-menu-name">{{ userMenuName }}</div>
-                                    <div class="user-menu-subtitle">{{ userMenuSubtitle }}</div>
+                                    <div class="user-menu-name">
+                                        {{ userMenuName }}
+                                    </div>
+                                    <div class="user-menu-subtitle">
+                                        {{ userMenuSubtitle }}
+                                    </div>
                                 </div>
                             </div>
-                            <el-dropdown-item command="settings" class="user-menu-item">
+                            <el-dropdown-item
+                                command="settings"
+                                class="user-menu-item"
+                            >
                                 <div class="user-menu-card">
                                     <span class="user-menu-icon">⚙</span>
                                     <div class="user-menu-text">
-                                        <span class="user-menu-label">我的设置</span>
-                                        <span class="user-menu-desc">查看账号资料与个人配置</span>
+                                        <span class="user-menu-label"
+                                            >我的设置</span
+                                        >
+                                        <span class="user-menu-desc"
+                                            >查看账号资料与个人配置</span
+                                        >
                                     </div>
                                 </div>
                             </el-dropdown-item>
-                            <el-dropdown-item command="logout" class="user-menu-item logout">
+                            <el-dropdown-item
+                                command="logout"
+                                class="user-menu-item logout"
+                            >
                                 <div class="user-menu-card logout">
                                     <span class="user-menu-icon logout">↗</span>
                                     <div class="user-menu-text">
-                                        <span class="user-menu-label">退出登录</span>
-                                        <span class="user-menu-desc">安全退出当前账号</span>
+                                        <span class="user-menu-label"
+                                            >退出登录</span
+                                        >
+                                        <span class="user-menu-desc"
+                                            >安全退出当前账号</span
+                                        >
                                     </div>
                                 </div>
                             </el-dropdown-item>
@@ -166,25 +239,43 @@
                 :show-arrow="true"
                 popper-class="notification-detail-popover"
             >
-            <template v-if="detailNotification">
-                <div class="popover-detail" :class="{ unread: !detailNotification.isRead }">
-                    <div class="detail-banner">
-                        <span class="detail-badge">{{ formatNotificationType(detailNotification.type) }}</span>
-                        <span v-if="!detailNotification.isRead" class="detail-unread">未读</span>
+                <template v-if="detailNotification">
+                    <div
+                        class="popover-detail"
+                        :class="{ unread: !detailNotification.isRead }"
+                    >
+                        <div class="detail-banner">
+                            <span class="detail-badge">{{
+                                formatNotificationType(detailNotification.type)
+                            }}</span>
+                            <span
+                                v-if="!detailNotification.isRead"
+                                class="detail-unread"
+                                >未读</span
+                            >
+                        </div>
+                        <div class="detail-header">
+                            <span class="detail-title">{{
+                                detailNotification.title
+                            }}</span>
+                            <span
+                                class="detail-close"
+                                @click="detailPopoverVisible = false"
+                                >✕</span
+                            >
+                        </div>
+                        <div class="detail-body">
+                            <div class="detail-body-label">通知内容</div>
+                            <div class="detail-body-text">
+                                {{ detailNotification.body || "暂无详细内容" }}
+                            </div>
+                        </div>
+                        <div class="detail-time">
+                            {{ formatDetailTime(detailNotification.createdAt) }}
+                        </div>
                     </div>
-                    <div class="detail-header">
-                        <span class="detail-title">{{ detailNotification.title }}</span>
-                        <span class="detail-close" @click="detailPopoverVisible = false">✕</span>
-                    </div>
-                    <div class="detail-body">
-                        <div class="detail-body-label">通知内容</div>
-                        <div class="detail-body-text">{{ detailNotification.body || '暂无详细内容' }}</div>
-                    </div>
-                    <div class="detail-time">{{ formatDetailTime(detailNotification.createdAt) }}</div>
-                </div>
-            </template>
-        </el-popover>
-
+                </template>
+            </el-popover>
         </div>
     </header>
 
@@ -212,7 +303,9 @@
                 <span class="toolbar-sep">·</span>
                 <span>当前页 {{ allNotifications.length }}</span>
                 <span class="toolbar-sep">·</span>
-                <span>{{ allNotificationsFilter === "all" ? "全部通知" : "仅未读通知" }}</span>
+                <span>{{
+                    allNotificationsFilter === "all" ? "全部通知" : "仅未读通知"
+                }}</span>
             </div>
             <div class="filter-pills" role="tablist" aria-label="通知筛选">
                 <button
@@ -236,7 +329,13 @@
         <div class="all-notifications-list" v-loading="allNotificationsLoading">
             <div v-if="allNotifications.length === 0" class="all-empty">
                 <div class="all-empty-icon">🔔</div>
-                <div>{{ allNotificationsFilter === "all" ? "暂无通知" : "暂无未读通知" }}</div>
+                <div>
+                    {{
+                        allNotificationsFilter === "all"
+                            ? "暂无通知"
+                            : "暂无未读通知"
+                    }}
+                </div>
             </div>
             <div
                 v-for="item in allNotifications"
@@ -250,9 +349,11 @@
                         <span class="unread-dot" v-if="!item.isRead"></span>
                         <span class="all-notif-title">{{ item.title }}</span>
                     </div>
-                    <span class="all-notif-time">{{ formatNotificationTime(item.createdAt) }}</span>
+                    <span class="all-notif-time">{{
+                        formatNotificationTime(item.createdAt)
+                    }}</span>
                 </div>
-                <div class="all-notif-body">{{ item.body || '暂无内容' }}</div>
+                <div class="all-notif-body">{{ item.body || "暂无内容" }}</div>
             </div>
             <div
                 v-for="index in allNotificationsPlaceholderCount"
@@ -261,7 +362,10 @@
                 aria-hidden="true"
             />
         </div>
-        <div class="all-pagination" v-if="allNotificationsTotal > allNotificationsPageSize">
+        <div
+            class="all-pagination"
+            v-if="allNotificationsTotal > allNotificationsPageSize"
+        >
             <el-pagination
                 v-model:current-page="allNotificationsPage"
                 :page-size="allNotificationsPageSize"
@@ -284,10 +388,18 @@
         <template #header>
             <div v-if="detailNotification" class="detail-dialog-header">
                 <div class="detail-dialog-banner">
-                    <span class="detail-dialog-badge">{{ formatNotificationType(detailNotification.type) }}</span>
-                    <span v-if="!detailNotification.isRead" class="detail-dialog-unread">未读</span>
+                    <span class="detail-dialog-badge">{{
+                        formatNotificationType(detailNotification.type)
+                    }}</span>
+                    <span
+                        v-if="!detailNotification.isRead"
+                        class="detail-dialog-unread"
+                        >未读</span
+                    >
                 </div>
-                <div class="detail-dialog-title">{{ detailNotification.title }}</div>
+                <div class="detail-dialog-title">
+                    {{ detailNotification.title }}
+                </div>
             </div>
         </template>
         <template v-if="detailNotification">
@@ -297,7 +409,9 @@
                     {{ detailNotification.body || "暂无详细内容" }}
                 </div>
                 <div class="detail-dialog-meta">
-                    <span>{{ formatDetailTime(detailNotification.createdAt) }}</span>
+                    <span>{{
+                        formatDetailTime(detailNotification.createdAt)
+                    }}</span>
                 </div>
             </div>
         </template>
@@ -318,11 +432,17 @@ const route = useRoute();
 const userStore = useUserStore();
 
 const displayInitial = computed(() => {
-    const name = userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
+    const name =
+        userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account;
     return name ? name.charAt(0) : "我";
 });
 
-const userMenuName = computed(() => userStore.G_LoginInfo.nickName || userStore.G_LoginInfo.account || "当前用户");
+const userMenuName = computed(
+    () =>
+        userStore.G_LoginInfo.nickName ||
+        userStore.G_LoginInfo.account ||
+        "当前用户",
+);
 const userMenuSubtitle = computed(() => {
     if (userStore.G_UserInfo.role_id === 2) return "专家账号";
     if (userStore.G_UserInfo.role_id === 1) return "管理员账号";
@@ -333,16 +453,16 @@ const userMenuSubtitle = computed(() => {
 const isExpertView = computed(() => userStore.G_UserInfo.role_id === 2);
 
 const { connect, disconnect } = useExpertPresenceSocket();
-const {
-    connect: connectNotifications,
-    disconnect: disconnectNotifications,
-} = useNotificationSocket();
+const { connect: connectNotifications, disconnect: disconnectNotifications } =
+    useNotificationSocket();
 
 const notifications = ref<NotificationVO[]>([]);
 
 /** 未读通知数量（独立从服务端加载，保证准确性） */
 const unreadCount = ref(0);
-const unreadCountLabel = computed(() => unreadCount.value > 99 ? "99+" : String(unreadCount.value));
+const unreadCountLabel = computed(() =>
+    unreadCount.value > 99 ? "99+" : String(unreadCount.value),
+);
 
 /** 通知总数（用于判断是否显示"查看更多"入口） */
 const totalNotificationCount = ref(0);
@@ -358,9 +478,11 @@ const detailDialogVisible = ref(false);
 // 气泡弹窗打开时监听 document 点击以关闭
 watch(detailPopoverVisible, (visible) => {
     if (visible) {
-        nextTick(() => document.addEventListener('click', closePopoverOnClickOutside));
+        nextTick(() =>
+            document.addEventListener("click", closePopoverOnClickOutside),
+        );
     } else {
-        document.removeEventListener('click', closePopoverOnClickOutside);
+        document.removeEventListener("click", closePopoverOnClickOutside);
     }
 });
 
@@ -368,7 +490,11 @@ watch(detailPopoverVisible, (visible) => {
 function closePopoverOnClickOutside(e: MouseEvent) {
     const target = e.target as HTMLElement;
     // 点击气泡内部、下拉菜单、铃铛时不关闭
-    if (target.closest('.el-popover') || target.closest('.el-dropdown-menu') || target.closest('.top-bell')) {
+    if (
+        target.closest(".el-popover") ||
+        target.closest(".el-dropdown-menu") ||
+        target.closest(".top-bell")
+    ) {
         return;
     }
     detailPopoverVisible.value = false;
@@ -385,7 +511,7 @@ const allNotificationsFilter = ref<"all" | "unread">("all");
 const allNotificationsPlaceholderCount = computed(() =>
     allNotifications.value.length === 0
         ? 0
-        : Math.max(0, allNotificationsPageSize - allNotifications.value.length)
+        : Math.max(0, allNotificationsPageSize - allNotifications.value.length),
 );
 
 function getNotificationSortTime(notification: NotificationVO) {
@@ -410,7 +536,10 @@ onMounted(() => {
     if (userStore.G_LoginInfo.isLogin && userStore.G_LoginInfo.id) {
         loadNotifications();
         loadUnreadCount();
-        connectNotifications(userStore.G_LoginInfo.id, handleRealtimeNotification);
+        connectNotifications(
+            userStore.G_LoginInfo.id,
+            handleRealtimeNotification,
+        );
     }
 });
 
@@ -429,11 +558,14 @@ watch(
         if (expert && id) connect();
         else if (!expert) disconnect();
     },
-    { immediate: true }
+    { immediate: true },
 );
 
 watch(
-    () => ({ login: userStore.G_LoginInfo.isLogin, id: userStore.G_LoginInfo.id }),
+    () => ({
+        login: userStore.G_LoginInfo.isLogin,
+        id: userStore.G_LoginInfo.id,
+    }),
     ({ login, id }) => {
         if (login && id) {
             loadNotifications();
@@ -446,7 +578,7 @@ watch(
             disconnectNotifications();
         }
     },
-    { immediate: true }
+    { immediate: true },
 );
 
 function goHome() {
@@ -488,14 +620,17 @@ async function loadNotifications() {
         ]);
         const recentRecords = (recentRes as any)?.data?.data?.records ?? [];
         const unreadRecords = (unreadRes as any)?.data?.data?.records ?? [];
-        const merged = [...unreadRecords, ...recentRecords].reduce<NotificationVO[]>((acc, item) => {
-            if (!acc.some(current => current.id === item.id)) {
+        const merged = [...unreadRecords, ...recentRecords].reduce<
+            NotificationVO[]
+        >((acc, item) => {
+            if (!acc.some((current) => current.id === item.id)) {
                 acc.push(item);
             }
             return acc;
         }, []);
         notifications.value = sortNotifications(merged).slice(0, 3);
-        totalNotificationCount.value = (recentRes as any)?.data?.data?.total ?? 0;
+        totalNotificationCount.value =
+            (recentRes as any)?.data?.data?.total ?? 0;
     } catch {
         notifications.value = [];
     }
@@ -507,12 +642,20 @@ async function markNotificationAsRead(notification: NotificationVO) {
         await ApiNotification.markRead(notification.id);
         notification.isRead = true;
         if (unreadCount.value > 0) unreadCount.value--;
-        notifications.value = sortNotifications(notifications.value.map(item =>
-            item.id === notification.id ? ({ ...item, isRead: true } as NotificationVO) : item
-        ));
-        allNotifications.value = sortNotifications(allNotifications.value.map(item =>
-            item.id === notification.id ? ({ ...item, isRead: true } as NotificationVO) : item
-        ));
+        notifications.value = sortNotifications(
+            notifications.value.map((item) =>
+                item.id === notification.id
+                    ? ({ ...item, isRead: true } as NotificationVO)
+                    : item,
+            ),
+        );
+        allNotifications.value = sortNotifications(
+            allNotifications.value.map((item) =>
+                item.id === notification.id
+                    ? ({ ...item, isRead: true } as NotificationVO)
+                    : item,
+            ),
+        );
         if (unreadCount.value > 0) {
             await loadNotifications();
         }
@@ -525,7 +668,7 @@ function handleRealtimeNotification(notification: NotificationVO) {
     // 下拉列表保持未读优先，其次按时间倒序，最终只展示 3 条
     notifications.value = sortNotifications([
         notification,
-        ...notifications.value.filter(item => item.id !== notification.id),
+        ...notifications.value.filter((item) => item.id !== notification.id),
     ]).slice(0, 3);
     totalNotificationCount.value++;
     unreadCount.value++;
@@ -539,11 +682,15 @@ async function handleNotificationVisible(visible: boolean) {
     }
 }
 
-async function handleNotificationCommand(command: string | { type: string; id?: number }) {
+async function handleNotificationCommand(
+    command: string | { type: string; id?: number },
+) {
     if (command === "readAll") {
         await ApiNotification.markAllRead();
         notifications.value = sortNotifications(
-            notifications.value.map(item => ({ ...item, isRead: true } as NotificationVO))
+            notifications.value.map(
+                (item) => ({ ...item, isRead: true }) as NotificationVO,
+            ),
         );
         unreadCount.value = 0;
         return;
@@ -552,8 +699,12 @@ async function handleNotificationCommand(command: string | { type: string; id?: 
         openAllNotifications();
         return;
     }
-    if (typeof command === "object" && command.type === "detail" && command.id != null) {
-        const notif = notifications.value.find(n => n.id === command.id);
+    if (
+        typeof command === "object" &&
+        command.type === "detail" &&
+        command.id != null
+    ) {
+        const notif = notifications.value.find((n) => n.id === command.id);
         if (notif) openDetail(notif);
         return;
     }
@@ -612,11 +763,20 @@ function openAllNotifications() {
 }
 
 /** 加载全部通知（分页） */
-async function loadAllNotifications(page: number, filter: "all" | "unread" = allNotificationsFilter.value) {
+async function loadAllNotifications(
+    page: number,
+    filter: "all" | "unread" = allNotificationsFilter.value,
+) {
     allNotificationsLoading.value = true;
     try {
-        const res = await ApiNotification.listMyNotifications(page, allNotificationsPageSize, filter === "unread");
-        allNotifications.value = sortNotifications((res as any)?.data?.data?.records ?? []);
+        const res = await ApiNotification.listMyNotifications(
+            page,
+            allNotificationsPageSize,
+            filter === "unread",
+        );
+        allNotifications.value = sortNotifications(
+            (res as any)?.data?.data?.records ?? [],
+        );
         allNotificationsTotal.value = (res as any)?.data?.data?.total ?? 0;
     } catch {
         allNotifications.value = [];
@@ -634,7 +794,11 @@ function handleAllPageChange(page: number) {
 
 /** 全部通知弹窗筛选切换 */
 function handleFilterChange(filter: "all" | "unread") {
-    if (allNotificationsFilter.value === filter && allNotificationsPage.value === 1) return;
+    if (
+        allNotificationsFilter.value === filter &&
+        allNotificationsPage.value === 1
+    )
+        return;
     allNotificationsFilter.value = filter;
     allNotificationsPage.value = 1;
     loadAllNotifications(1, filter);
@@ -674,7 +838,9 @@ function handleFilterChange(filter: "all" | "unread") {
     text-decoration: none;
     transition: opacity 0.2s;
 
-    &:hover { opacity: 0.85; }
+    &:hover {
+        opacity: 0.85;
+    }
 }
 
 .logo-seal {
@@ -712,7 +878,7 @@ function handleFilterChange(filter: "all" | "unread") {
         }
 
         &.active::after {
-            content: '';
+            content: "";
             position: absolute;
             bottom: -18px;
             left: 0;
@@ -746,10 +912,18 @@ function handleFilterChange(filter: "all" | "unread") {
     cursor: pointer;
     transition: border-color 0.2s;
 
-    &:hover { border-color: var(--jade-light); }
+    &:hover {
+        border-color: var(--jade-light);
+    }
 
-    .search-icon { font-size: 13px; flex-shrink: 0; }
-    .search-placeholder { color: var(--ink-muted); font-size: 13px; }
+    .search-icon {
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .search-placeholder {
+        color: var(--ink-muted);
+        font-size: 13px;
+    }
 }
 
 .top-bell {
@@ -797,8 +971,16 @@ function handleFilterChange(filter: "all" | "unread") {
     padding: 10px;
     border-radius: 20px;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 248, 241, 0.98)),
-        radial-gradient(circle at top right, rgba(92, 131, 116, 0.08), transparent 32%);
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.99),
+            rgba(252, 248, 241, 0.98)
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(92, 131, 116, 0.08),
+            transparent 32%
+        );
     border: 1px solid rgba(232, 223, 208, 0.88);
     box-shadow:
         0 22px 48px rgba(55, 42, 25, 0.12),
@@ -824,8 +1006,16 @@ function handleFilterChange(filter: "all" | "unread") {
     padding: 10px;
     border-radius: 20px;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 248, 241, 0.98)),
-        radial-gradient(circle at top right, rgba(92, 131, 116, 0.08), transparent 34%);
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.99),
+            rgba(252, 248, 241, 0.98)
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(92, 131, 116, 0.08),
+            transparent 34%
+        );
     border: 1px solid rgba(232, 223, 208, 0.88);
     box-shadow:
         0 22px 48px rgba(55, 42, 25, 0.12),
@@ -883,7 +1073,11 @@ function handleFilterChange(filter: "all" | "unread") {
 
     &.hot {
         color: var(--cinnabar);
-        background: linear-gradient(180deg, rgba(255, 244, 241, 0.98), rgba(255, 237, 232, 0.94));
+        background: linear-gradient(
+            180deg,
+            rgba(255, 244, 241, 0.98),
+            rgba(255, 237, 232, 0.94)
+        );
         border-color: rgba(179, 60, 44, 0.18);
     }
 }
@@ -897,17 +1091,37 @@ function handleFilterChange(filter: "all" | "unread") {
     padding: 14px 16px 13px;
     color: var(--ink);
     background:
-        linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(253, 250, 243, 0.92)),
-        radial-gradient(circle at left top, rgba(92, 131, 116, 0.06), transparent 26%);
+        linear-gradient(
+            180deg,
+            rgba(255, 253, 249, 0.98),
+            rgba(253, 250, 243, 0.92)
+        ),
+        radial-gradient(
+            circle at left top,
+            rgba(92, 131, 116, 0.06),
+            transparent 26%
+        );
     border: 1px solid rgba(239, 231, 218, 0.88);
     border-radius: 18px;
     box-shadow: 0 1px 2px rgba(60, 50, 30, 0.03);
-    transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+    transition:
+        background 0.22s ease,
+        border-color 0.22s ease,
+        transform 0.22s ease,
+        box-shadow 0.22s ease;
 
     &:hover {
         background:
-            linear-gradient(180deg, rgba(248, 252, 250, 0.98), rgba(252, 249, 242, 0.98)),
-            radial-gradient(circle at left top, rgba(92, 131, 116, 0.08), transparent 28%);
+            linear-gradient(
+                180deg,
+                rgba(248, 252, 250, 0.98),
+                rgba(252, 249, 242, 0.98)
+            ),
+            radial-gradient(
+                circle at left top,
+                rgba(92, 131, 116, 0.08),
+                transparent 28%
+            );
         border-color: rgba(92, 131, 116, 0.18);
         transform: translateY(-2px);
         box-shadow: 0 10px 22px rgba(92, 131, 116, 0.08);
@@ -917,8 +1131,16 @@ function handleFilterChange(filter: "all" | "unread") {
 .notification-item.unread {
     border-color: rgba(92, 131, 116, 0.2);
     background:
-        linear-gradient(180deg, rgba(246, 251, 249, 0.98), rgba(253, 250, 243, 0.94)),
-        radial-gradient(circle at left top, rgba(92, 131, 116, 0.1), transparent 28%);
+        linear-gradient(
+            180deg,
+            rgba(246, 251, 249, 0.98),
+            rgba(253, 250, 243, 0.94)
+        ),
+        radial-gradient(
+            circle at left top,
+            rgba(92, 131, 116, 0.1),
+            transparent 28%
+        );
 }
 
 .notification-item.unread .notification-title {
@@ -963,7 +1185,9 @@ function handleFilterChange(filter: "all" | "unread") {
     transition: transform 0.2s;
     overflow: hidden;
 
-    &:hover { transform: scale(1.06); }
+    &:hover {
+        transform: scale(1.06);
+    }
 
     .avatar-img {
         width: 100%;
@@ -987,8 +1211,16 @@ function handleFilterChange(filter: "all" | "unread") {
     font-weight: 600;
     width: 100%;
     background:
-        linear-gradient(180deg, rgba(250, 253, 251, 0.98), rgba(246, 250, 248, 0.96)),
-        radial-gradient(circle at top center, rgba(92, 131, 116, 0.08), transparent 42%);
+        linear-gradient(
+            180deg,
+            rgba(250, 253, 251, 0.98),
+            rgba(246, 250, 248, 0.96)
+        ),
+        radial-gradient(
+            circle at top center,
+            rgba(92, 131, 116, 0.08),
+            transparent 42%
+        );
     border: 1px solid rgba(92, 131, 116, 0.14);
     border-radius: 16px;
     padding: 14px 14px;
@@ -997,7 +1229,10 @@ function handleFilterChange(filter: "all" | "unread") {
     justify-content: center;
     gap: 8px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 
     &:hover {
         transform: translateY(-1px);
@@ -1125,15 +1360,35 @@ function handleFilterChange(filter: "all" | "unread") {
     border-radius: 18px;
     border: 1px solid rgba(239, 231, 218, 0.88);
     background:
-        linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(253, 250, 243, 0.92)),
-        radial-gradient(circle at left top, rgba(92, 131, 116, 0.06), transparent 26%);
+        linear-gradient(
+            180deg,
+            rgba(255, 253, 249, 0.98),
+            rgba(253, 250, 243, 0.92)
+        ),
+        radial-gradient(
+            circle at left top,
+            rgba(92, 131, 116, 0.06),
+            transparent 26%
+        );
     box-shadow: 0 1px 2px rgba(60, 50, 30, 0.03);
-    transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+    transition:
+        background 0.22s ease,
+        border-color 0.22s ease,
+        transform 0.22s ease,
+        box-shadow 0.22s ease;
 
     &:hover {
         background:
-            linear-gradient(180deg, rgba(248, 252, 250, 0.98), rgba(252, 249, 242, 0.98)),
-            radial-gradient(circle at left top, rgba(92, 131, 116, 0.08), transparent 28%);
+            linear-gradient(
+                180deg,
+                rgba(248, 252, 250, 0.98),
+                rgba(252, 249, 242, 0.98)
+            ),
+            radial-gradient(
+                circle at left top,
+                rgba(92, 131, 116, 0.08),
+                transparent 28%
+            );
         border-color: rgba(92, 131, 116, 0.18);
         transform: translateY(-2px);
         box-shadow: 0 10px 22px rgba(92, 131, 116, 0.08);
@@ -1141,14 +1396,30 @@ function handleFilterChange(filter: "all" | "unread") {
 
     &.logout {
         background:
-            linear-gradient(180deg, rgba(255, 250, 248, 0.98), rgba(253, 247, 243, 0.94)),
-            radial-gradient(circle at left top, rgba(179, 60, 44, 0.07), transparent 26%);
+            linear-gradient(
+                180deg,
+                rgba(255, 250, 248, 0.98),
+                rgba(253, 247, 243, 0.94)
+            ),
+            radial-gradient(
+                circle at left top,
+                rgba(179, 60, 44, 0.07),
+                transparent 26%
+            );
 
         &:hover {
             border-color: rgba(179, 60, 44, 0.2);
             background:
-                linear-gradient(180deg, rgba(255, 247, 244, 0.98), rgba(253, 245, 240, 0.96)),
-                radial-gradient(circle at left top, rgba(179, 60, 44, 0.08), transparent 28%);
+                linear-gradient(
+                    180deg,
+                    rgba(255, 247, 244, 0.98),
+                    rgba(253, 245, 240, 0.96)
+                ),
+                radial-gradient(
+                    circle at left top,
+                    rgba(179, 60, 44, 0.08),
+                    transparent 28%
+                );
             box-shadow: 0 10px 22px rgba(179, 60, 44, 0.08);
         }
     }
@@ -1312,7 +1583,10 @@ function handleFilterChange(filter: "all" | "unread") {
     margin-bottom: 0;
     cursor: pointer;
     border-bottom: 1px solid rgba(232, 223, 208, 0.75);
-    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        transform 0.2s;
     position: relative;
     overflow: hidden;
 
@@ -1328,11 +1602,15 @@ function handleFilterChange(filter: "all" | "unread") {
     }
 
     &.unread {
-        background: linear-gradient(90deg, rgba(92, 131, 116, 0.06), rgba(253, 250, 243, 0));
+        background: linear-gradient(
+            90deg,
+            rgba(92, 131, 116, 0.06),
+            rgba(253, 250, 243, 0)
+        );
         border-color: rgba(92, 131, 116, 0.14);
 
         &::before {
-            content: '';
+            content: "";
             position: absolute;
             left: 0;
             top: 0;
@@ -1445,7 +1723,11 @@ function handleFilterChange(filter: "all" | "unread") {
 :deep(.all-notifications-dialog .el-pagination) {
     padding: 8px 12px;
     border-radius: 999px;
-    background: linear-gradient(180deg, rgba(253, 250, 243, 0.9), rgba(255, 255, 255, 0.96));
+    background: linear-gradient(
+        180deg,
+        rgba(253, 250, 243, 0.9),
+        rgba(255, 255, 255, 0.96)
+    );
     border: 1px solid rgba(232, 223, 208, 0.88);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
     gap: 6px;
@@ -1503,9 +1785,17 @@ function handleFilterChange(filter: "all" | "unread") {
 }
 
 @media (max-width: 900px) {
-    .topbar-inner { padding: 12px 20px; gap: 16px; }
-    .search-box { display: none; }
-    .top-nav { gap: 14px; font-size: 13px; }
+    .topbar-inner {
+        padding: 12px 20px;
+        gap: 16px;
+    }
+    .search-box {
+        display: none;
+    }
+    .top-nav {
+        gap: 14px;
+        font-size: 13px;
+    }
 }
 </style>
 
@@ -1616,13 +1906,21 @@ function handleFilterChange(filter: "all" | "unread") {
     .el-dialog__header {
         padding: 20px 24px 16px;
         border-bottom: 1px solid var(--line-soft);
-        background: linear-gradient(180deg, rgba(253, 250, 243, 0.96), rgba(255, 255, 255, 0.98));
+        background: linear-gradient(
+            180deg,
+            rgba(253, 250, 243, 0.96),
+            rgba(255, 255, 255, 0.98)
+        );
         flex-shrink: 0;
     }
 
     .el-dialog__body {
         padding: 16px 24px 22px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(253, 250, 243, 0.98));
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.98),
+            rgba(253, 250, 243, 0.98)
+        );
         flex: 1;
         min-height: 0;
     }
@@ -1641,12 +1939,20 @@ function handleFilterChange(filter: "all" | "unread") {
     .el-dialog__header {
         padding: 22px 24px 12px;
         border-bottom: 1px solid rgba(232, 223, 208, 0.72);
-        background: linear-gradient(180deg, rgba(253, 250, 243, 0.98), rgba(255, 255, 255, 0.98));
+        background: linear-gradient(
+            180deg,
+            rgba(253, 250, 243, 0.98),
+            rgba(255, 255, 255, 0.98)
+        );
     }
 
     .el-dialog__body {
         padding: 20px 24px 24px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(252, 248, 241, 0.94));
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.98),
+            rgba(252, 248, 241, 0.94)
+        );
     }
 
     .el-dialog__headerbtn {
@@ -1725,8 +2031,16 @@ function handleFilterChange(filter: "all" | "unread") {
     border-radius: 18px;
     border: 1px solid rgba(232, 223, 208, 0.78);
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(253, 250, 243, 0.94)),
-        radial-gradient(circle at top right, rgba(92, 131, 116, 0.08), transparent 34%);
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.94),
+            rgba(253, 250, 243, 0.94)
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(92, 131, 116, 0.08),
+            transparent 34%
+        );
     color: var(--ink);
     font-size: 16px;
     line-height: 1.9;
@@ -1738,4 +2052,3 @@ function handleFilterChange(filter: "all" | "unread") {
     color: var(--ink-muted);
 }
 </style>
-

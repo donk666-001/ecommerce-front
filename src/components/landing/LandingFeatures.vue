@@ -1,23 +1,23 @@
 <!-- src/components/landing/LandingFeatures.vue -->
 <template>
-    <section ref="sectionEl" class="features glass-section">
+    <section ref="sectionEl" class="features">
         <div class="feat-blob feat-blob-1 drifting-1" />
         <div class="feat-blob feat-blob-2 drifting-2" />
         <div class="container">
             <div class="features-header">
-                <div class="section-tag" data-animate>✦ 核心功能</div>
                 <h2 class="section-title" data-animate style="--delay: 80ms">
                     六大模块，<br />守护你的自然节律
                 </h2>
                 <p class="section-sub" data-animate style="--delay: 160ms">
-                    从节气饮食到睡眠优化，从经期管理到情绪疗愈——每一个模块都与你的身体深度协同。
+                    从节气饮食到睡眠优化，从经期管理到情绪疗愈——每个模块都经过中医理论验证。
                 </p>
             </div>
             <div class="features-grid">
                 <div
                     v-for="(f, i) in features"
                     :key="f.name"
-                    class="feature-card shimmer-card"
+                    class="feature-card"
+                    :class="{ 'feature-card--lead': i === 0 }"
                     data-animate
                     :style="{ '--delay': `${i * 90}ms` }"
                 >
@@ -90,8 +90,7 @@ const features = [
 <style lang="scss" scoped>
 .features {
     padding: 108px 0;
-    background: rgba(15, 22, 12, 0.58);
-    backdrop-filter: blur(3px);
+    background: rgba(8, 16, 6, 0.52);
     position: relative;
     overflow: hidden;
     z-index: 1;
@@ -106,22 +105,22 @@ const features = [
 .feat-blob {
     position: absolute;
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-    filter: blur(64px);
+    filter: blur(80px);
     pointer-events: none;
 }
 .feat-blob-1 {
-    right: -60px;
-    top: -40px;
-    width: 360px;
-    height: 300px;
-    background: rgba(93, 112, 82, 0.08);
+    right: -80px;
+    top: -60px;
+    width: 400px;
+    height: 340px;
+    background: rgba(93, 112, 82, 0.06);
 }
 .feat-blob-2 {
-    left: -40px;
-    bottom: -60px;
-    width: 280px;
-    height: 240px;
-    background: rgba(193, 140, 93, 0.07);
+    left: -60px;
+    bottom: -80px;
+    width: 320px;
+    height: 280px;
+    background: rgba(193, 140, 93, 0.05);
     border-radius: 30% 70% 60% 40% / 50% 40% 60% 50%;
 }
 
@@ -132,38 +131,22 @@ const features = [
     z-index: 1;
 }
 
-.section-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(6px);
-}
-
 .section-title {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    font-weight: 500;
     color: white;
-    line-height: 1.15;
-    letter-spacing: -0.5px;
-    font-family: Georgia, "STSong", serif;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
 }
 
 .section-sub {
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.68);
-    line-height: 1.75;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.8;
     max-width: 520px;
-    margin: 12px auto 0;
+    margin: 14px auto 0;
 }
 
 .features-grid {
@@ -172,33 +155,44 @@ const features = [
     gap: 20px;
     position: relative;
     z-index: 1;
+
+    @media (max-width: 760px) {
+        grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 520px) {
+        grid-template-columns: 1fr;
+    }
 }
 
 .feature-card {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 1.5rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
     padding: 32px;
     box-shadow:
-        0 4px 24px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 4px 16px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition:
-        transform 0.3s,
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         background 0.3s,
         box-shadow 0.3s;
     cursor: default;
-    backdrop-filter: blur(12px);
 
     &:hover {
-        transform: translateY(-6px);
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        transform: translateY(-4px);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 
         .feature-icon-wrap {
-            background: rgba(93, 112, 82, 0.45);
-            transform: scale(1.1) rotate(-4deg);
+            background: rgba(93, 112, 82, 0.4);
+            transform: scale(1.08) rotate(-3deg);
         }
+    }
+
+    /* 首张卡片仅加一条顶部玉色装饰线，暗示"从这里开始" */
+    &--lead {
+        border-top: 2px solid rgba(92, 131, 116, 0.45);
     }
 }
 
