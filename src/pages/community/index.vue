@@ -368,6 +368,7 @@
                                 </div>
                                 <div class="poster-modal-footer">
                                     <button class="wset-btn" @click="showPoster = false">关闭</button>
+                                    <button class="wset-btn" @click="sharePosterToCommunity">📤 分享到社区</button>
                                     <button class="wset-btn primary" @click="downloadPoster">⬇ 下载海报</button>
                                 </div>
                             </div>
@@ -622,114 +623,212 @@
 
             <!-- ===== Module 3: 养生经验分享 ===== -->
             <section v-show="activeTab === 'sharing'" class="panel">
-                <div class="compose-card">
-                    <div class="row" style="margin-bottom: 12px">
-                        <div
-                            class="font-serif"
-                            style="font-size: 20px; font-weight: 600"
-                        >
-                            分享你的养生心得
-                        </div>
-                        <span class="pick-chip">📋 草稿箱 (2)</span>
-                    </div>
-                    <div class="compose-box">
-                        <textarea
-                            placeholder="记录今天的养生体会、食疗方子、作息变化…… 与同道好友一起进步"
-                        ></textarea>
-                    </div>
-                    <div class="upload-row">
-                        <div class="upload-thumb">
-                            🍵<span class="x" @click="toast('已移除')">×</span>
-                        </div>
-                        <div class="upload-box">
-                            <span class="plus">＋</span>添加图片
-                        </div>
-                        <div class="upload-box">
-                            <span class="plus">🎬</span>添加视频
-                        </div>
-                    </div>
-                    <div
-                        style="
-                            margin-top: 12px;
-                            font-size: 13px;
-                            color: var(--ink-muted);
-                        "
-                    >
-                        选择分类：
-                    </div>
-                    <div class="chip-row" style="margin-top: 8px">
-                        <span
-                            v-for="cat in shareCategories"
-                            :key="cat"
-                            class="pick-chip"
-                            :class="{ active: selectedCategory === cat }"
-                            @click="selectedCategory = cat"
-                            >{{ cat }}</span
-                        >
-                    </div>
-                    <div class="compose-foot">
-                        <div class="compose-tools">
-                            <span># 添加话题</span>
-                            <span>🔗 关联打卡</span>
-                            <span>📍 添加位置</span>
-                        </div>
-                        <div>
-                            <button class="btn btn-ghost btn-sm">存草稿</button>
-                            <button
-                                class="btn btn-sm"
-                                style="margin-left: 6px"
-                                @click="toast('✓ 已发布')"
-                            >
-                                发布经验
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="card" style="margin-top: 20px">
-                    <div class="row">
-                        <div class="card-title" style="margin: 0">
+                <div class="card" style="margin-top:0">
+                    <!-- 顶部：发布入口 -->
+                    <div class="share-top-bar">
+                        <div class="card-title" style="margin:0;display:flex;align-items:center;gap:10px">
                             <span class="dot"></span>经验广场
                         </div>
-                        <div class="chip-row">
-                            <span
-                                v-for="s in shareSorts"
-                                :key="s"
-                                class="pick-chip"
-                                :class="{ active: selectedShareSort === s }"
-                                @click="selectedShareSort = s"
-                                >{{ s }}</span
-                            >
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <span v-if="drafts.length > 0" class="pick-chip" style="cursor:pointer" @click="openDrafts">📋 草稿箱 ({{ drafts.length }})</span>
+                            <span class="pick-chip" style="cursor:pointer" @click="openShareDialog">＋ 分享经验</span>
                         </div>
                     </div>
-                    <div class="grid-3">
+
+                    <!-- 分类入口卡片网格 -->
+                    <div class="exp-grid">
                         <div
-                            v-for="exp in experiences"
-                            :key="exp.title"
-                            class="exp-card"
+                            v-for="cat in shareCategories"
+                            :key="cat"
+                            class="exp-cat-card"
+                            @click="openCategoryDialog(cat)"
                         >
-                            <div class="exp-cover" :class="exp.coverClass">
-                                <span class="exp-cat">{{ exp.cat }}</span
-                                >{{ exp.emoji }}
+                            <div class="exp-cat-emoji" :class="'exp-bg-' + cat">{{ catEmojis[cat] }}</div>
+                            <div class="exp-cat-info">
+                                <div class="exp-cat-name">{{ cat }}</div>
+                                <div class="exp-cat-count">{{ (postsByCategory[cat] || []).length }} 篇经验</div>
+                                <div class="exp-cat-preview" v-if="(postsByCategory[cat] || []).length > 0">
+                                    {{ postsByCategory[cat][postsByCategory[cat].length - 1].text.slice(0, 30) }}{{ postsByCategory[cat][0].text.length > 30 ? '…' : '' }}
+                                </div>
+                                <div class="exp-cat-preview muted" v-else>还没有经验，快来分享吧</div>
                             </div>
-                            <div class="exp-body">
-                                <div class="exp-title">{{ exp.title }}</div>
-                                <div class="exp-author">
-                                    <span class="mini-avatar">{{
-                                        exp.authorInitial
-                                    }}</span
-                                    >{{ exp.author }}
-                                </div>
-                                <div class="exp-stats">
-                                    <span>👍 {{ exp.likes }}</span
-                                    ><span>💬 {{ exp.comments }}</span
-                                    ><span>⭐ {{ exp.stars }}</span>
-                                </div>
+                        </div>
+                    </div>
+
+                    <!-- 草稿箱面板 -->
+                    <div v-if="showDraftsPanel" class="drafts-panel" style="margin-top:14px">
+                        <div class="drafts-header">
+                            <span>草稿箱（{{ drafts.length }}）</span>
+                            <button class="wset-inline-btn" @click="showDraftsPanel = false">返回广场</button>
+                        </div>
+                        <div v-if="drafts.length === 0" class="drafts-empty">暂无草稿</div>
+                        <div v-for="(d, idx) in drafts" :key="idx" class="draft-item">
+                            <div class="draft-body">
+                                <div class="draft-text">{{ d.text || '(无文字内容)' }}</div>
+                                <div class="draft-meta">{{ d.category }} · {{ d.images?.length || 0 }} 张图片</div>
+                            </div>
+                            <div class="draft-actions">
+                                <button class="wset-btn primary" style="padding:4px 12px;font-size:12px" @click="publishDraft(idx)">发布</button>
+                                <button class="wset-btn" style="padding:4px 12px;font-size:12px" @click="editDraft(idx)">编辑</button>
+                                <button class="wset-btn" style="padding:4px 12px;font-size:12px" @click="removeDraft(idx)">删除</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 发布弹窗 -->
+                <Teleport to="body">
+                    <Transition name="wset-modal">
+                        <div v-if="showShareDialog" class="wset-mask" @click.self="closeShareDialog">
+                            <div class="wset-dialog share-dialog">
+                                <div class="wset-header share-dialog-header">
+                                    <span>分享养生心得</span>
+                                    <button @click="closeShareDialog">✕</button>
+                                </div>
+                                <div class="wset-body share-dialog-body">
+                                    <textarea
+                                        v-model="shareForm.text"
+                                        class="share-textarea"
+                                        rows="4"
+                                        placeholder="记录今天的养生体会、食疗方子、作息变化…… 与同道好友一起进步"
+                                    ></textarea>
+                                    <div class="share-imgs-upload">
+                                        <div v-for="(img, ii) in shareForm.images" :key="ii" class="share-img-thumb">
+                                            <img :src="img" />
+                                            <button class="share-img-del" @click="shareForm.images.splice(ii, 1)">✕</button>
+                                        </div>
+                                        <div v-if="shareForm.images.length < 9" class="share-img-add" @click="triggerShareImgInput">＋</div>
+                                        <input ref="shareImgInputRef" type="file" accept="image/*" multiple style="display:none" @change="onShareImgSelect" />
+                                    </div>
+                                    <div v-if="shareForm.video" class="share-video-preview">
+                                        <video :src="shareForm.video" controls />
+                                        <button class="share-img-del" @click="shareForm.video = ''">✕</button>
+                                    </div>
+                                    <div v-else class="share-video-add" @click="triggerShareVideoInput">🎬 添加视频</div>
+                                    <input ref="shareVideoInputRef" type="file" accept="video/*" style="display:none" @change="onShareVideoSelect" />
+                                    <div class="share-cat-row">
+                                        <span class="share-cat-label">分类：</span>
+                                        <span v-for="cat in shareCategories" :key="cat" class="pick-chip" :class="{ active: shareForm.category === cat }" @click="shareForm.category = cat">{{ cat }}</span>
+                                    </div>
+                                </div>
+                                <div class="wset-footer">
+                                    <button class="wset-btn" @click="saveDraft">📥 存草稿</button>
+                                    <button class="wset-btn primary" @click="publishPost">发布经验</button>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </Teleport>
+
+                <!-- 分类内容弹窗 -->
+                <Teleport to="body">
+                    <Transition name="wset-modal">
+                        <div v-if="showCatDialog" class="wset-mask" @click.self="showCatDialog = false">
+                            <div class="wset-dialog cat-dialog">
+                                <div class="cat-dialog-head" :class="'cat-head-' + catDialogName">
+                                    <div class="cat-dialog-title">{{ catDialogName }}</div>
+                                    <div class="cat-dialog-sub">{{ catDialogPosts.length }} 篇经验 · 一起交流养生心得</div>
+                                    <button class="cat-dialog-close" @click="showCatDialog = false">✕</button>
+                                </div>
+                                <div class="cat-dialog-body">
+                                    <!-- 搜索栏 -->
+                                    <div class="cat-dialog-search">
+                                        <input
+                                            v-model="catDialogKeyword"
+                                            class="cat-dialog-search-input"
+                                            placeholder="搜索经验关键词…"
+                                        />
+                                    </div>
+                                    <div v-if="filteredCatPosts.length === 0 && !catDialogKeyword" class="drafts-empty" style="padding:60px;text-align:center;color:var(--ink-muted)">该分类暂无经验，快来分享吧</div>
+                                    <div v-else-if="filteredCatPosts.length === 0 && catDialogKeyword" class="drafts-empty" style="padding:40px;text-align:center;color:var(--ink-muted)">没有找到包含 "{{ catDialogKeyword }}" 的经验</div>
+                                    <div v-for="p in filteredCatPosts" :key="p._id" class="cat-post-card">
+                                        <!-- 头部 -->
+                                        <div class="cat-post-head">
+                                            <div class="cat-post-avatar">{{ p.emoji }}</div>
+                                            <div class="cat-post-user">
+                                                <div class="cat-post-name">{{ p.author }}</div>
+                                                <div class="cat-post-date">{{ p.time }}</div>
+                                            </div>
+                                            <button v-if="p.author === currentUser" class="cat-post-del" @click="removePost(p._id)">删除</button>
+                                        </div>
+                                        <!-- 正文 -->
+                                        <div class="cat-post-body">
+                                            <div class="cat-post-text">{{ p.text }}</div>
+                                            <div v-if="p.images.length > 0" class="cat-post-imgs">
+                                                <img v-for="(img, ii) in p.images" :key="ii" :src="img" class="cat-post-img" />
+                                            </div>
+                                            <div v-if="p.video" class="cat-post-video">
+                                                <video :src="p.video" controls />
+                                            </div>
+                                        </div>
+                                        <!-- 互动栏 -->
+                                        <div class="cat-post-bar">
+                                            <button class="cpb-btn" :class="{ active: likesState[p._id] }" @click="toggleLike(p._id)">
+                                                {{ likesState[p._id] ? '❤️' : '🤍' }} {{ p.likes }}
+                                            </button>
+                                            <button class="cpb-btn" :class="{ active: showCommentInputId === p._id }" @click="toggleCommentInput(p._id)">
+                                                💬 {{ p.comments }}
+                                            </button>
+                                            <button class="cpb-btn" :class="{ active: starsState[p._id] }" @click="toggleStar(p._id)">
+                                                {{ starsState[p._id] ? '⭐' : '☆' }} {{ p.stars }}
+                                            </button>
+                                        </div>
+                                        <!-- 评论区（小红书风格） -->
+                                        <div v-if="showCommentInputId === p._id" class="cat-post-comment-area">
+                                            <div class="cpc-title">评论</div>
+                                            <div v-if="p.commentList && p.commentList.length > 0" class="cpc-list">
+                                                <div v-for="c in p.commentList" :key="c._cid" class="cpc-item">
+                                                    <div class="cpc-avatar">{{ c.author[0] }}</div>
+                                                    <div class="cpc-body">
+                                                        <div class="cpc-header">
+                                                            <span class="cpc-name">{{ c.author }}</span>
+                                                            <span class="cpc-date">{{ c.time }}</span>
+                                                        </div>
+                                                        <div class="cpc-content">{{ c.text }}</div>
+                                                        <div class="cpc-footer">
+                                                            <button class="cpc-reply" @click="setReplyTarget(p._id, c._cid, c.author)">回复</button>
+                                                        </div>
+                                                        <!-- 子回复 -->
+                                                        <div v-if="c.replies && c.replies.length > 0" class="cpc-children">
+                                                            <div v-for="r in c.replies" :key="r._cid" class="cpc-child-item">
+                                                                <div class="cpc-avatar sm">{{ r.author[0] }}</div>
+                                                                <div class="cpc-body">
+                                                                    <div class="cpc-header">
+                                                                        <span class="cpc-name">{{ r.author }}</span>
+                                                                        <span class="cpc-date">{{ r.time }}</span>
+                                                                    </div>
+                                                                    <div class="cpc-content"><span v-if="r.replyTo" class="cpc-at">@{{ r.replyTo }}</span>{{ r.text }}</div>
+                                                                    <div class="cpc-footer">
+                                                                        <button class="cpc-reply" @click="setReplyTarget(p._id, c._cid, r.author)">回复</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="cpc-input-row">
+                                                <div class="cpc-input-avatar">{{ currentUser[0] }}</div>
+                                                <div class="cpc-input-wrap">
+                                                    <input
+                                                        v-model="commentText[p._id]"
+                                                        class="cpc-input"
+                                                        :placeholder="replyTarget && replyTarget.postId === p._id ? '回复 @' + replyTarget.author : '写下你的评论…'"
+                                                        @keydown.enter="submitComment(p._id)"
+                                                    />
+                                                    <button class="cpc-send" @click="submitComment(p._id)">发送</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </Teleport>
+
+                <!-- 保留：热门养生话题 + 我的创作数据 -->
                 <div class="grid-2" style="margin-top: 20px">
                     <div class="card">
                         <div class="card-title">
@@ -759,92 +858,34 @@
                             <span class="dot"></span>我的创作数据
                         </div>
                         <div class="grid-2" style="gap: 12px">
-                            <div
-                                class="tip-row"
-                                style="border-left-color: var(--gold)"
-                            >
+                            <div class="tip-row" style="border-left-color: var(--gold)">
                                 <span class="icon">📝</span>
                                 <div class="text">
-                                    <strong style="font-size: 20px">18</strong>
-                                    篇<br /><span
-                                        style="
-                                            color: var(--ink-muted);
-                                            font-size: 12px;
-                                        "
-                                        >累计发布经验</span
-                                    >
+                                    <strong style="font-size: 20px">{{ publishedPosts.length }}</strong>
+                                    篇<br /><span style="color: var(--ink-muted); font-size: 12px;">累计发布经验</span>
                                 </div>
                             </div>
-                            <div
-                                class="tip-row"
-                                style="border-left-color: var(--cinnabar)"
-                            >
+                            <div class="tip-row" style="border-left-color: var(--cinnabar)">
                                 <span class="icon">👍</span>
                                 <div class="text">
-                                    <strong style="font-size: 20px"
-                                        >3,240</strong
-                                    ><br /><span
-                                        style="
-                                            color: var(--ink-muted);
-                                            font-size: 12px;
-                                        "
-                                        >累计获赞</span
-                                    >
+                                    <strong style="font-size: 20px">{{ totalLikes }}</strong>
+                                    <br /><span style="color: var(--ink-muted); font-size: 12px;">累计获赞</span>
                                 </div>
                             </div>
-                            <div
-                                class="tip-row"
-                                style="border-left-color: var(--jade)"
-                            >
+                            <div class="tip-row" style="border-left-color: var(--jade)">
                                 <span class="icon">⭐</span>
                                 <div class="text">
-                                    <strong style="font-size: 20px"
-                                        >1,562</strong
-                                    ><br /><span
-                                        style="
-                                            color: var(--ink-muted);
-                                            font-size: 12px;
-                                        "
-                                        >被收藏次数</span
-                                    >
+                                    <strong style="font-size: 20px">{{ totalStars }}</strong>
+                                    <br /><span style="color: var(--ink-muted); font-size: 12px;">被收藏次数</span>
                                 </div>
                             </div>
-                            <div
-                                class="tip-row"
-                                style="border-left-color: var(--moon)"
-                            >
-                                <span class="icon">🏅</span>
+                            <div class="tip-row" style="border-left-color: var(--moon)">
+                                <span class="icon">💬</span>
                                 <div class="text">
-                                    <strong style="font-size: 20px">2</strong>
-                                    篇<br /><span
-                                        style="
-                                            color: var(--ink-muted);
-                                            font-size: 12px;
-                                        "
-                                        >入选社区精华</span
-                                    >
+                                    <strong style="font-size: 20px">{{ totalComments }}</strong>
+                                    <br /><span style="color: var(--ink-muted); font-size: 12px;">被评论数</span>
                                 </div>
                             </div>
-                        </div>
-                        <div style="display: flex; gap: 8px; margin-top: 14px">
-                            <button
-                                class="btn btn-ghost btn-sm"
-                                style="flex: 1"
-                            >
-                                我的发布
-                            </button>
-                            <button
-                                class="btn btn-ghost btn-sm"
-                                style="flex: 1"
-                            >
-                                我的收藏
-                            </button>
-                            <button
-                                class="btn btn-ghost btn-sm"
-                                style="flex: 1"
-                            >
-                                草稿箱
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -863,143 +904,257 @@
                                     v-for="f in feedFilters"
                                     :key="f"
                                     class="pick-chip"
-                                    :class="{
-                                        active: selectedFeedFilter === f,
-                                    }"
+                                    :class="{ active: selectedFeedFilter === f }"
                                     @click="selectedFeedFilter = f"
-                                    >{{ f }}</span
-                                >
+                                >{{ f }}</span>
+                                <span class="pick-chip" style="cursor:pointer" @click="openCommunityPublish">＋</span>
                             </div>
                         </div>
 
-                        <div v-for="post in posts" :key="post.id" class="post">
+                        <div v-if="filteredCommunityPosts.length === 0" style="text-align:center;padding:48px;color:var(--ink-muted);font-size:14px">
+                            {{ selectedFeedFilter === '关注' ? '你关注的人还没有发布动态' : '暂无动态' }}
+                        </div>
+
+                        <div v-for="post in filteredCommunityPosts" :key="post._id" :id="'post-' + post._id" class="post">
                             <div class="post-head">
-                                <div
-                                    class="avatar"
-                                    :style="{ background: post.avatarBg }"
-                                >
-                                    {{ post.avatarText }}
-                                </div>
+                                <div class="avatar" :style="{ background: post.avatarBg }">{{ post.avatarText }}</div>
                                 <div class="ph-info">
-                                    <div class="ph-name">
-                                        {{ post.name }}
-                                        <span class="level-tag">{{
-                                            post.level
-                                        }}</span>
-                                    </div>
+                                    <div class="ph-name">{{ post.name }} <span class="level-tag">{{ post.level }}</span></div>
                                     <div class="ph-meta">{{ post.meta }}</div>
                                 </div>
-                                <button class="btn btn-ghost btn-sm">
-                                    + 关注
-                                </button>
+                                <button v-if="post.authorId !== currentUserId" class="btn btn-ghost btn-sm" @click="toggleFollow(post.authorId)">{{ followedUsers[post.authorId] ? '✓ 已关注' : '+ 关注' }}</button>
                             </div>
                             <div class="post-text">{{ post.text }}</div>
                             <div v-if="post.checkin" class="post-checkin">
                                 <div class="pc-ring">{{ post.checkin }}</div>
-                                <div style="font-size: 13px">
-                                    <div style="font-weight: 600">
-                                        {{ post.checkinTitle }}
-                                    </div>
-                                    <div
-                                        style="
-                                            color: var(--ink-muted);
-                                            font-size: 12px;
-                                        "
-                                    >
-                                        {{ post.checkinDesc }}
-                                    </div>
+                                <div style="font-size:13px">
+                                    <div style="font-weight:600">{{ post.checkinTitle }}</div>
+                                    <div style="color:var(--ink-muted);font-size:12px">{{ post.checkinDesc }}</div>
                                 </div>
                             </div>
-                            <div v-if="post.images" class="post-imgs">
-                                <div
-                                    v-for="(img, i) in post.images"
-                                    :key="i"
-                                    class="post-img"
-                                    :style="{ background: img.bg }"
-                                >
-                                    {{ img.emoji }}
-                                </div>
+                            <div v-if="post.images && post.images.length > 0" class="post-imgs-comm">
+                                <img v-for="(img, i) in post.images.slice(0, 9)" :key="i" :src="img.src || ''" class="post-img-comm" />
                             </div>
                             <div class="post-tags">
-                                <span
-                                    v-for="tag in post.tags"
-                                    :key="tag"
-                                    class="topic-tag"
-                                    ># {{ tag }}</span
-                                >
+                                <span v-for="tag in post.tags" :key="tag" class="topic-tag"># {{ tag }}</span>
                             </div>
                             <div class="post-actions">
-                                <span
-                                    class="pa"
-                                    :class="{ liked: post.liked }"
-                                    @click="
-                                        post.liked = !post.liked;
-                                        post.likeCount += post.liked ? 1 : -1;
-                                    "
-                                    >{{ post.liked ? "❤️" : "🤍" }}
-                                    <span>{{ post.likeCount }}</span></span
-                                >
-                                <span class="pa"
-                                    >💬 评论 {{ post.commentCount }}</span
-                                >
-                                <span class="pa"
-                                    >⭐ 收藏 {{ post.starCount }}</span
-                                >
-                                <span class="pa">📤 转发</span>
+                                <span class="pa" :class="{ liked: post.liked }" @click="likeCommunityPost(post._id)">
+                                    {{ post.liked ? '❤️' : '🤍' }} {{ post.likeCount }}
+                                </span>
+                                <span class="pa" :class="{ active: expandedComments[post._id] }" @click="toggleCommunityComment(post._id)">
+                                    💬 {{ post.commentCount }}
+                                </span>
+                                <span class="pa" :class="{ stared: post.stared }" @click="starCommunityPost(post._id)">
+                                    {{ post.stared ? '⭐' : '☆' }} {{ post.starCount }}
+                                </span>
+                                <span class="pa" @click="shareCommunityPost(post)">📤 转发</span>
+                                <button v-if="post.authorId === currentUserId" class="pa" style="background:none;border:none;cursor:pointer;color:var(--cinnabar)" @click="deleteCommunityPost(post._id)">删除</button>
                             </div>
-
-                            <div v-if="post.comments" class="comment-area">
-                                <div
-                                    v-for="c in post.comments"
-                                    :key="c.id"
-                                    class="comment"
-                                >
-                                    <div class="mini-avatar">
-                                        {{ c.avatar }}
+                            <div v-if="expandedComments[post._id]" class="comment-area">
+                                <div v-for="c in (post.commentList || [])" :key="c._cid">
+                                    <div class="comment">
+                                        <div class="mini-avatar">{{ c.author[0] }}</div>
+                                        <div class="c-body">
+                                            <span class="c-name">{{ c.author }}</span>：<span v-if="c.replyTo" class="cpc-at">@{{ c.replyTo }}</span> {{ c.text }}
+                                            <div class="c-meta">{{ c.time }} · <button class="cpc-reply" @click="setCommunityReplyTarget(post._id, c._cid, c.author)" style="background:none;border:none;font-size:11px;color:var(--ink-muted);cursor:pointer;padding:0">回复</button></div>
+                                        </div>
                                     </div>
-                                    <div class="c-body">
-                                        <span class="c-name">{{ c.name }}</span
-                                        >：{{ c.text }}
-                                        <div class="c-meta">{{ c.meta }}</div>
+                                    <div v-if="c.replies && c.replies.length > 0" class="cpc-children">
+                                        <div v-for="r in c.replies" :key="r._cid" class="comment" style="margin-left:20px;border-bottom:none">
+                                            <div class="mini-avatar">{{ r.author[0] }}</div>
+                                            <div class="c-body">
+                                                <span class="c-name">{{ r.author }}</span>：<span v-if="r.replyTo" class="cpc-at">@{{ r.replyTo }}</span> {{ r.text }}
+                                                <div class="c-meta">{{ r.time }}</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="comment-input">
-                                    <span>💬</span>
                                     <input
+                                        v-model="communityCommentText[post._id]"
                                         type="text"
-                                        placeholder="友善交流，分享你的看法…"
+                                        :placeholder="communityReplyTarget && communityReplyTarget.postId === post._id ? '回复 @' + communityReplyTarget.author : '友善交流，分享你的看法…'"
+                                        @keydown.enter="submitCommunityComment(post._id)"
                                     />
-                                    <button class="btn btn-sm">发送</button>
+                                    <button class="btn btn-sm" @click="submitCommunityComment(post._id)">发送</button>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 社区发布弹窗 -->
+                        <Teleport to="body">
+                            <Transition name="wset-modal">
+                                <div v-if="showCommunityPublish" class="wset-mask" @click.self="showCommunityPublish = false">
+                                    <div class="wset-dialog share-dialog">
+                                        <div class="wset-header share-dialog-header">
+                                            <span>发表动态</span>
+                                            <button @click="showCommunityPublish = false">✕</button>
+                                        </div>
+                                        <div class="wset-body share-dialog-body">
+                                            <textarea
+                                                v-model="communityForm.text"
+                                                class="share-textarea"
+                                                rows="4"
+                                                placeholder="分享你的养生心得、生活感悟…"
+                                            ></textarea>
+                                            <div class="share-imgs-upload">
+                                                <div v-for="(img, ii) in communityForm.images" :key="ii" class="share-img-thumb">
+                                                    <img :src="img" /><button class="share-img-del" @click="communityForm.images.splice(ii,1)">✕</button>
+                                                </div>
+                                                <div v-if="communityForm.images.length < 9" class="share-img-add" @click="triggerCommunityImgInput">＋</div>
+                                                <input ref="communityImgInputRef" type="file" accept="image/*" multiple style="display:none" @change="onCommunityImgSelect" />
+                                            </div>
+                                            <div class="share-cat-row">
+                                                <span v-for="tag in ['早睡早起','食疗养生','运动打卡','冥想静心','节气养生','健康生活']" :key="tag" class="pick-chip" :class="{ active: communityForm.tags.includes(tag) }" @click="toggleCommunityTag(tag)">#{{ tag }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="wset-footer">
+                                            <button class="wset-btn" @click="showCommunityPublish = false">取消</button>
+                                            <button class="wset-btn primary" :disabled="!communityForm.text.trim() && communityForm.images.length === 0" @click="publishCommunityPost">发布动态</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
+
+                        <!-- 转发弹窗 -->
+                        <Teleport to="body">
+                            <Transition name="wset-modal">
+                                <div v-if="showShareModal" class="wset-mask" @click.self="showShareModal = false">
+                                    <div class="wset-dialog share-dialog" style="width:min(420px,92vw)!important">
+                                        <div class="wset-header">
+                                            <span>转发动态</span>
+                                            <button @click="showShareModal = false">✕</button>
+                                        </div>
+                                        <div class="wset-body" style="padding:20px;display:flex;flex-direction:column;gap:12px">
+                                            <textarea v-model="shareFormData.text" class="share-textarea" rows="2" placeholder="写下你的想法（可选）…"></textarea>
+                                            <div class="post" v-if="shareFormData.originalPost" style="background:var(--cream);border-radius:10px;padding:12px">
+                                                <div style="font-size:12px;color:var(--ink-muted);margin-bottom:4px">@{{ shareFormData.originalPost.name }}</div>
+                                                <div style="font-size:13px;color:var(--ink)">{{ shareFormData.originalPost.text }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="wset-footer">
+                                            <button class="wset-btn" @click="showShareModal = false">取消</button>
+                                            <button class="wset-btn primary" @click="confirmSharePost">转发</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
                     </div>
 
                     <div>
                         <div class="card">
                             <div class="card-title">
                                 <span class="dot"></span>消息通知
+                                <span v-if="unreadCount > 0" class="notif-total-badge">{{ unreadCount }}</span>
                             </div>
-                            <div
-                                v-for="notif in notifications"
-                                :key="notif.text"
-                                class="side-row"
-                            >
-                                <div
-                                    class="group-icon"
-                                    :style="{ background: notif.bg }"
-                                >
-                                    {{ notif.emoji }}
+                            <div class="notif-type-grid">
+                                <div class="notif-type-item" @click="openNotifPanel('like')">
+                                    <div class="ntg-icon-wrap">
+                                        <span class="ntg-emoji">❤️</span>
+                                        <span v-if="unreadByType.like > 0" class="ntg-badge">{{ unreadByType.like }}</span>
+                                    </div>
+                                    <div class="ntg-label">赞与收藏</div>
+                                    <div class="ntg-count">{{ notifByType.like.length }} 条</div>
                                 </div>
-                                <div class="side-info">
-                                    <div class="side-name">
-                                        {{ notif.title }}
+                                <div class="notif-type-item" @click="openNotifPanel('comment')">
+                                    <div class="ntg-icon-wrap">
+                                        <span class="ntg-emoji">💬</span>
+                                        <span v-if="unreadByType.comment > 0" class="ntg-badge">{{ unreadByType.comment }}</span>
                                     </div>
-                                    <div class="side-meta">
-                                        {{ notif.text }}
+                                    <div class="ntg-label">评论</div>
+                                    <div class="ntg-count">{{ notifByType.comment.length }} 条</div>
+                                </div>
+                                <div class="notif-type-item" @click="openNotifPanel('follow')">
+                                    <div class="ntg-icon-wrap">
+                                        <span class="ntg-emoji">👥</span>
+                                        <span v-if="unreadByType.follow > 0" class="ntg-badge">{{ unreadByType.follow }}</span>
                                     </div>
+                                    <div class="ntg-label">关注</div>
+                                    <div class="ntg-count">{{ notifByType.follow.length }} 条</div>
                                 </div>
                             </div>
+
+                            <!-- 分类消息弹窗 -->
+                            <Teleport to="body">
+                                <Transition name="wset-modal">
+                                    <div v-if="showNotifPanel" class="wset-mask" @click.self="showNotifPanel = false">
+                                        <div class="wset-dialog notif-dialog" style="width:min(500px,94vw)!important">
+                                            <div class="wset-header notif-panel-header">
+                                                <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+                                                    <span>消息通知</span>
+                                                    <button @click="showNotifPanel = false">✕</button>
+                                                </div>
+                                                <div class="notif-panel-tabs">
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'like' }" @click="notifPanelType = 'like'">
+                                                        ❤️ 赞与收藏
+                                                        <span v-if="unreadByType.like > 0" class="npt-badge">{{ unreadByType.like }}</span>
+                                                    </button>
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'comment' }" @click="notifPanelType = 'comment'">
+                                                        💬 评论
+                                                        <span v-if="unreadByType.comment > 0" class="npt-badge">{{ unreadByType.comment }}</span>
+                                                    </button>
+                                                    <button class="npt-btn" :class="{ active: notifPanelType === 'follow' }" @click="notifPanelType = 'follow'">
+                                                        👥 关注
+                                                        <span v-if="unreadByType.follow > 0" class="npt-badge">{{ unreadByType.follow }}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="notif-dialog-body">
+                                                <div v-if="filteredNotifPanel.length === 0" style="text-align:center;padding:40px;color:var(--ink-muted)">暂无消息</div>
+                                                <div
+                                                    v-for="notif in filteredNotifPanel"
+                                                    :key="notif._nid"
+                                                    class="notif-dialog-item"
+                                                    :class="{ unread: !notif.read }"
+                                                    @click="openNotifDetail(notif)"
+                                                >
+                                                    <div class="notif-dialog-avatar" :style="{ background: notif.bg }">{{ notif.emoji }}</div>
+                                                    <div class="notif-dialog-content">
+                                                        <div class="notif-dialog-title">{{ notif.title }}</div>
+                                                        <div class="notif-dialog-text">{{ notif.text }}</div>
+                                                        <div class="notif-dialog-time">{{ notif.time }}</div>
+                                                    </div>
+                                                    <div v-if="!notif.read" class="notif-dialog-unread-dot"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Transition>
+                            </Teleport>
+
+                            <!-- 单条消息详情弹窗 -->
+                            <Teleport to="body">
+                                <Transition name="wset-modal">
+                                    <div v-if="notifDetailTarget" class="wset-mask" @click.self="notifDetailTarget = null">
+                                        <div class="wset-dialog notif-detail-dialog">
+                                            <div class="wset-header">
+                                                <span>{{ notifDetailTarget.title }}</span>
+                                                <button @click="notifDetailTarget = null">✕</button>
+                                            </div>
+                                            <div class="wset-body" style="padding:20px">
+                                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+                                                    <div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px" :style="{ background: notifDetailTarget.bg }">{{ notifDetailTarget.emoji }}</div>
+                                                    <div>
+                                                        <div style="font-size:16px;font-weight:600;color:var(--ink)">{{ notifDetailTarget.title }}</div>
+                                                        <div style="font-size:12px;color:var(--ink-muted)">{{ notifDetailTarget.time }}</div>
+                                                    </div>
+                                                </div>
+                                                <p style="font-size:14px;color:var(--ink);line-height:1.7">{{ notifDetailTarget.text }}</p>
+                                                <div v-if="notifDetailTarget.type === 'follow'" style="margin-top:16px;display:flex;gap:10px">
+                                                    <button class="wset-btn primary" @click="toggleFollow(notifDetailTarget.fromId); notifDetailTarget = null">回关</button>
+                                                    <button class="wset-btn" @click="notifDetailTarget = null">关闭</button>
+                                                </div>
+                                                <div v-else-if="notifDetailTarget.postId" style="margin-top:16px">
+                                                    <button class="wset-btn primary" @click="goToCommunityPost(notifDetailTarget.postId); notifDetailTarget = null">查看帖子</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Transition>
+                            </Teleport>
                         </div>
 
                         <div class="card" style="margin-top: 20px">
@@ -1229,7 +1384,7 @@
                             >
                                 已点亮
                                 <strong style="color: var(--gold)"
-                                    >5 / 12</strong
+                                    >{{ unlockedBadgeCount }} / {{ badges.length }}</strong
                                 >
                             </div>
                         </div>
@@ -1248,9 +1403,37 @@
                         <button
                             class="btn btn-ghost"
                             style="width: 100%; margin-top: 14px"
+                            @click="showBadgeModal = true"
                         >
                             查看全部徽章与积分商城 →
                         </button>
+
+                        <!-- 全部徽章弹窗 -->
+                        <Teleport to="body">
+                            <Transition name="wset-modal">
+                                <div v-if="showBadgeModal" class="wset-mask" @click.self="showBadgeModal = false">
+                                    <div class="wset-dialog badge-all-dialog">
+                                        <div class="wset-header" style="font-size:17px;padding:16px 22px">
+                                            <span>全部徽章 · {{ unlockedBadgeCount }} / {{ badges.length }} 已点亮</span>
+                                            <button @click="showBadgeModal = false">✕</button>
+                                        </div>
+                                        <div class="badge-all-body">
+                                            <div
+                                                v-for="b in badges"
+                                                :key="b.name"
+                                                class="badge-all-item"
+                                                :class="{ locked: !b.unlocked }"
+                                            >
+                                                <div class="b-emoji">{{ b.emoji }}</div>
+                                                <div class="b-name">{{ b.name }}</div>
+                                                <div class="b-cond">{{ b.unlocked ? b.desc : b.cond }}</div>
+                                                <div v-if="b.unlocked" class="b-unlocked-tag">已获得</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
                     </div>
                 </div>
             </section>
@@ -1300,8 +1483,10 @@ function toast(msg: string) {
 }
 
 // ---- Module 1: Check-in ----
-const todayCheckin = { done: 5, total: 6 };
-const streakDays = ref(28);
+const todayCheckin = computed(() => ({
+    done: checkItems.value.filter(i => i.done).length,
+    total: checkItems.value.length,
+}));
 const friendsCount = ref(156);
 const activeChallenges = ref(2);
 const RING_C = 502;
@@ -1444,6 +1629,10 @@ const allChecksDone = computed(
 );
 
 function toggleAllChecks() {
+    if (checkItems.value.length === 0) {
+        toast('请先添加打卡内容');
+        return;
+    }
     const target = !allChecksDone.value;
     checkItems.value.forEach((i) => { i.done = target; });
     saveTodayHistory();
@@ -1646,41 +1835,73 @@ function downloadPoster() {
     a.href = canvas.toDataURL('image/png');
     a.click();
 }
+
+function sharePosterToCommunity() {
+    const canvas = posterCanvasRef.value;
+    const imageData = canvas ? canvas.toDataURL('image/png') : '';
+    showPoster.value = false;
+    const done = checkItems.value.filter(i => i.done).length;
+    const total = checkItems.value.length;
+    activeTab.value = 'interaction';
+    nextTick(() => {
+        communityForm.value = {
+            text: `📋 今日打卡 ${done}/${total} 项完成，坚持养生，元气满满！`,
+            images: imageData ? [imageData] : [],
+            tags: ['运动打卡', '健康生活'],
+        };
+        showCommunityPublish.value = true;
+    });
+}
 // ─────────────────────────────────────────────────────
 
 
-const milestones = [
-    {
-        name: "初心 · 连续 7 天",
-        emoji: "🌱",
-        desc: "已达成 · 2026/04/22 解锁",
-        unlocked: true,
-        statusLabel: "已获得",
-    },
-    {
-        name: "坚持 · 连续 21 天",
-        emoji: "🌿",
-        desc: "已达成 · 2026/05/06 解锁",
-        unlocked: true,
-        statusLabel: "已获得",
-    },
-    {
-        name: "而立 · 连续 30 天",
-        emoji: "🌳",
-        desc: "进度 28 / 30 天",
-        unlocked: false,
-        progress: 93,
-        statusLabel: "2 天后",
-    },
-    {
-        name: "恒心 · 连续 100 天",
-        emoji: "🏔️",
-        desc: "进度 28 / 100 天",
-        unlocked: false,
-        progress: 28,
-        statusLabel: "未解锁",
-    },
+// 连续打卡天数：从今天往前数，有打卡记录且至少一项完成的连续天数
+const streakDays = computed(() => {
+    let days = 0;
+    const d = new Date();
+    for (let i = 0; i < 365; i++) {
+        const key = fmtDate(d);
+        const record = checkinHistory.value[key];
+        if (record && record.items.some(it => it.done)) {
+            days++;
+            d.setDate(d.getDate() - 1);
+        } else {
+            break;
+        }
+    }
+    return days;
+});
+
+// 里程碑定义
+const milestoneDefs = [
+    { name: "初心 · 连续 7 天",   emoji: "🌱", require: 7 },
+    { name: "坚持 · 连续 21 天",  emoji: "🌿", require: 21 },
+    { name: "而立 · 连续 30 天",  emoji: "🌳", require: 30 },
+    { name: "恒心 · 连续 100 天", emoji: "🏔️", require: 100 },
 ];
+
+const milestones = computed(() => {
+    const s = streakDays.value;
+    return milestoneDefs.map((m, i) => {
+        const unlocked = s >= m.require;
+        const pct = Math.min(100, Math.round((s / m.require) * 100));
+        const remain = m.require - s;
+        return {
+            name: m.name,
+            emoji: m.emoji,
+            require: m.require,
+            unlocked,
+            progress: pct,
+            doneOrRemaining: remain,
+            desc: unlocked
+                ? '已达成'
+                : `进度 ${s} / ${m.require} 天`,
+            statusLabel: unlocked
+                ? '已获得'
+                : remain <= 1 ? '1 天后' : `${remain} 天后`,
+        };
+    });
+});
 
 // ---- Module 2: Lifestyle ----
 const meals = ref<{ name: string; emoji: string; bg: string; foods: string; cal: number; image: string }[]>([]);
@@ -1795,78 +2016,310 @@ const shareCategories = [
     "节气养生",
     "中医妙招",
 ];
-const selectedCategory = ref("食疗药膳");
-const shareSorts = ["最新", "热门", "精华", "关注"];
-const selectedShareSort = ref("最新");
 
-const experiences = [
-    {
-        title: "坚持早睡 100 天，我的身体发生了这些改变",
-        cat: "作息调理",
-        emoji: "🌙",
-        coverClass: "c2",
-        author: "林清欢 · 养生达人",
-        authorInitial: "林",
-        likes: "1.2k",
-        comments: "186",
-        stars: "904",
-    },
-    {
-        title: "小满润燥｜雪梨银耳羹的家常做法，三步搞定",
-        cat: "食疗药膳",
-        emoji: "🍐",
-        coverClass: "c1",
-        author: "苏小养 · 食养顾问",
-        authorInitial: "苏",
-        likes: "836",
-        comments: "92",
-        stars: "521",
-    },
-    {
-        title: "久坐党自救：每天 8 分钟八段锦，腰背轻松多了",
-        cat: "运动养生",
-        emoji: "🧘",
-        coverClass: "c5",
-        author: "陈一山 · 习练 3 年",
-        authorInitial: "陈",
-        likes: "645",
-        comments: "73",
-        stars: "388",
-    },
-    {
-        title: "情绪差时，我用这 3 个方法快速平复焦虑",
-        cat: "情志疏导",
-        emoji: "🌸",
-        coverClass: "c3",
-        author: "阿宁 · 正念爱好者",
-        authorInitial: "阿",
-        likes: "712",
-        comments: "128",
-        stars: "466",
-    },
-    {
-        title: "小满养生指南：祛湿健脾，这几样食材别错过",
-        cat: "节气养生",
-        emoji: "💧",
-        coverClass: "c4",
-        author: "墨先生 · 中医科普",
-        authorInitial: "墨",
-        likes: "1.5k",
-        comments: "204",
-        stars: "1.1k",
-    },
-    {
-        title: "办公室常备养生茶，我喝了一个月的真实感受",
-        cat: "中医妙招",
-        emoji: "🫖",
-        coverClass: "c6",
-        author: "禾木 · 打卡 60 天",
-        authorInitial: "禾",
-        likes: "489",
-        comments: "56",
-        stars: "302",
-    },
-];
+// 发布弹窗
+const currentUser = ref("小翠");
+const showShareDialog = ref(false);
+const shareForm = ref({ text: "", images: [] as string[], video: "", category: "食疗药膳" });
+const editingDraftIdx = ref<number | null>(null);
+const shareImgInputRef = ref<HTMLInputElement | null>(null);
+const shareVideoInputRef = ref<HTMLInputElement | null>(null);
+
+function openShareDialog() {
+    shareForm.value = { text: "", images: [], video: "", category: "食疗药膳" };
+    editingDraftIdx.value = null;
+    showShareDialog.value = true;
+}
+function closeShareDialog() {
+    showShareDialog.value = false;
+    editingDraftIdx.value = null;
+}
+
+function triggerShareImgInput() { shareImgInputRef.value?.click(); }
+function onShareImgSelect(e: Event) {
+    const files = (e.target as HTMLInputElement).files;
+    if (!files) return;
+    Array.from(files).forEach(f => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            if (ev.target?.result && shareForm.value.images.length < 9)
+                shareForm.value.images.push(ev.target.result as string);
+        };
+        reader.readAsDataURL(f);
+    });
+    (e.target as HTMLInputElement).value = "";
+}
+function triggerShareVideoInput() { shareVideoInputRef.value?.click(); }
+function onShareVideoSelect(e: Event) {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => { shareForm.value.video = ev.target?.result as string || ""; };
+    reader.readAsDataURL(f);
+    (e.target as HTMLInputElement).value = "";
+}
+
+// 草稿箱（localStorage）
+const drafts = ref<{ text: string; images: string[]; video: string; category: string }[]>([]);
+const showDraftsPanel = ref(false);
+
+function loadDrafts() {
+    try {
+        const raw = localStorage.getItem('yiyangge_drafts');
+        drafts.value = raw ? JSON.parse(raw) : [];
+    } catch { drafts.value = []; }
+}
+function saveDrafts() {
+    localStorage.setItem('yiyangge_drafts', JSON.stringify(drafts.value));
+}
+function editDraft(idx: number) {
+    const d = drafts.value[idx];
+    shareForm.value = { text: d.text, images: [...(d.images || [])], video: d.video || "", category: d.category };
+    editingDraftIdx.value = idx;
+    showShareDialog.value = true;
+}
+
+function saveDraft() {
+    if (editingDraftIdx.value !== null) {
+        drafts.value[editingDraftIdx.value] = { ...shareForm.value };
+    } else {
+        drafts.value.push({ ...shareForm.value });
+    }
+    saveDrafts();
+    closeShareDialog();
+    toast('📥 已存入草稿箱');
+}
+function removeDraft(idx: number) {
+    drafts.value.splice(idx, 1);
+    saveDrafts();
+    if (drafts.value.length === 0) showDraftsPanel.value = false;
+}
+function openDrafts() { loadDrafts(); showDraftsPanel.value = true; }
+
+// 已发布
+interface CommentItem {
+    author: string; text: string; time: string;
+    replies: CommentItem[];
+    _cid: string;
+    replyTo?: string;
+}
+interface Post {
+    _id: string;
+    text: string; images: string[]; video: string; category: string;
+    author: string; time: string;
+    likes: number; comments: number; stars: number;
+    commentList: CommentItem[];
+    emoji: string;
+}
+const publishedPosts = ref<Post[]>([]);
+const catEmojis: Record<string, string> = { "食疗药膳":"🍲","作息调理":"🌙","运动养生":"🧘","情志疏导":"🌸","节气养生":"💧","中医妙招":"🫖" };
+
+function loadPublished() {
+    try {
+        const raw = localStorage.getItem('yiyangge_published');
+        publishedPosts.value = raw ? JSON.parse(raw) : [];
+        // 兼容旧数据
+        publishedPosts.value.forEach(p => {
+            if (!p._id) p._id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+            if (!p.commentList) p.commentList = [];
+            p.commentList.forEach(c => {
+                if (!c._cid) c._cid = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                if (!c.replies) c.replies = [];
+            });
+            p.comments = countAllComments(p.commentList);
+        });
+    } catch { publishedPosts.value = []; }
+}
+function countAllComments(list: CommentItem[]): number {
+    let n = list.length;
+    list.forEach(c => { if (c.replies) n += c.replies.length; });
+    return n;
+}
+function savePublished() {
+    localStorage.setItem('yiyangge_published', JSON.stringify(publishedPosts.value));
+}
+
+const authorNames = ["小翠","阿岚","暮雨","青霜","松风","林清欢","苏小养","禾木"];
+
+function publishPost() {
+    const f = shareForm.value;
+    if (!f.text.trim()) { toast('请输入内容，内容不能为空'); return; }
+    const now = new Date();
+    const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    publishedPosts.value.unshift({
+        _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        text: f.text,
+        images: [...f.images],
+        video: f.video,
+        category: f.category,
+        author: authorNames[Math.floor(Math.random() * authorNames.length)],
+        time: t,
+        likes: 0,
+        comments: 0,
+        stars: 0,
+        commentList: [],
+        emoji: catEmojis[f.category] || "📝",
+    });
+    savePublished();
+    closeShareDialog();
+    showDraftsPanel.value = false;
+    toast('✓ 已发布成功');
+}
+
+// 发布草稿
+function publishDraft(idx: number) {
+    const d = drafts.value[idx];
+    const now = new Date();
+    const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    publishedPosts.value.unshift({
+        _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        text: d.text,
+        images: d.images || [],
+        video: d.video || "",
+        category: d.category,
+        author: authorNames[Math.floor(Math.random() * authorNames.length)],
+        time: t,
+        likes: 0,
+        comments: 0,
+        stars: 0,
+        commentList: [],
+        emoji: catEmojis[d.category] || "📝",
+    });
+    savePublished();
+    drafts.value.splice(idx, 1);
+    saveDrafts();
+    if (drafts.value.length === 0) showDraftsPanel.value = false;
+    toast('✓ 草稿已发布');
+}
+
+function removePost(postId: string) {
+    const idx = publishedPosts.value.findIndex(p => p._id === postId);
+    if (idx !== -1) {
+        publishedPosts.value.splice(idx, 1);
+        savePublished();
+        toast('已删除');
+    }
+}
+
+// 点赞/评论/收藏
+const likesState = ref<Record<string, boolean>>({});
+const starsState = ref<Record<string, boolean>>({});
+const showCommentInputId = ref('');
+
+function toggleLike(postId: string) {
+    const p = publishedPosts.value.find(x => x._id === postId);
+    if (!p) return;
+    likesState.value[postId] = !likesState.value[postId];
+    p.likes += likesState.value[postId] ? 1 : -1;
+    savePublished();
+}
+
+function toggleStar(postId: string) {
+    const p = publishedPosts.value.find(x => x._id === postId);
+    if (!p) return;
+    starsState.value[postId] = !starsState.value[postId];
+    p.stars += starsState.value[postId] ? 1 : -1;
+    savePublished();
+}
+
+const commentText = ref<Record<string, string>>({});
+const replyTarget = ref<{ postId: string; cid: string; author: string } | null>(null);
+
+function toggleCommentInput(postId: string) {
+    showCommentInputId.value = showCommentInputId.value === postId ? '' : postId;
+    replyTarget.value = null;
+}
+
+function setReplyTarget(postId: string, cid: string, author: string) {
+    showCommentInputId.value = postId;
+    replyTarget.value = { postId, cid, author };
+}
+
+function submitComment(postId: string) {
+    const text = (commentText.value[postId] || '').trim();
+    if (!text) return;
+    const p = publishedPosts.value.find(x => x._id === postId);
+    if (!p) return;
+    if (!p.commentList) p.commentList = [];
+
+    const now = new Date().toLocaleTimeString().slice(0, 5);
+
+    if (replyTarget.value && replyTarget.value.postId === postId) {
+        // 回复某条评论
+        const parent = p.commentList.find(c => c._cid === replyTarget.value.cid);
+        if (parent) {
+            if (!parent.replies) parent.replies = [];
+            parent.replies.push({
+                author: currentUser.value,
+                text,
+                replyTo: replyTarget.value.author,
+                time: now,
+                replies: [],
+                _cid: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            });
+        }
+    } else {
+        p.commentList.unshift({
+            author: currentUser.value,
+            text,
+            time: now,
+            replies: [],
+            _cid: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        });
+    }
+
+    p.comments = countAllComments(p.commentList);
+    commentText.value[postId] = '';
+    showCommentInputId.value = '';
+    replyTarget.value = null;
+    savePublished();
+}
+
+// 分类内容弹窗
+const showCatDialog = ref(false);
+const catDialogName = ref("");
+const catDialogKeyword = ref("");
+const catDialogPosts = computed(() => {
+    const cat = catDialogName.value;
+    return cat ? publishedPosts.value.filter(p => p.category === cat) : [];
+});
+const filteredCatPosts = computed(() => {
+    const kw = catDialogKeyword.value.trim().toLowerCase();
+    if (!kw) return catDialogPosts.value;
+    return catDialogPosts.value.filter(p =>
+        p.text.toLowerCase().includes(kw) ||
+        p.author.toLowerCase().includes(kw) ||
+        (p.commentList && p.commentList.some(c =>
+            c.text.toLowerCase().includes(kw) || c.author.toLowerCase().includes(kw),
+        )),
+    );
+});
+
+const postsByCategory = computed(() => {
+    const map: Record<string, typeof publishedPosts.value> = {};
+    shareCategories.forEach(c => { map[c] = []; });
+    publishedPosts.value.forEach(p => {
+        if (map[p.category]) map[p.category].push(p);
+    });
+    return map;
+});
+
+function openCategoryDialog(cat: string) {
+    catDialogName.value = cat;
+    catDialogKeyword.value = '';
+    showCatDialog.value = true;
+}
+
+// 创作数据统计
+const totalLikes = computed(() =>
+    publishedPosts.value.reduce((s, p) => s + (p.likes || 0), 0),
+);
+const totalStars = computed(() =>
+    publishedPosts.value.reduce((s, p) => s + (p.stars || 0), 0),
+);
+const totalComments = computed(() =>
+    publishedPosts.value.reduce((s, p) => s + (p.comments || 0), 0),
+);
 
 const hotTopics = [
     {
@@ -1896,107 +2349,377 @@ const hotTopics = [
 ];
 
 // ---- Module 4: Interaction ----
-const feedFilters = ["推荐", "关注", "同城"];
+const feedFilters = ["推荐", "关注"];
 const selectedFeedFilter = ref("推荐");
+// 通知系统
+interface NotifItem {
+    _nid: string; type: 'like' | 'comment' | 'follow';
+    emoji: string; bg: string; title: string; text: string; time: string;
+    read: boolean; fromId: string; postId?: string;
+}
+const notificationList = ref<NotifItem[]>([]);
+const unreadCount = computed(() => notificationList.value.filter(n => !n.read).length);
+const showNotifDialog = ref(false);
+const showNotifPanel = ref(false);
+const notifPanelType = ref<'like' | 'comment' | 'follow'>('like');
+const notifDetailTarget = ref<NotifItem | null>(null);
 
-const posts = ref([
-    {
-        id: 1,
-        name: "林清欢",
-        level: "Lv.6 养生达人",
-        meta: "10 分钟前 · 完成今日打卡",
-        avatarBg: "linear-gradient(135deg, var(--gold), var(--cinnabar))",
-        avatarText: "林",
-        text: "今天又是元气满满的一天！早起看了日出，泡脚加冥想，整个人都松弛下来了～",
-        checkin: "6/6",
-        checkinTitle: "今日打卡全部完成 · 连续 56 天",
-        checkinDesc: "早起 · 喝水 · 运动 · 冥想 · 健康饮食 · 早睡",
-        tags: ["早睡早起挑战", "小满养生打卡"],
-        liked: false,
-        likeCount: 132,
-        commentCount: 18,
-        starCount: 24,
-    },
-    {
-        id: 2,
-        name: "苏小养",
-        level: "Lv.5 食养顾问",
-        meta: "2 小时前 · 发布了一篇经验",
-        avatarBg: "linear-gradient(135deg, var(--jade), var(--moon))",
-        avatarText: "苏",
-        text: "小满时节湿气重，分享一个祛湿健脾的家常方子 —— 赤小豆薏米山药粥，连喝一周，身体明显轻盈不少。具体做法在图里 👇",
-        images: [
-            {
-                bg: "linear-gradient(135deg, var(--gold-soft), #EFD9A8)",
-                emoji: "🥣",
-            },
-            {
-                bg: "linear-gradient(135deg, var(--jade-soft), #D5E4DA)",
-                emoji: "🌾",
-            },
-            {
-                bg: "linear-gradient(135deg, var(--pink-soft), #F5D5DD)",
-                emoji: "🍠",
-            },
-        ],
-        tags: ["我的食疗方子", "小满养生打卡"],
-        liked: true,
-        likeCount: 268,
-        commentCount: 45,
-        starCount: 188,
-        comments: [
-            {
-                id: 1,
-                avatar: "禾",
-                name: "禾木",
-                text: "薏米需要先炒过吗？直接煮会不会偏寒～",
-                meta: "1 小时前 · 赞 12 · 回复",
-            },
-            {
-                id: 2,
-                avatar: "苏",
-                name: "苏小养（作者）",
-                text: "对的！薏米炒到微黄再煮，寒性会减弱，更适合脾胃虚的朋友 👍",
-                meta: "58 分钟前 · 赞 26 · 回复",
-            },
-        ],
-    },
-    {
-        id: 3,
-        name: "阿宁",
-        level: "Lv.3 元气新星",
-        meta: "5 小时前 · 来自「正念冥想小组」",
-        avatarBg: "linear-gradient(135deg, var(--pink), var(--gold))",
-        avatarText: "阿",
-        text: "第 21 天冥想打卡完成！从一开始坐不住，到现在能安安静静待 15 分钟，焦虑真的少了很多。谢谢小组里大家的鼓励 🙏",
-        tags: ["21天冥想静心挑战"],
-        liked: false,
-        likeCount: 96,
-        commentCount: 31,
-        starCount: 12,
-    },
-]);
+const notifByType = computed(() => ({
+    like: notificationList.value.filter(n => n.type === 'like'),
+    comment: notificationList.value.filter(n => n.type === 'comment'),
+    follow: notificationList.value.filter(n => n.type === 'follow'),
+}));
 
-const notifications = [
-    {
-        emoji: "❤️",
-        bg: "var(--cinnabar-soft)",
-        title: "收到 12 个新的赞",
-        text: "林清欢、墨先生 等赞了你",
-    },
-    {
-        emoji: "💬",
-        bg: "var(--jade-soft)",
-        title: "5 条新评论 / 回复",
-        text: "苏小养回复了你的提问",
-    },
-    {
-        emoji: "👥",
-        bg: "var(--gold-soft)",
-        title: "3 位新粉丝关注了你",
-        text: "阿宁、禾木 等",
-    },
-];
+const unreadByType = computed(() => ({
+    like: notifByType.value.like.filter(n => !n.read).length,
+    comment: notifByType.value.comment.filter(n => !n.read).length,
+    follow: notifByType.value.follow.filter(n => !n.read).length,
+}));
+
+const filteredNotifPanel = computed(() => notifByType.value[notifPanelType.value] || []);
+
+function openNotifPanel(type: 'like' | 'comment' | 'follow') {
+    notifPanelType.value = type;
+    showNotifPanel.value = true;
+    notifByType.value[type].forEach(n => { n.read = true; });
+    saveNotifications();
+}
+
+function loadNotifications() {
+    try {
+        const r = localStorage.getItem('yiyangge_notifs');
+        notificationList.value = r ? JSON.parse(r) : [];
+        if (notificationList.value.length === 0) {
+            notificationList.value = [
+                { _nid: 'n_seed_1', type: 'like', emoji: '❤️', bg: 'var(--cinnabar-soft)', title: '林清欢 赞了你的动态', text: '今天坚持早睡第30天，气色真的好多了！', time: '昨天 20:30', read: false, fromId: 'user_1' },
+                { _nid: 'n_seed_2', type: 'like', emoji: '❤️', bg: 'var(--cinnabar-soft)', title: '暮雨青霜 赞了你的动态', text: '分享的枸杞菊花茶方子很实用，已收藏', time: '今天 09:12', read: false, fromId: 'user_2' },
+                { _nid: 'n_seed_3', type: 'like', emoji: '⭐', bg: 'var(--gold-soft)', title: '松风入怀 收藏了你的帖子', text: '八段锦晨练第18天打卡记录', time: '今天 10:44', read: false, fromId: 'user_3' },
+                { _nid: 'n_seed_4', type: 'like', emoji: '❤️', bg: 'var(--cinnabar-soft)', title: '陈一山 赞了你的动态', text: '早睡自律互助打卡，加油！', time: '今天 11:00', read: true, fromId: 'user_4' },
+                { _nid: 'n_seed_5', type: 'comment', emoji: '💬', bg: 'var(--jade-soft)', title: '陈一山 评论了你的动态', text: '写得太好了，请问是怎么坚持下来的？', time: '今天 11:20', read: false, fromId: 'user_4' },
+                { _nid: 'n_seed_6', type: 'comment', emoji: '💬', bg: 'var(--jade-soft)', title: '苏小养 回复了你的评论', text: '对，我也觉得喝养生茶效果很明显，一起加油！', time: '今天 13:05', read: false, fromId: 'user_5' },
+                { _nid: 'n_seed_7', type: 'comment', emoji: '💬', bg: 'var(--jade-soft)', title: '禾木 评论了你的动态', text: '太厉害了！我也想挑战早睡，怎么才能克服刷手机的毛病？', time: '今天 14:30', read: true, fromId: 'user_6' },
+                { _nid: 'n_seed_8', type: 'follow', emoji: '👥', bg: 'var(--gold-soft)', title: '林清欢 关注了你', text: '开始关注你了', time: '今天 08:30', read: false, fromId: 'user_1' },
+                { _nid: 'n_seed_9', type: 'follow', emoji: '👥', bg: 'var(--gold-soft)', title: '禾木 关注了你', text: '开始关注你了', time: '昨天 18:00', read: true, fromId: 'user_6' },
+                { _nid: 'n_seed_10', type: 'follow', emoji: '👥', bg: 'var(--gold-soft)', title: '苏小养 关注了你', text: '开始关注你了', time: '2天前', read: true, fromId: 'user_5' },
+            ];
+            saveNotifications();
+        }
+    } catch { notificationList.value = []; }
+}
+function saveNotifications() { localStorage.setItem('yiyangge_notifs', JSON.stringify(notificationList.value)); }
+
+function addNotification(notif: NotifItem) {
+    notificationList.value.unshift(notif);
+    saveNotifications();
+}
+
+function openNotifDetail(notif: NotifItem) {
+    notifDetailTarget.value = notif;
+    if (!notif.read) { notif.read = true; saveNotifications(); }
+}
+
+function goToCommunityPost(postId: string) {
+    showNotifPanel.value = false;
+    notifDetailTarget.value = null;
+    // 滚动到对应帖子
+    expandedComments.value[postId] = true;
+    nextTick(() => {
+        const el = document.getElementById('post-' + postId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+}
+
+const currentUserId = 'me';
+
+// Community Posts (localStorage persisted)
+const communityPosts = ref<CommunityPost[]>([]);
+const followedUsers = ref<Record<string, boolean>>({});
+
+interface CommunityPost {
+    _id: string; authorId: string; name: string; level: string; meta: string;
+    avatarBg: string; avatarText: string; text: string;
+    checkin?: string; checkinTitle?: string; checkinDesc?: string;
+    images: { src: string }[]; tags: string[];
+    liked: boolean; likeCount: number; starCount: number; stared: boolean;
+    commentCount: number; commentList: CommunityComment[];
+}
+interface CommunityComment {
+    _cid: string; author: string; text: string; time: string;
+    replyTo?: string;
+    replies?: CommunityComment[];
+}
+
+function getSeededCommunityPosts(): CommunityPost[] {
+    return [
+        {
+            _id: 'cp_seed_1', authorId: 'user_1', name: '林清欢', level: 'Lv.5',
+            meta: '昨天 20:30', avatarBg: 'linear-gradient(135deg,var(--gold),var(--cinnabar))', avatarText: '林',
+            text: '坚持早睡第30天！连续一个月22:30前睡觉，脸上痘痘明显减少，精力也旺盛了，早睡养肝真的有效，姐妹们一起来！🌙',
+            images: [], tags: ['早睡早起', '健康生活'],
+            liked: false, likeCount: 88, stared: false, starCount: 31,
+            commentCount: 2, commentList: [
+                { _cid: 'cc_s1_1', author: '陈一山', text: '太厉害了，我才第8天差距好大', time: '昨天', replies: [] },
+                { _cid: 'cc_s1_2', author: '苏小养', text: '30天！！佩服，一起加油', time: '昨天', replies: [] },
+            ],
+        },
+        {
+            _id: 'cp_seed_2', authorId: 'user_2', name: '暮雨青霜', level: 'Lv.3',
+            meta: '2 小时前', avatarBg: 'linear-gradient(135deg,var(--jade),var(--moon))', avatarText: '暮',
+            text: '分享超好喝的养生茶：枸杞5g + 菊花3朵 + 红枣2颗 + 麦冬5g，每天坚持喝眼睛不再疲劳，气色也好了很多，快来试试！',
+            images: [], tags: ['食疗养生', '节气养生'],
+            liked: false, likeCount: 52, stared: false, starCount: 19,
+            commentCount: 1, commentList: [
+                { _cid: 'cc_s2_1', author: '禾木', text: '好的我来试试，最近眼睛很累', time: '1小时前', replies: [] },
+            ],
+        },
+        {
+            _id: 'cp_seed_3', authorId: 'user_3', name: '松风入怀', level: 'Lv.4',
+            meta: '3 小时前', avatarBg: 'linear-gradient(135deg,var(--pink),var(--gold))', avatarText: '松',
+            text: '八段锦晨练第18天打卡，配合食疗养生，感觉整个人气色变亮了，肩颈不再酸痛，推荐给久坐办公室的朋友们！',
+            images: [], tags: ['运动打卡', '健康生活'],
+            liked: false, likeCount: 36, stared: false, starCount: 12,
+            commentCount: 0, commentList: [],
+        },
+        {
+            _id: 'cp_seed_4', authorId: 'user_4', name: '陈一山', level: 'Lv.2',
+            meta: '5 小时前', avatarBg: 'linear-gradient(135deg,var(--moon),var(--jade))', avatarText: '陈',
+            text: '今天喝了第一杯自制的红豆薏米水，清热祛湿！听说要坚持喝才有效，打算挑战21天，有没有一起坚持的小伙伴？',
+            images: [], tags: ['食疗养生', '健康生活'],
+            liked: false, likeCount: 24, stared: false, starCount: 7,
+            commentCount: 0, commentList: [],
+        },
+    ];
+}
+
+function loadCommunityPosts() {
+    try {
+        const r = localStorage.getItem('yiyangge_community');
+        if (!r) {
+            communityPosts.value = getSeededCommunityPosts();
+            saveCommunityPosts();
+            return;
+        }
+        const parsed = JSON.parse(r);
+        if (!Array.isArray(parsed)) { communityPosts.value = []; return; }
+        communityPosts.value = parsed.map((p: any) => ({
+            _id: p._id || 'cp_' + Date.now(),
+            authorId: p.authorId || '',
+            name: p.name || '匿名',
+            level: p.level || '',
+            meta: p.meta || '',
+            avatarBg: p.avatarBg || '',
+            avatarText: p.avatarText || '?',
+            text: p.text || '',
+            checkin: p.checkin, checkinTitle: p.checkinTitle, checkinDesc: p.checkinDesc,
+            images: Array.isArray(p.images) ? p.images.map((img: any) => ({ src: img.src || '' })) : [],
+            tags: Array.isArray(p.tags) ? p.tags : [],
+            liked: !!p.liked, likeCount: p.likeCount || 0,
+            stared: !!p.stared, starCount: p.starCount || 0,
+            commentCount: p.commentCount || 0,
+            commentList: Array.isArray(p.commentList) ? p.commentList.map((c: any) => ({
+                _cid: c._cid || 'cc_' + Date.now(), author: c.author || '匿名', text: c.text || '',
+                time: c.time || '', replyTo: c.replyTo,
+                replies: Array.isArray(c.replies) ? c.replies.map((r: any) => ({
+                    _cid: r._cid || 'ccr_' + Date.now(), author: r.author || '匿名', text: r.text || '',
+                    time: r.time || '', replyTo: r.replyTo,
+                })) : [],
+            })) : [],
+        }));
+    } catch { communityPosts.value = []; }
+}
+function saveCommunityPosts() {
+    localStorage.setItem('yiyangge_community', JSON.stringify(communityPosts.value));
+}
+
+function loadFollowed() {
+    try { const r = localStorage.getItem('yiyangge_followed'); followedUsers.value = r ? JSON.parse(r) : {}; }
+    catch { followedUsers.value = {}; }
+}
+function saveFollowed() { localStorage.setItem('yiyangge_followed', JSON.stringify(followedUsers.value)); }
+
+function toggleFollow(uid: string) {
+    followedUsers.value[uid] = !followedUsers.value[uid];
+    saveFollowed();
+    if (followedUsers.value[uid] && uid !== currentUserId) {
+        const p = communityPosts.value.find(x => x.authorId === uid);
+        addNotification({
+            _nid: 'n_' + Date.now(), type: 'follow',
+            emoji: '👥', bg: 'var(--gold-soft)',
+            title: `${currentUser.value} 关注了你`,
+            text: p ? `来自「${p.text.slice(0, 30)}${p.text.length > 30 ? '…' : ''}」的帖子` : '开始关注你了',
+            time: new Date().toLocaleTimeString().slice(0, 5),
+            read: false, fromId: uid, postId: p?._id,
+        });
+    }
+    toast(followedUsers.value[uid] ? '已关注' : '已取消关注');
+}
+
+const filteredCommunityPosts = computed(() => {
+    let list = communityPosts.value;
+    if (selectedFeedFilter.value === '关注')
+        list = list.filter(p => followedUsers.value[p.authorId]);
+    return list;
+});
+
+// 社区发布
+const showCommunityPublish = ref(false);
+const communityForm = ref({ text: '', images: [] as string[], tags: [] as string[] });
+const communityImgInputRef = ref<HTMLInputElement | null>(null);
+
+function openCommunityPublish(prefill?: string) {
+    communityForm.value = {
+        text: typeof prefill === 'string' ? prefill : '',
+        images: [],
+        tags: [],
+    };
+    showCommunityPublish.value = true;
+}
+function triggerCommunityImgInput() { communityImgInputRef.value?.click(); }
+function onCommunityImgSelect(e: Event) {
+    const files = (e.target as HTMLInputElement).files;
+    if (!files) return;
+    Array.from(files).forEach(f => {
+        const r = new FileReader();
+        r.onload = ev => { if (ev.target?.result && communityForm.value.images.length < 9) communityForm.value.images.push(ev.target.result as string); };
+        r.readAsDataURL(f);
+    });
+    (e.target as HTMLInputElement).value = '';
+}
+function toggleCommunityTag(t: string) {
+    const idx = communityForm.value.tags.indexOf(t);
+    idx > -1 ? communityForm.value.tags.splice(idx, 1) : communityForm.value.tags.push(t);
+}
+function publishCommunityPost() {
+    if (!communityForm.value.text.trim()) { toast('请输入内容'); return; }
+    const avatars = ['林','苏','阿','禾','墨','陈','小翠'];
+    const bg = ['linear-gradient(135deg,var(--gold),var(--cinnabar))','linear-gradient(135deg,var(--jade),var(--moon))','linear-gradient(135deg,var(--pink),var(--gold))'];
+    const now = new Date();
+    communityPosts.value.unshift({
+        _id: 'cp_' + Date.now(),
+        authorId: currentUserId,
+        name: '我',
+        level: '楼主',
+        meta: '刚刚',
+        avatarBg: bg[0], avatarText: '我',
+        text: communityForm.value.text,
+        images: communityForm.value.images.map(s => ({ src: s })),
+        tags: communityForm.value.tags,
+        liked: false, likeCount: 0,
+        stared: false, starCount: 0,
+        commentCount: 0, commentList: [],
+    });
+    saveCommunityPosts();
+    showCommunityPublish.value = false;
+    toast('动态已发布');
+}
+function deleteCommunityPost(pid: string) {
+    const idx = communityPosts.value.findIndex(p => p._id === pid);
+    if (idx > -1) { communityPosts.value.splice(idx, 1); saveCommunityPosts(); toast('已删除'); }
+}
+
+// 社区互动
+function likeCommunityPost(pid: string) {
+    const p = communityPosts.value.find(x => x._id === pid);
+    if (!p) return;
+    p.liked = !p.liked;
+    p.likeCount += p.liked ? 1 : -1;
+    saveCommunityPosts();
+    // 通知（非本人帖子才通知）
+    if (p.liked && p.authorId !== currentUserId) {
+        addNotification({
+            _nid: 'n_' + Date.now(), type: 'like',
+            emoji: '❤️', bg: 'var(--cinnabar-soft)',
+            title: `${currentUser.value} 赞了你的动态`,
+            text: p.text.slice(0, 60) + (p.text.length > 60 ? '…' : ''),
+            time: new Date().toLocaleTimeString().slice(0, 5),
+            read: false, fromId: currentUserId, postId: pid,
+        });
+    }
+}
+function starCommunityPost(pid: string) {
+    const p = communityPosts.value.find(x => x._id === pid);
+    if (!p) return;
+    p.stared = !p.stared;
+    p.starCount += p.stared ? 1 : -1;
+    saveCommunityPosts();
+}
+function shareCommunityPost(post: CommunityPost) {
+    shareFormData.value.originalPost = post;
+    showShareModal.value = true;
+}
+function confirmSharePost() {
+    if (!shareFormData.value.originalPost) return;
+    const p = shareFormData.value.originalPost;
+    communityPosts.value.unshift({
+        _id: 'cp_' + Date.now(),
+        authorId: currentUserId, name: '我', level: '楼主', meta: '刚刚',
+        avatarBg: 'linear-gradient(135deg,var(--gold),var(--cinnabar))', avatarText: '我',
+        text: `转发了 @${p.name} 的动态：${p.text}`,
+        images: [], tags: [],
+        liked: false, likeCount: 0, stared: false, starCount: 0,
+        commentCount: 0, commentList: [],
+    });
+    saveCommunityPosts();
+    shareFormData.value.originalPost = null;
+    showShareModal.value = false;
+    toast('已转发');
+}
+
+const showShareModal = ref(false);
+const shareFormData = ref<{ text: string; originalPost: CommunityPost | null }>({ text: '', originalPost: null });
+
+// 社区评论
+const expandedComments = ref<Record<string, boolean>>({});
+const communityCommentText = ref<Record<string, string>>({});
+const communityReplyTarget = ref<{ postId: string; cid: string; author: string } | null>(null);
+
+function toggleCommunityComment(pid: string) {
+    expandedComments.value[pid] = !expandedComments.value[pid];
+    communityReplyTarget.value = null;
+}
+function setCommunityReplyTarget(postId: string, cid: string, author: string) {
+    communityReplyTarget.value = { postId, cid, author };
+}
+function submitCommunityComment(pid: string) {
+    const text = (communityCommentText.value[pid] || '').trim();
+    if (!text) return;
+    const p = communityPosts.value.find(x => x._id === pid);
+    if (!p) return;
+    if (!p.commentList) p.commentList = [];
+    const now = new Date().toLocaleTimeString().slice(0, 5);
+    if (communityReplyTarget.value && communityReplyTarget.value.postId === pid) {
+        const parent = p.commentList.find(c => c._cid === communityReplyTarget.value!.cid);
+        if (parent) {
+            if (!parent.replies) parent.replies = [];
+            parent.replies.push({
+                _cid: 'ccr_' + Date.now(),
+                author: currentUser.value, text,
+                replyTo: communityReplyTarget.value.author,
+                time: now,
+            });
+        }
+    } else {
+        p.commentList.unshift({
+            _cid: 'cc_' + Date.now(),
+            author: currentUser.value, text, time: now,
+        });
+    }
+    p.commentCount = (p.commentList || []).length + (p.commentList || []).reduce((s, c) => s + (c.replies?.length || 0), 0);
+    communityCommentText.value[pid] = '';
+    communityReplyTarget.value = null;
+    saveCommunityPosts();
+    // 通知（非本人帖子才通知）
+    if (p.authorId !== currentUserId) {
+        addNotification({
+            _nid: 'n_' + Date.now(), type: 'comment',
+            emoji: '💬', bg: 'var(--jade-soft)',
+            title: `${currentUser.value} 评论了你的动态`,
+            text: text.slice(0, 60) + (text.length > 60 ? '…' : ''),
+            time: new Date().toLocaleTimeString().slice(0, 5),
+            read: false, fromId: currentUserId, postId: pid,
+        });
+    }
+}
 
 const groups = [
     {
@@ -2022,37 +2745,54 @@ const groups = [
     },
 ];
 
-const leaderboard = [
-    {
-        name: "林清欢",
-        sub: "打卡 56 天 · 经验 8 篇",
-        score: "980",
-        avatarBg: "linear-gradient(135deg, var(--gold), var(--cinnabar))",
-        avatarText: "林",
-    },
-    {
-        name: "墨先生",
-        sub: "科普 12 篇 · 获赞 1.5k",
-        score: "872",
-        avatarBg: "linear-gradient(135deg, var(--jade), var(--moon))",
-        avatarText: "墨",
-    },
-    {
-        name: "苏小养",
-        sub: "食疗方子 · 收藏 1.1k",
-        score: "765",
-        avatarBg: "linear-gradient(135deg, var(--pink), var(--gold))",
-        avatarText: "苏",
-    },
-    {
-        name: "我 · 嘉欣",
-        sub: "打卡 28 天 · 经验 18 篇",
-        score: "412",
-        avatarBg: "linear-gradient(135deg, var(--jade), var(--jade-light))",
-        avatarText: "JX",
-        isMe: true,
-    },
-];
+// 本周活跃榜 — 按社区数据实时计算
+// 算法：发帖＝15分, 评论＝4分, 回复＝2分, 获赞＝3分, 被收藏＝2分
+const leaderboard = computed(() => {
+    const scores: Record<string, { name: string; score: number; posts: number; comments: number; likes: number; stars: number; avatarBg: string; avatarText: string; isMe: boolean }> = {};
+
+    // 遍历社区帖子，统计每项作者得分
+    communityPosts.value.forEach(p => {
+        const id = p.authorId;
+        if (!scores[id]) scores[id] = {
+            name: p.name, score: 0, posts: 0, comments: 0, likes: 0, stars: 0,
+            avatarBg: p.avatarBg, avatarText: p.avatarText, isMe: id === currentUserId,
+        };
+        const u = scores[id];
+        u.posts += 1;
+        u.score += 15;  // 发帖积 15 分
+        u.likes += p.likeCount;
+        u.score += p.likeCount * 3;  // 获赞每个 3 分
+        u.stars += p.starCount;
+        u.score += p.starCount * 2;  // 被收藏每个 2 分
+    });
+
+    // 遍历所有帖子评论，统计评论者得分
+    communityPosts.value.forEach(p => {
+        (p.commentList || []).forEach(c => {
+            const commentAuthor = c.author;
+            if (!scores[commentAuthor]) scores[commentAuthor] = {
+                name: commentAuthor, score: 0, posts: 0, comments: 0, likes: 0, stars: 0,
+                avatarBg: 'linear-gradient(135deg, var(--jade), var(--moon))',
+                avatarText: commentAuthor[0], isMe: false,
+            };
+            scores[commentAuthor].comments += 1;
+            scores[commentAuthor].score += 4;  // 评论积 4 分
+            (c.replies || []).forEach(r => {
+                scores[commentAuthor].comments += 1;
+                scores[commentAuthor].score += 2;  // 回复积 2 分
+            });
+        });
+    });
+
+    return Object.values(scores)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8)  // top 8
+        .map((u, i) => ({
+            ...u,
+            score: String(u.score),
+            sub: `${u.posts} 帖 · ${u.comments} 评 · ${u.likes} 赞 · ${u.stars} 藏`,
+        }));
+});
 
 // ---- Module 5: Challenges ----
 const challengeFilters = ["全部", "作息", "饮食", "运动", "情志"];
@@ -2182,15 +2922,29 @@ const challengeRanks = [
 ];
 
 const badges = [
-    { name: "早起达人", emoji: "🌅", cond: "已点亮", unlocked: true },
-    { name: "饮水标兵", emoji: "💧", cond: "已点亮", unlocked: true },
-    { name: "冥想新星", emoji: "🧘", cond: "已点亮", unlocked: true },
-    { name: "早睡先锋", emoji: "🌙", cond: "已点亮", unlocked: true },
-    { name: "经验作者", emoji: "✍️", cond: "已点亮", unlocked: true },
-    { name: "恒心百日", emoji: "🏔️", cond: "进度 28/100", unlocked: false },
-    { name: "食养专家", emoji: "🥗", cond: "完成戒糖挑战", unlocked: false },
-    { name: "社区之星", emoji: "👑", cond: "登榜周榜前三", unlocked: false },
+    { name: "早起达人", emoji: "🌅", cond: "连续 7 天早起打卡", desc: "早起打卡 7 天", unlocked: true },
+    { name: "饮水标兵", emoji: "💧", cond: "累计 10 天足量饮水", desc: "饮水达标 10 天", unlocked: true },
+    { name: "冥想新星", emoji: "🧘", cond: "累计 5 次冥想打卡", desc: "冥想 5 次", unlocked: true },
+    { name: "早睡先锋", emoji: "🌙", cond: "累计 7 天早睡打卡", desc: "早睡 7 天", unlocked: true },
+    { name: "经验作者", emoji: "✍️", cond: "发布 5 篇经验", desc: "发布 5 篇", unlocked: true },
+    { name: "恒心百日", emoji: "🏔️", cond: "连续打卡 100 天", desc: "百日坚持", unlocked: false },
+    { name: "食养专家", emoji: "🥗", cond: "发布 10 篇食疗经验", desc: "食疗 10 篇", unlocked: false },
+    { name: "社区之星", emoji: "👑", cond: "登榜周榜前三", desc: "荣登前三", unlocked: false },
+    { name: "节气使者", emoji: "🌾", cond: "完成 6 个节气打卡", desc: "6 节气打卡", unlocked: false },
+    { name: "八段锦传人", emoji: "☯️", cond: "累计 21 天运动打卡", desc: "运动 21 天", unlocked: false },
+    { name: "情志涵养", emoji: "🌸", cond: "累计 5 次冥想静心", desc: "静心 5 次", unlocked: false },
+    { name: "养生大师", emoji: "🏅", cond: "全部徽章集齐解锁", desc: "终极徽章", unlocked: false },
 ];
+
+const showBadgeModal = ref(false);
+const unlockedBadgeCount = computed(() => badges.filter(b => b.unlocked).length);
+
+// 初始化加载（必须在所有 ref 声明之后）
+loadDrafts();
+loadPublished();
+loadCommunityPosts();
+loadFollowed();
+loadNotifications();
 </script>
 
 <style scoped lang="scss">
@@ -2416,6 +3170,12 @@ const badges = [
     background: var(--paper-warm);
     border-radius: 10px;
     border-left: 3px solid var(--jade);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(60, 50, 30, 0.1);
+    }
 }
 .tip-row .icon {
     font-size: 20px;
@@ -3452,364 +4212,423 @@ const badges = [
 }
 
 // Compose
-.compose-card {
-    background: linear-gradient(135deg, #edf4ef 0%, #fdfaf3 100%);
-    border: 1px solid var(--jade-soft);
-    border-radius: 16px;
-    padding: 24px;
-}
-.compose-box {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 16px;
-    min-height: 90px;
-    font-size: 14px;
-    color: var(--ink-muted);
-}
-.compose-box:focus-within {
-    border-color: var(--jade);
-}
-.compose-box textarea {
-    width: 100%;
-    border: none;
-    outline: none;
-    resize: none;
-    font-family: inherit;
-    font-size: 14px;
-    color: var(--ink);
-    background: transparent;
-    min-height: 70px;
-}
-.upload-row {
-    display: flex;
-    gap: 10px;
-    margin-top: 12px;
-}
-.upload-box {
-    width: 76px;
-    height: 76px;
-    border-radius: 10px;
-    border: 1.5px dashed var(--line);
-    background: var(--paper);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    align-items: center;
-    justify-content: center;
-    color: var(--ink-muted);
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.upload-box:hover {
-    border-color: var(--jade);
-    color: var(--jade);
-}
-.upload-box .plus {
-    font-size: 22px;
-}
-.upload-thumb {
-    width: 76px;
-    height: 76px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 30px;
-    background: linear-gradient(135deg, var(--gold-soft), var(--jade-soft));
-    position: relative;
-}
-.upload-thumb .x {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    width: 18px;
-    height: 18px;
-    background: var(--ink);
-    color: white;
-    border-radius: 50%;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-.compose-foot {
+// Sharing — 顶部栏 / 分类网格 / 弹窗
+.share-top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 14px;
 }
-.compose-tools {
-    display: flex;
+.exp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 14px;
-    font-size: 13px;
-    color: var(--ink-muted);
+    margin-top: 16px;
 }
-.compose-tools span {
-    cursor: pointer;
-}
-.compose-tools span:hover {
-    color: var(--jade);
-}
-
-// Experience Cards
-.exp-card {
-    background: var(--paper);
+.exp-cat-card {
+    background: var(--paper-warm);
     border: 1px solid var(--line);
     border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
     transition: all 0.2s;
+    &:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 }
-.exp-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-}
-.exp-cover {
-    height: 140px;
+.exp-cat-emoji {
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 48px;
+    font-size: 36px;
+}
+.exp-cat-info { padding: 12px 14px; }
+.exp-cat-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.exp-cat-count { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+.exp-cat-preview {
+    font-size: 12px;
+    color: var(--ink-light);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    &.muted { color: var(--ink-muted); font-style: italic; }
+}
+/* 系统色彩统一的分类卡背景 */
+.exp-bg-食疗药膳 { background: linear-gradient(135deg, var(--gold-soft, #fef3c7), #fde68a); }
+.exp-bg-作息调理 { background: linear-gradient(135deg, var(--moon-soft, #dbeafe), #bfdbfe); }
+.exp-bg-运动养生 { background: linear-gradient(135deg, var(--jade-soft, #d1fae5), #a7f3d0); }
+.exp-bg-情志疏导 { background: linear-gradient(135deg, var(--pink-soft, #fce7f3), #fbcfe8); }
+.exp-bg-节气养生 { background: linear-gradient(135deg, #c7d2fe, #a5b4fc); }
+.exp-bg-中医妙招 { background: linear-gradient(135deg, var(--cinnabar-soft, #fae5e0), #f5c8c0); }
+
+// 分类弹窗 — 贴吧/小红书风格
+.cat-dialog { width: min(680px, 94vw) !important; }
+.cat-dialog-head {
     position: relative;
-}
-.exp-cover.c1 {
-    background: linear-gradient(135deg, var(--gold-soft), #efd9a8);
-}
-.exp-cover.c2 {
-    background: linear-gradient(135deg, var(--jade-soft), #d5e4da);
-}
-.exp-cover.c3 {
-    background: linear-gradient(135deg, var(--pink-soft), #f5d5dd);
-}
-.exp-cover.c4 {
-    background: linear-gradient(135deg, var(--moon-soft), #c8d5e5);
-}
-.exp-cover.c5 {
-    background: linear-gradient(135deg, #e6e0ef, #f0e5f4);
-}
-.exp-cover.c6 {
-    background: linear-gradient(135deg, var(--cinnabar-soft), #f5d0c8);
-}
-.exp-cover .exp-cat {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    color: var(--jade);
-    font-weight: 600;
-}
-.exp-body {
-    padding: 14px;
-}
-.exp-title {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.45;
-}
-.exp-author {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--ink-muted);
-}
-.exp-author .mini-avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    font-size: 10px;
-    background: linear-gradient(135deg, var(--gold), var(--cinnabar));
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 22px 24px;
     color: white;
+    .cat-dialog-title { font-family: "STKaiti", serif; font-size: 22px; font-weight: 700; }
+    .cat-dialog-sub { font-size: 13px; opacity: 0.75; margin-top: 4px; }
 }
-.exp-stats {
-    display: flex;
-    gap: 14px;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--ink-muted);
+.cat-dialog-close {
+    position: absolute; top: 16px; right: 18px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); border: none; color: white; font-size: 15px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    &:hover { background: rgba(255,255,255,0.35); }
+}
+.cat-head-食疗药膳 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.cat-head-作息调理 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.cat-head-运动养生 { background: linear-gradient(135deg, var(--jade), #3d6b5e); }
+.cat-head-情志疏导 { background: linear-gradient(135deg, #ec4899, #db2777); }
+.cat-head-节气养生 { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+.cat-head-中医妙招 { background: linear-gradient(135deg, var(--cinnabar), #9c3325); }
+
+.cat-dialog-body { padding: 0 !important; max-height: 76vh; overflow-y: auto; background: #f5f3ef; }
+.cat-dialog-search {
+    position: sticky; top: 0; z-index: 5;
+    padding: 12px 16px;
+    background: #f5f3ef;
+    border-bottom: 1px solid #e8e3dc;
+}
+.cat-dialog-search-input {
+    width: 100%; height: 40px;
+    border: 1.5px solid #e0d9cf;
+    border-radius: 20px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+    &:focus { border-color: var(--jade); }
+    &::placeholder { color: var(--ink-muted); }
+}
+.cat-post-card {
+    background: white;
+    margin: 0 0 10px;
+    padding: 20px 24px;
+    &:last-child { margin-bottom: 0; }
+}
+.cat-post-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cat-post-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--cream); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.cat-post-user { flex: 1; min-width: 0; }
+.cat-post-name { font-size: 15px; font-weight: 600; color: var(--ink); }
+.cat-post-date { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+.cat-post-del {
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    padding: 3px 12px; font-size: 12px; color: var(--cinnabar);
+    cursor: pointer; font-family: inherit;
+    &:hover { background: var(--cinnabar-soft); }
+}
+.cat-post-body { margin-bottom: 14px; }
+.cat-post-text {
+    font-size: 15px; color: var(--ink); line-height: 1.7;
+    word-break: break-word; margin-bottom: 12px;
+}
+.cat-post-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.cat-post-img {
+    width: 90px; height: 90px; border-radius: 8px;
+    object-fit: cover; border: 1px solid var(--line);
+}
+.cat-post-video { margin-bottom: 12px; video { width:100%; max-height:300px; border-radius:10px; display:block; } }
+
+// 互动按钮栏
+.cat-post-bar {
+    display: flex; gap: 6px; padding-top: 14px; border-top: 1px solid #eeeae3;
+}
+.cpb-btn {
+    flex: 1; height: 38px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    border: none; border-radius: 10px;
+    background: #f5f3ef; font-size: 14px; font-family: inherit;
+    color: var(--ink-muted); cursor: pointer; transition: all 0.18s;
+    &:hover { background: var(--jade-soft); color: var(--jade); }
+    &.active { background: var(--jade-soft); color: var(--jade); font-weight: 600; }
 }
 
-// Community Posts
-.post {
-    padding: 18px 0;
+// 评论区 — 小红书风格
+.cat-post-comment-area {
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid #eeeae3;
+}
+.cpc-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+.cpc-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.cpc-item { display: flex; gap: 10px; }
+.cpc-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--jade-soft), var(--jade));
+    color: white; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    &.sm { width: 24px; height: 24px; font-size: 10px; }
+}
+.cpc-body { flex: 1; min-width: 0; }
+.cpc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.cpc-name { font-size: 12px; font-weight: 600; color: var(--jade); }
+.cpc-date { font-size: 11px; color: var(--ink-muted); }
+.cpc-content { font-size: 13px; color: var(--ink); line-height: 1.5; word-break: break-word; }
+.cpc-at { color: var(--jade); font-weight: 600; margin-right: 2px; }
+.cpc-footer { margin-top: 4px; }
+.cpc-reply {
+    background: none; border: none; font-size: 11px;
+    color: var(--ink-muted); cursor: pointer; padding: 0;
+    &:hover { color: var(--jade); }
+}
+.cpc-children {
+    margin-top: 10px; padding-left: 0;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.cpc-child-item {
+    display: flex; gap: 8px;
+}
+.cpc-input-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding-top: 12px; border-top: 1px solid #eeeae3;
+}
+.cpc-input-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--gold), var(--cinnabar));
+    color: white; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+}
+.cpc-input-wrap {
+    flex: 1; display: flex; gap: 8px;
+}
+.cpc-input {
+    flex: 1; height: 36px; border: 1px solid var(--line);
+    border-radius: 18px; padding: 0 14px; font-size: 13px;
+    font-family: inherit; outline: none; color: var(--ink);
+    background: #f5f3ef;
+    &:focus { border-color: var(--jade); background: white; }
+}
+.cpc-send {
+    height: 36px; padding: 0 16px; border: none; border-radius: 18px;
+    background: var(--jade); color: white; font-size: 13px;
+    font-family: inherit; cursor: pointer; font-weight: 600;
+    &:hover { background: #3d6b5e; }
+}
+.cat-post-comment-input-row {
+    display: flex; gap: 8px;
+}
+.cat-post-comment-input {
+    flex: 1; height: 36px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 0 12px; font-size: 13px;
+    font-family: inherit; outline: none; color: var(--ink);
+    &:focus { border-color: var(--jade); }
+}
+.cat-post-comment-send {
+    height: 36px; padding: 0 16px; border: none; border-radius: 8px;
+    background: var(--jade); color: white; font-size: 13px;
+    font-family: inherit; cursor: pointer; font-weight: 600;
+    &:hover { background: #3d6b5e; }
+}
+
+// 发布弹窗
+.share-dialog { width: min(600px, 92vw) !important; }
+.share-dialog-header { font-size: 17px !important; }
+.share-dialog-body {
+    padding: 20px 22px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.share-textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box;
+    color: var(--ink);
+    &:focus { border-color: var(--jade); }
+}
+.share-imgs-upload { display: flex; flex-wrap: wrap; gap: 8px; }
+.share-img-thumb {
+    width: 80px; height: 80px; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid var(--line);
+    img { width:100%; height:100%; object-fit: cover; display:block; }
+}
+.share-img-del {
+    position: absolute; top: 4px; right: 4px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); border: none; color: white; font-size: 10px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    &:hover { background: var(--cinnabar); }
+}
+.share-img-add {
+    width: 80px; height: 80px; border-radius: 8px;
+    border: 1.5px dashed var(--line); background: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: var(--ink-muted); cursor: pointer; transition: all 0.15s;
+    &:hover { border-color: var(--jade); color: var(--jade); }
+}
+.share-video-preview { position: relative; video { width:100%; max-height:200px; border-radius:8px; display:block; } }
+.share-video-add {
+    padding: 12px 16px; border: 1.5px dashed var(--line); border-radius: 8px;
+    background: var(--cream); text-align: center; font-size: 14px;
+    color: var(--ink-muted); cursor: pointer; transition: all 0.15s;
+    &:hover { border-color: var(--jade); color: var(--jade); }
+}
+.share-cat-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.share-cat-label { font-size: 13px; color: var(--ink-muted); font-weight: 600; }
+.share-card-top { display: flex; gap: 12px; }
+.share-card-text {
+    font-size: 14px; color: var(--ink); line-height: 1.6; word-break: break-word;
+}
+.share-card-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.share-card-img {
+    width: 72px; height: 72px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line);
+}
+.share-card-meta { display:flex; align-items:center; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--ink-muted); }
+.share-card-author { font-weight:600; color:var(--jade); }
+.share-card-time { font-size:11px; }
+.share-card-stats { display:flex; gap:14px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-muted); }
+
+// 草稿箱
+.drafts-panel { margin-top: 14px; }
+.drafts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 12px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--line);
 }
-.post:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+.drafts-empty { text-align: center; padding: 32px; color: var(--ink-muted); font-size: 13px; }
+.draft-item {
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
-.post:first-child {
-    padding-top: 0;
+.draft-body { flex: 1; min-width: 0; }
+.draft-text {
+    font-size: 13px;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.draft-meta { font-size: 11px; color: var(--ink-muted); margin-top: 4px; }
+.draft-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+// Community Posts — 朋友圈 / QQ空间风格
+.post {
+    padding: 20px 0;
+    border-bottom: 1px solid #f0ede8;
+    &:last-child { border-bottom: none; padding-bottom: 0; }
+    &:first-child { padding-top: 0; }
 }
 .post-head {
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-.post-head .avatar {
-    width: 42px;
-    height: 42px;
-    font-size: 14px;
-}
-.post-head .ph-info {
-    flex: 1;
-}
-.post-head .ph-name {
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    gap: 12px;
+    .avatar {
+        width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 16px; font-weight: 600;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+    }
+    .ph-info { flex: 1; min-width: 0; }
+    .ph-name {
+        font-size: 15px; font-weight: 600; color: var(--ink);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .ph-meta { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
 }
 .level-tag {
-    font-size: 10px;
-    padding: 1px 7px;
-    border-radius: 8px;
-    background: var(--gold-soft);
-    color: #9a7b33;
-    font-weight: 600;
-}
-.post-head .ph-meta {
-    font-size: 12px;
-    color: var(--ink-muted);
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: var(--gold-soft); color: #9a7b33; font-weight: 600;
 }
 .post-text {
-    font-size: 14px;
-    color: var(--ink);
-    margin: 10px 0;
-    line-height: 1.7;
+    font-size: 15px; color: var(--ink); margin: 14px 0; line-height: 1.8;
+    word-break: break-word;
 }
-.post-imgs {
-    display: flex;
-    gap: 8px;
-    margin: 10px 0;
+.post-imgs { display: flex; gap: 8px; margin: 10px 0; }
+.post-img { width: 110px; height: 110px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 38px; }
+.post-imgs-comm {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px;
+    margin: 12px 0;
 }
-.post-img {
-    width: 110px;
-    height: 110px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 38px;
+.post-img-comm {
+    width: 100%; aspect-ratio: 1; border-radius: 10px;
+    object-fit: cover; display: block; border: 1px solid var(--line);
 }
 .post-checkin {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: var(--jade-soft);
-    border-radius: 10px;
-    margin: 10px 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--jade-soft); border-radius: 12px;
+    margin: 12px 0;
+    .pc-ring {
+        width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+        background: var(--jade); color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 600;
+    }
 }
-.post-checkin .pc-ring {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--jade);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-}
-.post-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 8px 0;
-}
-.topic-tag {
-    font-size: 12px;
-    color: var(--jade);
-}
+.post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.topic-tag { font-size: 12px; color: var(--jade); }
+
+// 互动按钮栏 — 放大
 .post-actions {
-    display: flex;
-    gap: 22px;
-    margin-top: 10px;
-    font-size: 13px;
-    color: var(--ink-muted);
+    display: flex; gap: 4px; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid #f2efe9;
 }
 .post-actions .pa {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-.post-actions .pa:hover {
-    color: var(--jade);
-}
-.post-actions .pa.liked {
-    color: var(--cinnabar);
+    flex: 1; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; transition: all 0.18s;
+    font-size: 14px; color: var(--ink-muted);
+    background: #faf7f2; border: none; font-family: inherit;
+    &:hover { background: var(--jade-soft); color: var(--jade); }
+    &.liked { background: var(--cinnabar-soft); color: var(--cinnabar); font-weight: 600; }
+    &.stared { background: #fef3c7; color: #b45309; font-weight: 600; }
+    &.active { background: var(--jade-soft); color: var(--jade); font-weight: 600; }
 }
 
-// Comments
+// 评论区
 .comment-area {
-    margin-top: 12px;
-    padding: 12px 14px;
-    background: var(--paper-warm);
-    border-radius: 10px;
+    margin-top: 14px; padding: 16px 18px;
+    background: #faf8f5; border-radius: 14px; border: 1px solid #f0ede8;
 }
 .comment {
-    display: flex;
-    gap: 8px;
-    padding: 8px 0;
-}
-.comment .mini-avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    font-size: 11px;
-    background: linear-gradient(135deg, var(--jade), var(--moon));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-.comment .c-body {
-    flex: 1;
-    font-size: 13px;
-}
-.comment .c-name {
-    color: var(--jade);
-    font-weight: 600;
-}
-.comment .c-meta {
-    font-size: 11px;
-    color: var(--ink-muted);
-    margin-top: 2px;
+    display: flex; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid #f0ede8;
+    &:last-child { border-bottom: none; }
+    .mini-avatar {
+        width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+        font-size: 12px; background: linear-gradient(135deg, var(--jade), var(--moon));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 600;
+    }
+    .c-body { flex: 1; font-size: 14px; }
+    .c-name { color: var(--jade); font-weight: 600; }
+    .c-meta { font-size: 11px; color: var(--ink-muted); margin-top: 3px; }
 }
 .comment-input {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-top: 8px;
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 8px 14px;
-}
-.comment-input input {
-    flex: 1;
-    border: none;
-    outline: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: 13px;
+    display: flex; gap: 10px; align-items: center; margin-top: 12px;
+    background: white; border: 1px solid var(--line); border-radius: 24px;
+    padding: 9px 16px;
+    input {
+        flex: 1; border: none; outline: none; background: transparent;
+        font-family: inherit; font-size: 14px;
+    }
 }
 
 // Side List
@@ -3819,6 +4638,12 @@ const badges = [
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px dashed var(--line);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+    &:hover {
+        transform: translateX(4px);
+        .group-icon { transform: scale(1.12); }
+    }
 }
 .side-row:last-child {
     border-bottom: none;
@@ -3828,6 +4653,7 @@ const badges = [
     height: 42px;
     border-radius: 10px;
     flex-shrink: 0;
+    transition: transform 0.25s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3854,6 +4680,11 @@ const badges = [
     padding: 28px 32px;
     position: relative;
     overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 40px rgba(179, 60, 44, 0.25);
+    }
 }
 .challenge-hero::after {
     content: "🏆";
@@ -3984,8 +4815,16 @@ const badges = [
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 11px 0;
+    padding: 11px 10px;
     border-bottom: 1px dashed var(--line);
+    border-radius: 8px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    cursor: default;
+    &:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 16px rgba(60, 50, 30, 0.08);
+        background: var(--paper-warm);
+    }
 }
 .rank-row:last-child {
     border-bottom: none;
@@ -4056,6 +4895,12 @@ const badges = [
     border-radius: 12px;
     background: var(--paper-warm);
     border: 1px solid var(--line);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(60, 50, 30, 0.12);
+    }
 }
 .badge-item .b-emoji {
     font-size: 32px;
@@ -4074,6 +4919,36 @@ const badges = [
     color: var(--ink-muted);
     margin-top: 2px;
 }
+.badge-all-dialog { width: min(560px, 92vw) !important; }
+.badge-all-body {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px;
+}
+.badge-all-item {
+    text-align: center;
+    padding: 16px 10px;
+    border-radius: 12px;
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    position: relative;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: default;
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 18px rgba(60,50,30,0.1);
+    }
+    &.locked { opacity: 0.5; }
+    .b-emoji { font-size: 36px; }
+    .b-name { font-size: 13px; font-weight: 600; margin-top: 8px; }
+    .b-cond { font-size: 11px; color: var(--ink-muted); margin-top: 3px; }
+}
+.b-unlocked-tag {
+    position: absolute; top: 6px; right: 6px;
+    background: var(--jade); color: white; font-size: 9px;
+    padding: 2px 6px; border-radius: 4px; font-weight: 600;
+}
 
 // Toast
 .toast {
@@ -4089,7 +4964,7 @@ const badges = [
     opacity: 0;
     pointer-events: none;
     transition: all 0.3s;
-    z-index: 999;
+    z-index: 9999;
 }
 .toast.show {
     opacity: 1;
@@ -4132,4 +5007,108 @@ const badges = [
         display: none;
     }
 }
+
+// 通知系统
+.notif-row { cursor: pointer; position: relative; }
+.notif-row.unread { background: rgba(92,131,116,0.04); border-radius: 8px; padding-left: 8px; }
+.notif-dot {
+    position: absolute; top: 2px; right: 2px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cinnabar); border: 2px solid white;
+}
+
+// 新版三分栏通知
+.notif-total-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--cinnabar); color: white;
+    font-size: 11px; font-weight: 700;
+    min-width: 18px; height: 18px; border-radius: 9px;
+    padding: 0 5px; margin-left: 4px;
+}
+.notif-type-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-top: 4px;
+}
+.notif-type-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; padding: 16px 8px;
+    background: var(--paper-warm); border: 1px solid var(--line);
+    border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    &:hover { background: var(--jade-soft); border-color: var(--jade); transform: translateY(-2px); box-shadow: 0 4px 14px rgba(92,131,116,0.15); }
+}
+.ntg-icon-wrap {
+    position: relative; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+}
+.ntg-emoji { font-size: 28px; line-height: 1; }
+.ntg-badge {
+    position: absolute; top: -4px; right: -6px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    background: var(--cinnabar); color: white;
+    font-size: 10px; font-weight: 700; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid white;
+}
+.ntg-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ntg-count { font-size: 11px; color: var(--ink-muted); }
+
+// 通知面板 tab 栏
+.notif-panel-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding-bottom: 0 !important;
+}
+.notif-panel-tabs {
+    display: flex; gap: 4px; width: 100%;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0;
+}
+.npt-btn {
+    flex: 1; padding: 10px 6px; border: none; background: transparent;
+    font-family: inherit; font-size: 13px; color: var(--ink-muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    &:hover { color: var(--jade); }
+    &.active { color: var(--jade); font-weight: 600; border-bottom-color: var(--jade); }
+}
+.npt-badge {
+    min-width: 14px; height: 14px; padding: 0 3px;
+    background: var(--cinnabar); color: white;
+    font-size: 9px; font-weight: 700; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.notif-dialog { width: min(480px, 92vw) !important; }
+.notif-dialog-body {
+    padding: 0 !important;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #faf8f5;
+}
+.notif-dialog-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid #f0ede8;
+    cursor: pointer; transition: background 0.15s;
+    &:hover { background: white; }
+    &.unread { background: rgba(92,131,116,0.06); }
+    &:last-child { border-bottom: none; }
+}
+.notif-dialog-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+}
+.notif-dialog-content { flex: 1; min-width: 0; }
+.notif-dialog-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.notif-dialog-text {
+    font-size: 13px; color: var(--ink-muted); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.notif-dialog-time { font-size: 11px; color: var(--ink-muted); margin-top: 3px; }
+.notif-dialog-unread-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cinnabar); flex-shrink: 0;
+}
+.notif-detail-dialog { width: min(420px, 92vw) !important; }
 </style>
