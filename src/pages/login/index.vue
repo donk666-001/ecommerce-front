@@ -1,5 +1,11 @@
 <template>
     <div class="login-page">
+        <!-- 动态森林背景 -->
+        <LandingScene />
+
+        <!-- 顶部漫射环境光，模拟树冠间隙 -->
+        <div class="ambient-light" aria-hidden="true"></div>
+
         <!-- 左侧品牌面板 -->
         <div class="brand-panel">
             <div class="brand-content">
@@ -11,69 +17,39 @@
             <!-- 角色舞台 -->
             <div class="stage-wrap">
                 <div class="character-stage">
-                    <!-- 紫色角色(后层) -->
+                    <!-- 紫色角色（后层） -->
                     <div ref="purpleRef" class="char" :style="purpleBodyStyle">
                         <div class="char-eyes" :style="purpleEyesStyle">
-                            <template v-for="_ in 2" :key="_">
+                            <template v-for="n in 2" :key="n">
                                 <div :style="eyeballSty(18, isPurpleBlinking)">
-                                    <div
-                                        v-if="!isPurpleBlinking"
-                                        :style="
-                                            pupilSty(
-                                                purpleEyeForce,
-                                                purplePupilPos,
-                                                7,
-                                            )
-                                        "
-                                    ></div>
+                                    <div v-if="!isPurpleBlinking" :style="pupilSty(purpleEyeForce, purplePupilPos, 7)"></div>
                                 </div>
                             </template>
                         </div>
                     </div>
 
-                    <!-- 黑色角色(中层) -->
+                    <!-- 黑色角色（中层） -->
                     <div ref="blackRef" class="char" :style="blackBodyStyle">
                         <div class="char-eyes" :style="blackEyesStyle">
-                            <template v-for="_ in 2" :key="_">
+                            <template v-for="n in 2" :key="n">
                                 <div :style="eyeballSty(16, isBlackBlinking)">
-                                    <div
-                                        v-if="!isBlackBlinking"
-                                        :style="
-                                            pupilSty(
-                                                blackEyeForce,
-                                                blackPupilPos,
-                                                6,
-                                            )
-                                        "
-                                    ></div>
+                                    <div v-if="!isBlackBlinking" :style="pupilSty(blackEyeForce, blackPupilPos, 6)"></div>
                                 </div>
                             </template>
                         </div>
                     </div>
 
-                    <!-- 橙色半圆(前层左) -->
+                    <!-- 橙色半圆（前层左） -->
                     <div ref="orangeRef" class="char" :style="orangeBodyStyle">
                         <div class="char-eyes" :style="orangeEyesStyle">
-                            <div
-                                v-for="_ in 2"
-                                :key="_"
-                                :style="
-                                    dotSty(orangeEyeForce, orangePupilPos, 12)
-                                "
-                            ></div>
+                            <div v-for="n in 2" :key="n" :style="dotSty(orangeEyeForce, orangePupilPos, 12)"></div>
                         </div>
                     </div>
 
-                    <!-- 黄色圆柱(前层右) -->
+                    <!-- 黄色圆柱（前层右） -->
                     <div ref="yellowRef" class="char" :style="yellowBodyStyle">
                         <div class="char-eyes" :style="yellowEyesStyle">
-                            <div
-                                v-for="_ in 2"
-                                :key="_"
-                                :style="
-                                    dotSty(yellowEyeForce, yellowPupilPos, 12)
-                                "
-                            ></div>
+                            <div v-for="n in 2" :key="n" :style="dotSty(yellowEyeForce, yellowPupilPos, 12)"></div>
                         </div>
                         <div class="char-mouth" :style="yellowMouthStyle"></div>
                     </div>
@@ -81,9 +57,7 @@
             </div>
 
             <figure class="brand-quote">
-                <blockquote class="font-serif">
-                    天人合一<br />身心俱养
-                </blockquote>
+                <blockquote class="font-serif">天人合一<br />身心俱养</blockquote>
                 <figcaption>二十四节气 · 中医智慧 · AI 陪伴</figcaption>
             </figure>
 
@@ -92,21 +66,10 @@
 
         <!-- 右侧表单区 -->
         <div class="form-panel">
-            <div class="deco-circle font-serif" aria-hidden="true">养</div>
             <div class="form-area">
                 <div class="mode-tabs">
-                    <button
-                        :class="{ active: mode === 'login' }"
-                        @click="switchMode('login')"
-                    >
-                        登录
-                    </button>
-                    <button
-                        :class="{ active: mode === 'register' }"
-                        @click="switchMode('register')"
-                    >
-                        注册
-                    </button>
+                    <button :class="{ active: mode === 'login' }" @click="switchMode('login')">登录</button>
+                    <button :class="{ active: mode === 'register' }" @click="switchMode('register')">注册</button>
                 </div>
 
                 <!-- 登录表单 -->
@@ -137,10 +100,7 @@
                             prefix-icon="Lock"
                         >
                             <template #suffix>
-                                <el-icon
-                                    class="pw-eye"
-                                    @click="showPassword = !showPassword"
-                                >
+                                <el-icon class="pw-eye" @click="showPassword = !showPassword">
                                     <Hide v-if="showPassword" />
                                     <View v-else />
                                 </el-icon>
@@ -153,18 +113,7 @@
                         size="large"
                         :loading="loading"
                         @click="submitLogin"
-                        >登录</el-button
-                    >
-                    <div class="customer-login-link">
-                        <span>客服人员？</span>
-                        <button
-                            type="button"
-                            class="link-btn"
-                            @click="goToCustomerLogin"
-                        >
-                            进入客服工作台
-                        </button>
-                    </div>
+                    >登录</el-button>
                 </el-form>
 
                 <!-- 注册表单 -->
@@ -177,40 +126,16 @@
                     @keyup.enter="submitRegister"
                 >
                     <el-form-item prop="account">
-                        <el-input
-                            v-model="registerForm.account"
-                            placeholder="账号（3-20 位）"
-                            size="large"
-                            prefix-icon="User"
-                        />
+                        <el-input v-model="registerForm.account" placeholder="账号（3-20 位）" size="large" prefix-icon="User" />
                     </el-form-item>
                     <el-form-item prop="email">
-                        <el-input
-                            v-model="registerForm.email"
-                            placeholder="邮箱"
-                            size="large"
-                            prefix-icon="Message"
-                        />
+                        <el-input v-model="registerForm.email" placeholder="邮箱" size="large" prefix-icon="Message" />
                     </el-form-item>
                     <el-form-item prop="password">
-                        <el-input
-                            v-model="registerForm.password"
-                            type="password"
-                            placeholder="密码（6-20 位）"
-                            size="large"
-                            prefix-icon="Lock"
-                            show-password
-                        />
+                        <el-input v-model="registerForm.password" type="password" placeholder="密码（6-20 位）" size="large" prefix-icon="Lock" show-password />
                     </el-form-item>
                     <el-form-item prop="confirmPassword">
-                        <el-input
-                            v-model="registerForm.confirmPassword"
-                            type="password"
-                            placeholder="确认密码"
-                            size="large"
-                            prefix-icon="Lock"
-                            show-password
-                        />
+                        <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" size="large" prefix-icon="Lock" show-password />
                     </el-form-item>
                     <el-form-item label="性别">
                         <el-radio-group v-model="registerForm.gender">
@@ -218,37 +143,24 @@
                             <el-radio :value="2">女</el-radio>
                         </el-radio-group>
                     </el-form-item>
-                    <el-button
-                        class="submit-btn"
-                        type="primary"
-                        size="large"
-                        :loading="loading"
-                        @click="submitRegister"
-                        >注册</el-button
-                    >
+                    <el-button class="submit-btn" type="primary" size="large" :loading="loading" @click="submitRegister">注册</el-button>
                 </el-form>
+
+                <p class="form-trust">安全登录 · 数据加密传输</p>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import {
-    ref,
-    reactive,
-    computed,
-    onMounted,
-    onUnmounted,
-    watch,
-    type Ref,
-} from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, watch, type Ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "@/store/user";
 import { ApiUser } from "@/network/user";
 import { resolvePostLoginPath } from "@/utils";
-import type { CSSProperties } from "vue";
+import LandingScene from "@/components/landing/LandingScene.vue";
 
 // ── 路由 & Store ────────────────────────────────
 const router = useRouter();
@@ -262,13 +174,7 @@ const loginFormRef = ref<FormInstance>();
 const registerFormRef = ref<FormInstance>();
 
 const loginForm = reactive({ account: "", password: "" });
-const registerForm = reactive({
-    account: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    gender: 0,
-});
+const registerForm = reactive({ account: "", email: "", password: "", confirmPassword: "", gender: 0 });
 
 // ── 动画状态 ────────────────────────────────────
 const mouseX = ref(0);
@@ -328,43 +234,35 @@ const yellowPupilPos = computed(() => calcPupil(yellowRef.value, 5));
 type Vec = { x: number; y: number };
 
 const purpleEyeForce = computed((): Vec | null => {
-    const show = showPassword.value,
-        hasPwd = loginForm.password.length > 0;
-    if (hasPwd && show)
-        return {
-            x: isPurplePeeking.value ? 4 : -4,
-            y: isPurplePeeking.value ? 5 : -4,
-        };
+    const show = showPassword.value, hasPwd = loginForm.password.length > 0;
+    if (hasPwd && show) return { x: isPurplePeeking.value ? 4 : -4, y: isPurplePeeking.value ? 5 : -4 };
     if (isLookingAtEachOther.value) return { x: 3, y: 4 };
     return null;
 });
 
 const blackEyeForce = computed((): Vec | null => {
-    const show = showPassword.value,
-        hasPwd = loginForm.password.length > 0;
+    const show = showPassword.value, hasPwd = loginForm.password.length > 0;
     if (hasPwd && show) return { x: -4, y: -4 };
     if (isLookingAtEachOther.value) return { x: 0, y: -4 };
     return null;
 });
 
 const orangeEyeForce = computed((): Vec | null => {
-    if (loginForm.password.length > 0 && showPassword.value)
-        return { x: -5, y: -4 };
+    if (loginForm.password.length > 0 && showPassword.value) return { x: -5, y: -4 };
     return null;
 });
 
 const yellowEyeForce = computed((): Vec | null => {
-    if (loginForm.password.length > 0 && showPassword.value)
-        return { x: -5, y: -4 };
+    if (loginForm.password.length > 0 && showPassword.value) return { x: -5, y: -4 };
     return null;
 });
 
 // ── 样式辅助函数 ─────────────────────────────────
-function eyeballSty(size: number, blinking: boolean): CSSProperties {
+function eyeballSty(size: number, blinking: boolean) {
     return {
         width: `${size}px`,
         height: blinking ? "2px" : `${size}px`,
-        backgroundColor: "white",
+        backgroundColor: "rgba(240, 248, 238, 0.92)", // 柔白，不刺眼
         borderRadius: "50%",
         display: "flex",
         alignItems: "center",
@@ -375,7 +273,7 @@ function eyeballSty(size: number, blinking: boolean): CSSProperties {
     };
 }
 
-function pupilSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
+function pupilSty(force: Vec | null, pos: Vec, size: number) {
     const p = force ?? pos;
     return {
         width: `${size}px`,
@@ -388,7 +286,7 @@ function pupilSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
     };
 }
 
-function dotSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
+function dotSty(force: Vec | null, pos: Vec, size: number) {
     const p = force ?? pos;
     return {
         width: `${size}px`,
@@ -402,7 +300,7 @@ function dotSty(force: Vec | null, pos: Vec, size: number): CSSProperties {
 }
 
 // ── 角色样式 ─────────────────────────────────────
-const purpleBodyStyle = computed((): CSSProperties => {
+const purpleBodyStyle = computed(() => {
     const hasPwd = loginForm.password.length > 0;
     const show = showPassword.value;
     const hiding = isTyping.value || (hasPwd && !show);
@@ -414,10 +312,9 @@ const purpleBodyStyle = computed((): CSSProperties => {
           ? `skewX(${sk - 12}deg) translateX(40px)`
           : `skewX(${sk}deg)`;
     return {
-        left: "70px",
-        width: "180px",
+        left: "70px", width: "180px",
         height: hiding ? "440px" : "400px",
-        backgroundColor: "#6C3FF5",
+        backgroundColor: "#3d5c7a", // 青玄：深邃如夜林
         borderRadius: "10px 10px 0 0",
         zIndex: 1,
         transform,
@@ -426,30 +323,21 @@ const purpleBodyStyle = computed((): CSSProperties => {
     };
 });
 
-const purpleEyesStyle = computed((): CSSProperties => {
+const purpleEyesStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = purplePos.value;
     return {
         position: "absolute",
         display: "flex",
         gap: "32px",
-        left: showing
-            ? "20px"
-            : isLookingAtEachOther.value
-              ? "55px"
-              : `${45 + faceX}px`,
-        top: showing
-            ? "35px"
-            : isLookingAtEachOther.value
-              ? "65px"
-              : `${40 + faceY}px`,
+        left: showing ? "20px" : isLookingAtEachOther.value ? "55px" : `${45 + faceX}px`,
+        top: showing ? "35px" : isLookingAtEachOther.value ? "65px" : `${40 + faceY}px`,
         transition: "left 0.7s ease-in-out, top 0.7s ease-in-out",
     };
 });
 
-const blackBodyStyle = computed((): CSSProperties => {
-    const hasPwd = loginForm.password.length > 0,
-        show = showPassword.value;
+const blackBodyStyle = computed(() => {
+    const hasPwd = loginForm.password.length > 0, show = showPassword.value;
     const showing = hasPwd && show;
     const looking = isLookingAtEachOther.value;
     const typing = isTyping.value;
@@ -462,10 +350,8 @@ const blackBodyStyle = computed((): CSSProperties => {
             ? `skewX(${sk * 1.5}deg)`
             : `skewX(${sk}deg)`;
     return {
-        left: "240px",
-        width: "120px",
-        height: "310px",
-        backgroundColor: "#2D2D2D",
+        left: "240px", width: "120px", height: "310px",
+        backgroundColor: "#1e2c22", // 墨林：森林深处的暗色
         borderRadius: "8px 8px 0 0",
         zIndex: 2,
         transform,
@@ -474,45 +360,33 @@ const blackBodyStyle = computed((): CSSProperties => {
     };
 });
 
-const blackEyesStyle = computed((): CSSProperties => {
+const blackEyesStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = blackPos.value;
     return {
         position: "absolute",
         display: "flex",
         gap: "24px",
-        left: showing
-            ? "10px"
-            : isLookingAtEachOther.value
-              ? "32px"
-              : `${26 + faceX}px`,
-        top: showing
-            ? "28px"
-            : isLookingAtEachOther.value
-              ? "12px"
-              : `${32 + faceY}px`,
+        left: showing ? "10px" : isLookingAtEachOther.value ? "32px" : `${26 + faceX}px`,
+        top: showing ? "28px" : isLookingAtEachOther.value ? "12px" : `${32 + faceY}px`,
         transition: "left 0.7s ease-in-out, top 0.7s ease-in-out",
     };
 });
 
-const orangeBodyStyle = computed((): CSSProperties => {
+const orangeBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
-        left: "0",
-        width: "240px",
-        height: "200px",
-        backgroundColor: "#FF9B6B",
+        left: "0", width: "240px", height: "200px",
+        backgroundColor: "#a06040", // 陶土：树皮与泥土的暖褐
         borderRadius: "120px 120px 0 0",
         zIndex: 3,
-        transform: showing
-            ? "skewX(0deg)"
-            : `skewX(${orangePos.value.bodySkew}deg)`,
+        transform: showing ? "skewX(0deg)" : `skewX(${orangePos.value.bodySkew}deg)`,
         transformOrigin: "bottom center",
         transition: "all 0.7s ease-in-out",
     };
 });
 
-const orangeEyesStyle = computed((): CSSProperties => {
+const orangeEyesStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = orangePos.value;
     return {
@@ -525,24 +399,20 @@ const orangeEyesStyle = computed((): CSSProperties => {
     };
 });
 
-const yellowBodyStyle = computed((): CSSProperties => {
+const yellowBodyStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     return {
-        left: "310px",
-        width: "140px",
-        height: "230px",
-        backgroundColor: "#E8D754",
+        left: "310px", width: "140px", height: "230px",
+        backgroundColor: "#7a9e6a", // 苔绿：苔藓与嫩叶
         borderRadius: "70px 70px 0 0",
         zIndex: 4,
-        transform: showing
-            ? "skewX(0deg)"
-            : `skewX(${yellowPos.value.bodySkew}deg)`,
+        transform: showing ? "skewX(0deg)" : `skewX(${yellowPos.value.bodySkew}deg)`,
         transformOrigin: "bottom center",
         transition: "all 0.7s ease-in-out",
     };
 });
 
-const yellowEyesStyle = computed((): CSSProperties => {
+const yellowEyesStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = yellowPos.value;
     return {
@@ -555,7 +425,7 @@ const yellowEyesStyle = computed((): CSSProperties => {
     };
 });
 
-const yellowMouthStyle = computed((): CSSProperties => {
+const yellowMouthStyle = computed(() => {
     const showing = loginForm.password.length > 0 && showPassword.value;
     const { faceX, faceY } = yellowPos.value;
     return {
@@ -572,18 +442,15 @@ let lookTimer: ReturnType<typeof setTimeout> | null = null;
 
 function blinkCycle(blink: Ref<boolean>) {
     if (stopBlink) return;
-    setTimeout(
-        () => {
+    setTimeout(() => {
+        if (stopBlink) return;
+        blink.value = true;
+        setTimeout(() => {
             if (stopBlink) return;
-            blink.value = true;
-            setTimeout(() => {
-                if (stopBlink) return;
-                blink.value = false;
-                blinkCycle(blink);
-            }, 150);
-        },
-        Math.random() * 4000 + 3000,
-    );
+            blink.value = false;
+            blinkCycle(blink);
+        }, 150);
+    }, Math.random() * 4000 + 3000);
 }
 
 onMounted(() => {
@@ -604,9 +471,7 @@ watch(isTyping, (typing) => {
     if (lookTimer) clearTimeout(lookTimer);
     if (typing) {
         isLookingAtEachOther.value = true;
-        lookTimer = setTimeout(() => {
-            isLookingAtEachOther.value = false;
-        }, 800);
+        lookTimer = setTimeout(() => { isLookingAtEachOther.value = false; }, 800);
     } else {
         isLookingAtEachOther.value = false;
     }
@@ -615,15 +480,10 @@ watch(isTyping, (typing) => {
 watch([() => loginForm.password, showPassword, isPurplePeeking], () => {
     if (peekTimer) clearTimeout(peekTimer);
     if (loginForm.password.length > 0 && showPassword.value) {
-        peekTimer = setTimeout(
-            () => {
-                isPurplePeeking.value = true;
-                setTimeout(() => {
-                    isPurplePeeking.value = false;
-                }, 800);
-            },
-            Math.random() * 3000 + 2000,
-        );
+        peekTimer = setTimeout(() => {
+            isPurplePeeking.value = true;
+            setTimeout(() => { isPurplePeeking.value = false; }, 800);
+        }, Math.random() * 3000 + 2000);
     } else {
         isPurplePeeking.value = false;
     }
@@ -652,8 +512,7 @@ const registerRules: FormRules = {
         { required: true, message: "请再次输入密码", trigger: "blur" },
         {
             validator: (_rule, value, callback) => {
-                if (value !== registerForm.password)
-                    callback(new Error("两次密码不一致"));
+                if (value !== registerForm.password) callback(new Error("两次密码不一致"));
                 else callback();
             },
             trigger: "blur",
@@ -668,9 +527,8 @@ function switchMode(m: "login" | "register") {
     registerFormRef.value?.clearValidate();
 }
 
-// 跳转到客服登录页面
-function goToCustomerLogin() {
-    router.push("/customer/login");
+function getRedirectPath() {
+    return resolvePostLoginPath(userStore.G_UserInfo.role_id, route.query.redirect);
 }
 
 async function submitLogin() {
@@ -679,38 +537,24 @@ async function submitLogin() {
 
     loading.value = true;
     try {
-        const result = await ApiUser.login({
-            username: loginForm.account,
-            password: loginForm.password,
-        });
+        const result = await ApiUser.login({ username: loginForm.account, password: loginForm.password });
         if (result) {
             userStore.G_LoginInfo = {
                 ...userStore.G_LoginInfo,
                 id: result.id,
                 isLogin: true,
-                nickName:
-                    result.nickname || result.username || loginForm.account,
+                nickName: result.nickname || result.username || loginForm.account,
                 account: loginForm.account,
                 status: 1,
             };
             const codes: number[] = result.privileges ?? [];
-            const role_id = codes.includes(100)
-                ? 1
-                : codes.includes(200)
-                  ? 2
-                  : 3;
+            const role_id = codes.includes(100) ? 1 : codes.includes(200) ? 2 : 3;
             userStore.G_UserInfo = { ...userStore.G_UserInfo, role_id };
             userStore.isInitialized = true;
             sessionStorage.setItem("tab-user-id", String(result.id));
             await userStore.loadUserInfo();
             ElMessage.success("登录成功");
-
-            // 根据角色自动跳转
-            const redirectPath = resolvePostLoginPath(
-                role_id,
-                route.query.redirect,
-            );
-            await router.push(redirectPath);
+            router.push(getRedirectPath());
         } else {
             ElMessage.error("账号或密码错误");
         }
@@ -727,23 +571,13 @@ async function submitRegister() {
 
     loading.value = true;
     try {
-        // gender=0 表示用户未选择，不传该字段让后端沿用默认值
-        const registerData: {
-            username: string;
-            password: string;
-            email: string;
-            gender?: number;
-        } = {
+        const result = await ApiUser.register({
             username: registerForm.account,
             password: registerForm.password,
             email: registerForm.email,
-        };
-
-        if (registerForm.gender !== 0) {
-            registerData.gender = registerForm.gender;
-        }
-
-        const result = await ApiUser.register(registerData);
+            // gender=0 表示用户未选择，传 undefined 让后端沿用默认值
+            gender: registerForm.gender === 0 ? undefined : registerForm.gender,
+        });
         if (result) {
             ElMessage.success("注册成功，请登录");
             loginForm.account = registerForm.account;
@@ -764,19 +598,22 @@ async function submitRegister() {
 .login-page {
     min-height: 100vh;
     display: flex;
-    background: var(--paper-warm);
+    background: #0c180a; // 森林场景图加载前的兜底暗色
+    position: relative; // 让 .form-light 的 absolute 相对此容器定位
 }
 
 // ── 左侧品牌面板 ──────────────────────────────────
 .brand-panel {
     width: 48%;
-    background: var(--jade);
+    background: rgba(28, 55, 41, 0.55); // jade 半透明遮罩，透出森林背景
+    backdrop-filter: blur(3px);
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     padding: 52px 40px 44px;
     flex-shrink: 0;
+    z-index: 1;
 }
 
 .brand-watermark {
@@ -843,6 +680,8 @@ async function submitRegister() {
     width: 460px;
     height: 400px;
     flex-shrink: 0;
+    opacity: 0.88; // 略微半透，融入森林氛围
+    filter: saturate(0.9); // 轻微降饱和，更自然
 }
 
 .char {
@@ -858,7 +697,7 @@ async function submitRegister() {
     position: absolute;
     width: 80px;
     height: 4px;
-    background-color: #2d2d2d;
+    background-color: #2D2D2D;
     border-radius: 9999px;
 }
 
@@ -889,53 +728,28 @@ async function submitRegister() {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 36px 56px 56px;
-    background: var(--paper-warm);
+    align-items: center;
+    justify-content: center;
+    background: rgba(4, 10, 6, 0.38); // 半透明，让森林背景透出
+    border-left: 1px solid rgba(92, 131, 116, 0.15);
     position: relative;
+    z-index: 1;
     overflow: hidden;
 
+    // 右上角暗角，增加内聚感
     &::before {
-        content: "";
+        content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: var(--jade-soft);
+        inset: 0;
+        background: radial-gradient(ellipse at 85% 10%, transparent 45%, rgba(0, 0, 0, 0.3) 100%);
+        pointer-events: none;
     }
 }
 
-.deco-circle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 680px;
-    height: 680px;
-    border-radius: 50%;
-    background: var(--jade);
-    opacity: 0.1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 580px;
-    line-height: 1;
-    color: #fff;
-    overflow: hidden;
-    pointer-events: none;
-    user-select: none;
-    z-index: 0;
-}
-
 .form-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-width: 360px;
-    margin: 0 auto;
     width: 100%;
-    padding: 32px 0 64px;
+    max-width: 340px;
+    padding: 0 8px;
     position: relative;
     z-index: 1;
 }
@@ -945,40 +759,39 @@ async function submitRegister() {
     display: flex;
     gap: 0;
     margin-bottom: 36px;
-    border-bottom: 1px solid var(--line);
+    // 细玉石线，呼应品牌色
+    border-bottom: 1px solid rgba(92, 131, 116, 0.25);
 
     button {
         background: none;
         border: none;
         padding: 12px 0;
-        margin-right: 32px;
-        font-size: 18px;
-        font-weight: 500;
-        color: var(--ink-muted);
+        margin-right: 36px;
+        font-size: 17px;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.32);
         cursor: pointer;
         position: relative;
-        transition: color 0.18s ease-out;
-        letter-spacing: 0.02em;
+        transition: color 0.22s ease-out;
+        letter-spacing: 0.06em;
+        font-family: var(--font-serif, Georgia, serif);
 
         &.active {
-            color: var(--ink);
-            font-weight: 700;
+            color: rgba(255, 255, 255, 0.92);
+            font-weight: 600;
 
             &::after {
-                content: "";
+                content: '';
                 position: absolute;
                 bottom: -1px;
                 left: 0;
-                right: 0;
-                height: 2px;
-                background: var(--jade);
-                border-radius: 2px 2px 0 0;
+                width: 100%;
+                height: 1px;
+                background: #6dba90; // jade green 强调线
             }
         }
 
-        &:hover:not(.active) {
-            color: var(--ink-soft);
-        }
+        &:hover:not(.active) { color: rgba(255, 255, 255, 0.55); }
     }
 }
 
@@ -987,164 +800,151 @@ async function submitRegister() {
     display: flex;
     flex-direction: column;
 
-    :deep(.el-form-item) {
-        margin-bottom: 18px;
-    }
+    :deep(.el-form-item) { margin-bottom: 18px; }
+
+    :deep(.el-form-item__error) { color: #f0a090; font-size: 12px; }
 
     :deep(.el-input__wrapper) {
-        background: var(--cream);
-        border-radius: 8px;
-        border: 1px solid rgba(232, 223, 208, 0.9);
-        box-shadow:
-            inset 0 1px 3px rgba(60, 50, 30, 0.08),
-            inset 0 1px 1px rgba(60, 50, 30, 0.04);
-        transition:
-            box-shadow 0.18s ease-out,
-            border-color 0.18s ease-out;
+        // 极简深色输入框：无填充，只有细边框
+        background: rgba(0, 0, 0, 0.28);
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: none;
+        transition: border-color 0.2s ease-out, background 0.2s ease-out;
         padding: 0 14px;
 
         &:hover {
-            border-color: rgba(143, 168, 156, 0.6);
-            box-shadow:
-                inset 0 1px 3px rgba(60, 50, 30, 0.06),
-                inset 0 1px 1px rgba(60, 50, 30, 0.03);
+            background: rgba(0, 0, 0, 0.35);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         &.is-focus {
-            border-color: rgba(92, 131, 116, 0.7) !important;
-            box-shadow:
-                inset 0 1px 2px rgba(60, 50, 30, 0.04),
-                0 0 0 3px rgba(92, 131, 116, 0.1) !important;
+            background: rgba(255, 255, 255, 0.06) !important;
+            border-color: rgba(109, 186, 144, 0.6) !important; // jade 聚焦色
+            box-shadow: none !important;
         }
     }
 
     :deep(.el-input__inner) {
-        height: 44px;
+        height: 46px;
         font-size: 14px;
-        color: var(--ink);
+        color: rgba(255, 255, 255, 0.88);
+        background: transparent;
+        caret-color: #6dba90;
+        letter-spacing: 0.02em;
 
-        &::placeholder {
-            color: var(--ink-muted);
-            opacity: 0.65;
-        }
+        &::placeholder { color: rgba(255, 255, 255, 0.28); }
     }
 
     :deep(.el-input__prefix-icon) {
-        color: var(--ink-muted);
-        opacity: 0.75;
+        color: rgba(255, 255, 255, 0.28);
+        font-size: 15px;
     }
+
+    :deep(.el-radio__label) { color: rgba(255, 255, 255, 0.65); font-size: 13px; }
+    :deep(.el-radio__inner) {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: transparent;
+    }
+    :deep(.el-radio__input.is-checked .el-radio__inner) {
+        border-color: #6dba90;
+        background: #6dba90;
+    }
+    :deep(.el-form-item__label) { color: rgba(255, 255, 255, 0.55); font-size: 13px; }
 }
 
 .pw-eye {
     cursor: pointer;
-    color: var(--ink-muted);
-    transition: color 0.15s;
+    color: rgba(255, 255, 255, 0.3);
+    transition: color 0.18s;
 
-    &:hover {
-        color: var(--ink);
-    }
+    &:hover { color: rgba(255, 255, 255, 0.7); }
 }
 
 .submit-btn {
     width: 100%;
-    margin-top: 8px;
+    margin-top: 10px;
     height: 48px;
-    font-size: 15px;
-    font-weight: 600;
-    border-radius: 8px;
-    background: var(--jade);
-    border-color: var(--jade);
-    letter-spacing: 0.06em;
-    box-shadow:
-        0 2px 5px rgba(92, 131, 116, 0.28),
-        0 5px 16px rgba(92, 131, 116, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition:
-        background 0.15s ease-out,
-        transform 0.12s ease-out,
-        box-shadow 0.15s ease-out,
-        border-color 0.15s;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    background: #4a7260; // 沉稳的深玉色，不用渐变
+    border: 1px solid rgba(109, 186, 144, 0.3);
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 0.12em;
+    font-family: var(--font-serif, Georgia, serif);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    transition: background 0.2s ease-out, transform 0.12s ease-out;
 
     &:hover {
-        background: var(--bamboo) !important;
-        border-color: var(--bamboo) !important;
-        transform: translateY(-2px);
-        box-shadow:
-            0 4px 10px rgba(92, 131, 116, 0.32),
-            0 10px 26px rgba(92, 131, 116, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        background: #5a8a70 !important;
+        border-color: rgba(109, 186, 144, 0.5) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
 
     &:active {
-        transform: translateY(1px) !important;
-        box-shadow:
-            0 1px 3px rgba(92, 131, 116, 0.22),
-            inset 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+        transform: translateY(0) !important;
+        background: #3f6455 !important;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3) !important;
     }
 }
 
-.customer-login-link {
-    margin-top: 16px;
+// ── 底部信任提示 ───────────────────────────────────
+.form-trust {
+    margin-top: 24px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.18);
+    letter-spacing: 0.1em;
     text-align: center;
-    font-size: 13px;
-    color: var(--ink-muted);
+}
 
-    .link-btn {
-        background: none;
-        border: none;
-        color: var(--jade);
-        cursor: pointer;
-        font-size: 13px;
-        margin-left: 4px;
-        padding: 0;
-        font-family: inherit;
-        transition: color 0.15s;
+// ── 顶部漫射环境光 ─────────────────────────────────────
+// 宽幅径向渐变，模拟树冠间隙漫射光，不是光柱
+.ambient-light {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+        ellipse 90% 50% at 62% -5%,
+        rgba(210, 235, 185, 0.18) 0%,
+        rgba(180, 220, 160, 0.06) 45%,
+        transparent 70%
+    );
+    animation: ambientPulse 12s ease-in-out infinite alternate;
+}
 
-        &:hover {
-            color: var(--bamboo);
-            text-decoration: underline;
-        }
-    }
+@keyframes ambientPulse {
+    0%   { opacity: 0.6; }
+    100% { opacity: 1;   }
+}
+
+// ── 隐藏 LandingScene 的 god rays，保留 sun-bloom 柔光晕 ──
+:deep(.god-rays) {
+    display: none;
 }
 
 // ── 响应式 ────────────────────────────────────────
 @media (max-width: 900px) {
-    .login-page {
-        flex-direction: column;
-    }
+    .login-page { flex-direction: column; }
 
     .brand-panel {
         width: 100%;
         padding: 40px 28px 28px;
-
-        &::before {
-            display: none;
-        }
     }
 
-    .stage-wrap {
-        display: none;
-    }
+    .stage-wrap { display: none; }
 
-    .brand-quote blockquote {
-        font-size: 24px;
-    }
-    .brand-watermark {
-        font-size: 220px;
-        bottom: -40px;
-        right: -20px;
-    }
+    .brand-quote blockquote { font-size: 24px; }
+    .brand-watermark { font-size: 220px; bottom: -40px; right: -20px; }
 
     .form-panel {
-        padding: 28px 28px 48px;
-
-        &::before {
-            display: none;
-        }
+        min-height: 50vh;
+        border-left: none;
+        border-top: 1px solid rgba(92, 131, 116, 0.15);
     }
 
-    .form-area {
-        padding: 24px 0 40px;
-    }
+    .form-area { padding: 0 8px; }
 }
 </style>

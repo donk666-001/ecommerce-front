@@ -54,15 +54,15 @@ App 上传到：
 
 ```json
 {
-  "generatedAt": "2026-05-28T03:34:20Z",
-  "sleepData": [
-    {
-      "endTime": "2026-05-28T03:45:45+08:00",
-      "startTime": "2026-05-28T03:07:45+08:00",
-      "type": "light"
-    }
-  ],
-  "userId": "4"
+    "generatedAt": "2026-05-28T03:34:20Z",
+    "sleepData": [
+        {
+            "endTime": "2026-05-28T03:45:45+08:00",
+            "startTime": "2026-05-28T03:07:45+08:00",
+            "type": "light"
+        }
+    ],
+    "userId": "4"
 }
 ```
 

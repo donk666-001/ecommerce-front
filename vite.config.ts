@@ -97,7 +97,7 @@ export default defineConfig(({ mode }) => {
                     changeOrigin: true,
                 },
             },
-            // open: true, // 启动项目后，自动打开浏览器
+            open: "/e-commerce/landing", // 启动项目后，自动打开落地页
         },
 
         // 优化依赖项

@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="zh">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>布局风格选择</title>
+        <script src="../state/helper.js"></script>
+        <style>
+            :root {
+                --cream: #faf6ee;
+                --paper: #ffffff;
+                --jade: #5c8374;
+                --jade-light: #8fa89c;
+                --jade-soft: #e8f0ec;
+                --gold: #c9a55c;
+                --gold-soft: #f5ebd3;
+                --gold-deep: #9a7b33;
+                --ink: #2c3639;
+                --ink-soft: #4a5559;
+                --ink-muted: #6b7c7a;
+                --line: #e8dfd0;
+                --shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
+                --shadow-lg: 0 8px 28px rgba(60, 50, 30, 0.1);
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                background: var(--cream);
+                min-height: 100vh;
+                padding: 0;
+            }
+
+            /* Page header */
+            .page-header {
+                background: white;
+                border-bottom: 1px solid var(--line);
+                padding: 16px 32px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .page-header h2 {
+                font-size: 18px;
+                color: var(--ink);
+                font-weight: 700;
+            }
+            .page-header .subtitle {
+                font-size: 13px;
+                color: var(--ink-muted);
+                margin-top: 4px;
+            }
+
+            /* Question banner */
+            .question-banner {
+                background: linear-gradient(135deg, #5c8374, #8fa89c);
+                color: white;
+                padding: 20px 32px;
+                text-align: center;
+            }
+            .question-banner h3 {
+                font-size: 20px;
+                margin-bottom: 6px;
+            }
+            .question-banner p {
+                font-size: 13px;
+                opacity: 0.85;
+            }
+
+            /* Layout options tabs */
+            .layout-tabs {
+                display: flex;
+                gap: 0;
+                background: white;
+                border-bottom: 1px solid var(--line);
+                padding: 0 32px;
+            }
+            .layout-tab {
+                padding: 14px 28px;
+                border: none;
+                background: none;
+                font-size: 14px;
+                color: var(--ink-muted);
+                cursor: pointer;
+                border-bottom: 3px solid transparent;
+                transition: all 0.2s;
+                font-family: inherit;
+                position: relative;
+            }
+            .layout-tab.active {
+                color: var(--jade);
+                border-bottom-color: var(--jade);
+                font-weight: 600;
+            }
+            .layout-tab:hover:not(.active) {
+                color: var(--ink-soft);
+            }
+
+            /* Content area */
+            .content-area {
+                padding: 28px 32px;
+            }
+
+            /* ===================== LAYOUT A: 3-col grid ===================== */
+            .layout-a {
+                display: none;
+            }
+            .layout-a.active {
+                display: block;
+            }
+
+            .filter-bar-a {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 24px;
+                flex-wrap: wrap;
+            }
+            .filter-chip {
+                padding: 7px 18px;
+                border-radius: 20px;
+                border: 1px solid var(--line);
+                background: white;
+                font-size: 13px;
+                color: var(--ink-soft);
+                cursor: pointer;
+            }
+            .filter-chip.active {
+                background: var(--jade);
+                color: white;
+                border-color: var(--jade);
+            }
+
+            .grid-3 {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+
+            .card-a {
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.4);
+                cursor: pointer;
+                transition: all 0.25s;
+            }
+            .card-a:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .card-a-cover {
+                height: 140px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .card-a-icon {
+                font-size: 48px;
+            }
+            .card-a-tag {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                background: var(--gold);
+                color: white;
+                font-size: 11px;
+                padding: 3px 10px;
+                border-radius: 10px;
+            }
+            .card-a-body {
+                padding: 16px;
+            }
+            .card-a-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 6px;
+            }
+            .card-a-desc {
+                font-size: 12px;
+                color: var(--ink-muted);
+                line-height: 1.6;
+                margin-bottom: 12px;
+            }
+            .card-a-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding-top: 12px;
+                border-top: 1px solid var(--line);
+            }
+            .card-a-price {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--jade);
+            }
+            .card-a-price span {
+                font-size: 12px;
+                font-weight: 400;
+                color: var(--ink-muted);
+            }
+            .card-a-btn {
+                background: var(--jade);
+                color: white;
+                border: none;
+                padding: 7px 16px;
+                border-radius: 20px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+
+            /* ===================== LAYOUT B: 2-col wide cards ===================== */
+            .layout-b {
+                display: none;
+            }
+            .layout-b.active {
+                display: block;
+            }
+
+            .sort-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+            .sort-bar .count {
+                font-size: 13px;
+                color: var(--ink-muted);
+            }
+            .sort-options {
+                display: flex;
+                gap: 8px;
+            }
+            .sort-btn {
+                padding: 6px 14px;
+                border-radius: 16px;
+                border: 1px solid var(--line);
+                background: white;
+                font-size: 12px;
+                cursor: pointer;
+                color: var(--ink-soft);
+            }
+            .sort-btn.active {
+                background: var(--jade-soft);
+                color: var(--jade);
+                border-color: var(--jade);
+            }
+
+            .grid-2 {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+
+            .card-b {
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.4);
+                cursor: pointer;
+                transition: all 0.25s;
+                display: flex;
+                flex-direction: column;
+            }
+            .card-b:hover {
+                transform: translateY(-3px);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .card-b-cover {
+                height: 120px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+            }
+            .card-b-icon {
+                font-size: 42px;
+            }
+            .card-b-label {
+                position: absolute;
+                top: 12px;
+                left: 12px;
+                background: rgba(255, 255, 255, 0.9);
+                color: var(--jade);
+                font-size: 11px;
+                font-weight: 600;
+                padding: 3px 10px;
+                border-radius: 10px;
+            }
+
+            .card-b-body {
+                padding: 16px;
+                flex: 1;
+            }
+            .card-b-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 8px;
+            }
+            .card-b-meta {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 10px;
+            }
+            .card-b-meta-item {
+                font-size: 12px;
+                color: var(--ink-muted);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .card-b-desc {
+                font-size: 12px;
+                color: var(--ink-soft);
+                line-height: 1.6;
+            }
+
+            .card-b-footer {
+                padding: 12px 16px;
+                border-top: 1px solid var(--line);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .card-b-price {
+                font-size: 20px;
+                font-weight: 700;
+                color: var(--jade);
+            }
+            .card-b-price-unit {
+                font-size: 12px;
+                color: var(--ink-muted);
+                font-weight: 400;
+            }
+            .card-b-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .btn-outline {
+                padding: 7px 14px;
+                border-radius: 20px;
+                border: 1px solid var(--jade);
+                background: transparent;
+                color: var(--jade);
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .btn-solid {
+                padding: 7px 16px;
+                border-radius: 20px;
+                border: none;
+                background: var(--jade);
+                color: white;
+                font-size: 12px;
+                cursor: pointer;
+            }
+
+            /* ===================== LAYOUT C: List + sidebar filter ===================== */
+            .layout-c {
+                display: none;
+            }
+            .layout-c.active {
+                display: flex;
+                gap: 24px;
+                align-items: flex-start;
+            }
+
+            .sidebar-filter {
+                width: 200px;
+                flex-shrink: 0;
+                background: white;
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.4);
+                position: sticky;
+                top: 20px;
+            }
+            .sidebar-filter h4 {
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 16px;
+            }
+            .filter-section {
+                margin-bottom: 20px;
+            }
+            .filter-section-title {
+                font-size: 12px;
+                color: var(--ink-muted);
+                margin-bottom: 10px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+            }
+            .filter-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 7px 0;
+                font-size: 13px;
+                color: var(--ink-soft);
+                cursor: pointer;
+            }
+            .filter-item.active {
+                color: var(--jade);
+                font-weight: 600;
+            }
+            .filter-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--line);
+                flex-shrink: 0;
+            }
+            .filter-dot.active {
+                background: var(--jade);
+            }
+
+            .list-main {
+                flex: 1;
+            }
+            .list-col {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            .card-c {
+                background: white;
+                border-radius: 14px;
+                padding: 20px;
+                box-shadow: var(--shadow);
+                border: 1px solid rgba(232, 223, 208, 0.4);
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                gap: 16px;
+                align-items: flex-start;
+            }
+            .card-c:hover {
+                transform: translateX(4px);
+                box-shadow: var(--shadow-lg);
+            }
+            .card-c-icon-wrap {
+                width: 72px;
+                height: 72px;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 32px;
+                flex-shrink: 0;
+            }
+            .card-c-info {
+                flex: 1;
+            }
+            .card-c-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 6px;
+            }
+            .card-c-tags {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 8px;
+                flex-wrap: wrap;
+            }
+            .card-c-tag {
+                font-size: 11px;
+                padding: 2px 8px;
+                border-radius: 8px;
+                background: var(--jade-soft);
+                color: var(--jade);
+            }
+            .card-c-desc {
+                font-size: 12px;
+                color: var(--ink-muted);
+                line-height: 1.6;
+            }
+            .card-c-right {
+                text-align: right;
+                flex-shrink: 0;
+            }
+            .card-c-price {
+                font-size: 20px;
+                font-weight: 700;
+                color: var(--jade);
+                margin-bottom: 8px;
+            }
+            .card-c-price-unit {
+                font-size: 12px;
+                color: var(--ink-muted);
+                font-weight: 400;
+            }
+            .card-c-btn {
+                background: var(--jade);
+                color: white;
+                border: none;
+                padding: 8px 18px;
+                border-radius: 20px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+
+            /* Selection overlay */
+            .select-bar {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 12px;
+                z-index: 999;
+            }
+            .select-choice {
+                padding: 12px 28px;
+                border-radius: 28px;
+                border: 2px solid transparent;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                background: white;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+                color: var(--ink-soft);
+            }
+            .select-choice:hover {
+                border-color: var(--jade);
+                color: var(--jade);
+            }
+            .select-choice.chosen {
+                background: var(--jade);
+                color: white;
+                border-color: var(--jade);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="question-banner">
+            <h3>选择卡片布局风格</h3>
+            <p>
+                三种排列方式，以下均基于"颐养阁"设计系统还原，点击底部按钮选择
+            </p>
+        </div>
+
+        <!-- Tab switch -->
+        <div class="layout-tabs">
+            <button class="layout-tab active" onclick="switchLayout('a', this)">
+                A · 三列网格
+            </button>
+            <button class="layout-tab" onclick="switchLayout('b', this)">
+                B · 两列宽卡片
+            </button>
+            <button class="layout-tab" onclick="switchLayout('c', this)">
+                C · 列表 + 侧边筛选
+            </button>
+        </div>
+
+        <div class="content-area">
+            <!-- LAYOUT A -->
+            <div class="layout-a active" id="layout-a">
+                <div class="filter-bar-a">
+                    <div class="filter-chip active">全部套餐</div>
+                    <div class="filter-chip">🧬 体质辨识</div>
+                    <div class="filter-chip">🌿 节气调理</div>
+                    <div class="filter-chip">💬 专家咨询</div>
+                    <div class="filter-chip">😴 睡眠改善</div>
+                </div>
+                <div class="grid-3">
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #e8f0ec,
+                                    #d4e6da
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">🧬</div>
+                            <div class="card-a-tag">热门</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">体质辨识套餐</div>
+                            <div class="card-a-desc">
+                                专业中医体质测评 + AI 分析报告，30天有效期
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥199 <span>/ 次</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #f5ebd3,
+                                    #ead9b8
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">🌿</div>
+                            <div class="card-a-tag">节气限定</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">芒种节气调理方案</div>
+                            <div class="card-a-desc">
+                                专家定制调理计划，配合当季养生食疗推荐
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥299 <span>/ 套</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #e8edf3,
+                                    #d3dbea
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">💬</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">在线专家咨询</div>
+                            <div class="card-a-desc">
+                                30分钟一对一视频问诊，处方建议随诊发送
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥99 <span>/ 次</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #fbeef1,
+                                    #f0d5dc
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">😴</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">睡眠改善套餐</div>
+                            <div class="card-a-desc">
+                                失眠调理 + 睡前功法指导 + 中医处方建议
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥249 <span>/ 套</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #eaf2ea,
+                                    #d3e8d3
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">🍵</div>
+                            <div class="card-a-tag">新品</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">四季茶饮订制</div>
+                            <div class="card-a-desc">
+                                根据体质和节气，专家定制专属养生茶方
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥149 <span>/ 月</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-a">
+                        <div
+                            class="card-a-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #fae5e0,
+                                    #f0c9c0
+                                );
+                            "
+                        >
+                            <div class="card-a-icon">🌸</div>
+                        </div>
+                        <div class="card-a-body">
+                            <div class="card-a-title">女性调经养护</div>
+                            <div class="card-a-desc">
+                                经期管理 + 中医调理方案 + 月度跟踪回访
+                            </div>
+                            <div class="card-a-footer">
+                                <div class="card-a-price">
+                                    ¥199 <span>/ 月</span>
+                                </div>
+                                <button class="card-a-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LAYOUT B -->
+            <div class="layout-b" id="layout-b">
+                <div class="sort-bar">
+                    <div class="count">共 8 个套餐</div>
+                    <div class="sort-options">
+                        <button class="sort-btn active">综合排序</button>
+                        <button class="sort-btn">价格↑</button>
+                        <button class="sort-btn">最新上线</button>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card-b">
+                        <div
+                            class="card-b-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #e8f0ec,
+                                    #d4e6da
+                                );
+                            "
+                        >
+                            <div class="card-b-icon">🧬</div>
+                            <div class="card-b-label">热门</div>
+                        </div>
+                        <div class="card-b-body">
+                            <div class="card-b-title">体质辨识套餐</div>
+                            <div class="card-b-meta">
+                                <div class="card-b-meta-item">⏱ 30 分钟</div>
+                                <div class="card-b-meta-item">
+                                    👤 有效期 30 天
+                                </div>
+                            </div>
+                            <div class="card-b-desc">
+                                专业中医体质测评 + AI
+                                分析报告，获取个性化养生建议
+                            </div>
+                        </div>
+                        <div class="card-b-footer">
+                            <div class="card-b-price">
+                                ¥199 <span class="card-b-price-unit">/ 次</span>
+                            </div>
+                            <div class="card-b-actions">
+                                <button class="btn-outline">了解详情</button>
+                                <button class="btn-solid">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-b">
+                        <div
+                            class="card-b-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #f5ebd3,
+                                    #ead9b8
+                                );
+                            "
+                        >
+                            <div class="card-b-icon">🌿</div>
+                            <div class="card-b-label">节气限定</div>
+                        </div>
+                        <div class="card-b-body">
+                            <div class="card-b-title">芒种节气调理方案</div>
+                            <div class="card-b-meta">
+                                <div class="card-b-meta-item">📋 专家定制</div>
+                                <div class="card-b-meta-item">⏱ 60 分钟</div>
+                            </div>
+                            <div class="card-b-desc">
+                                配合当季节气，定制个人调理计划，附食疗推荐与生活方式建议
+                            </div>
+                        </div>
+                        <div class="card-b-footer">
+                            <div class="card-b-price">
+                                ¥299 <span class="card-b-price-unit">/ 套</span>
+                            </div>
+                            <div class="card-b-actions">
+                                <button class="btn-outline">了解详情</button>
+                                <button class="btn-solid">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-b">
+                        <div
+                            class="card-b-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #e8edf3,
+                                    #d3dbea
+                                );
+                            "
+                        >
+                            <div class="card-b-icon">💬</div>
+                            <div class="card-b-label">随时预约</div>
+                        </div>
+                        <div class="card-b-body">
+                            <div class="card-b-title">在线专家咨询</div>
+                            <div class="card-b-meta">
+                                <div class="card-b-meta-item">🎥 视频问诊</div>
+                                <div class="card-b-meta-item">⏱ 30 分钟</div>
+                            </div>
+                            <div class="card-b-desc">
+                                一对一视频问诊，处方建议随诊发送，复诊记录永久保留
+                            </div>
+                        </div>
+                        <div class="card-b-footer">
+                            <div class="card-b-price">
+                                ¥99 <span class="card-b-price-unit">/ 次</span>
+                            </div>
+                            <div class="card-b-actions">
+                                <button class="btn-outline">了解详情</button>
+                                <button class="btn-solid">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-b">
+                        <div
+                            class="card-b-cover"
+                            style="
+                                background: linear-gradient(
+                                    135deg,
+                                    #fbeef1,
+                                    #f0d5dc
+                                );
+                            "
+                        >
+                            <div class="card-b-icon">😴</div>
+                            <div class="card-b-label">套餐优惠</div>
+                        </div>
+                        <div class="card-b-body">
+                            <div class="card-b-title">睡眠改善套餐</div>
+                            <div class="card-b-meta">
+                                <div class="card-b-meta-item">
+                                    📋 含 3 次问诊
+                                </div>
+                                <div class="card-b-meta-item">⏱ 30 天周期</div>
+                            </div>
+                            <div class="card-b-desc">
+                                失眠调理 + 睡前功法指导 +
+                                中医处方建议，全程跟踪随访
+                            </div>
+                        </div>
+                        <div class="card-b-footer">
+                            <div class="card-b-price">
+                                ¥249 <span class="card-b-price-unit">/ 套</span>
+                            </div>
+                            <div class="card-b-actions">
+                                <button class="btn-outline">了解详情</button>
+                                <button class="btn-solid">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LAYOUT C -->
+            <div class="layout-c" id="layout-c">
+                <div class="sidebar-filter">
+                    <h4>筛选套餐</h4>
+                    <div class="filter-section">
+                        <div class="filter-section-title">分类</div>
+                        <div class="filter-item active">
+                            <div class="filter-dot active"></div>
+                            全部套餐
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            体质辨识
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            节气调理
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            专家咨询
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            睡眠改善
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            女性健康
+                        </div>
+                    </div>
+                    <div class="filter-section">
+                        <div class="filter-section-title">价格区间</div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            ¥100 以下
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            ¥100 - ¥200
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            ¥200 - ¥300
+                        </div>
+                        <div class="filter-item">
+                            <div class="filter-dot"></div>
+                            ¥300 以上
+                        </div>
+                    </div>
+                </div>
+                <div class="list-main">
+                    <div class="list-col">
+                        <div class="card-c">
+                            <div
+                                class="card-c-icon-wrap"
+                                style="background: #e8f0ec"
+                            >
+                                🧬
+                            </div>
+                            <div class="card-c-info">
+                                <div class="card-c-title">体质辨识套餐</div>
+                                <div class="card-c-tags">
+                                    <span class="card-c-tag">热门</span>
+                                    <span class="card-c-tag">30分钟</span>
+                                    <span class="card-c-tag">AI报告</span>
+                                </div>
+                                <div class="card-c-desc">
+                                    专业中医体质测评 + AI
+                                    分析报告，30天有效期，获取个性化养生建议
+                                </div>
+                            </div>
+                            <div class="card-c-right">
+                                <div class="card-c-price">
+                                    ¥199<span class="card-c-price-unit"
+                                        >/ 次</span
+                                    >
+                                </div>
+                                <button class="card-c-btn">立即预约</button>
+                            </div>
+                        </div>
+                        <div class="card-c">
+                            <div
+                                class="card-c-icon-wrap"
+                                style="background: #f5ebd3"
+                            >
+                                🌿
+                            </div>
+                            <div class="card-c-info">
+                                <div class="card-c-title">芒种节气调理方案</div>
+                                <div class="card-c-tags">
+                                    <span class="card-c-tag">节气限定</span>
+                                    <span class="card-c-tag">专家定制</span>
+                                    <span class="card-c-tag">60分钟</span>
+                                </div>
+                                <div class="card-c-desc">
+                                    配合当季节气，定制个人调理计划，附食疗推荐与生活方式建议
+                                </div>
+                            </div>
+                            <div class="card-c-right">
+                                <div class="card-c-price">
+                                    ¥299<span class="card-c-price-unit"
+                                        >/ 套</span
+                                    >
+                                </div>
+                                <button class="card-c-btn">立即预约</button>
+                            </div>
+                        </div>
+                        <div class="card-c">
+                            <div
+                                class="card-c-icon-wrap"
+                                style="background: #e8edf3"
+                            >
+                                💬
+                            </div>
+                            <div class="card-c-info">
+                                <div class="card-c-title">在线专家咨询</div>
+                                <div class="card-c-tags">
+                                    <span class="card-c-tag">随时预约</span>
+                                    <span class="card-c-tag">视频问诊</span>
+                                    <span class="card-c-tag">30分钟</span>
+                                </div>
+                                <div class="card-c-desc">
+                                    一对一视频问诊，处方建议随诊发送，复诊记录永久保留
+                                </div>
+                            </div>
+                            <div class="card-c-right">
+                                <div class="card-c-price">
+                                    ¥99<span class="card-c-price-unit"
+                                        >/ 次</span
+                                    >
+                                </div>
+                                <button class="card-c-btn">立即预约</button>
+                            </div>
+                        </div>
+                        <div class="card-c">
+                            <div
+                                class="card-c-icon-wrap"
+                                style="background: #fbeef1"
+                            >
+                                😴
+                            </div>
+                            <div class="card-c-info">
+                                <div class="card-c-title">睡眠改善套餐</div>
+                                <div class="card-c-tags">
+                                    <span class="card-c-tag">套餐优惠</span>
+                                    <span class="card-c-tag">含3次问诊</span>
+                                    <span class="card-c-tag">30天周期</span>
+                                </div>
+                                <div class="card-c-desc">
+                                    失眠调理 + 睡前功法指导 +
+                                    中医处方建议，全程跟踪随访
+                                </div>
+                            </div>
+                            <div class="card-c-right">
+                                <div class="card-c-price">
+                                    ¥249<span class="card-c-price-unit"
+                                        >/ 套</span
+                                    >
+                                </div>
+                                <button class="card-c-btn">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom selection bar -->
+        <div class="select-bar">
+            <button class="select-choice" id="btn-a" onclick="choose('a')">
+                选 A · 三列网格
+            </button>
+            <button class="select-choice" id="btn-b" onclick="choose('b')">
+                选 B · 两列宽卡片
+            </button>
+            <button class="select-choice" id="btn-c" onclick="choose('c')">
+                选 C · 列表+侧边筛选
+            </button>
+        </div>
+
+        <script>
+            function switchLayout(name, el) {
+                document
+                    .querySelectorAll(".layout-a,.layout-b,.layout-c")
+                    .forEach((l) => l.classList.remove("active"));
+                document
+                    .getElementById("layout-" + name)
+                    .classList.add("active");
+                document
+                    .querySelectorAll(".layout-tab")
+                    .forEach((t) => t.classList.remove("active"));
+                el.classList.add("active");
+            }
+            function choose(name) {
+                document
+                    .querySelectorAll(".select-choice")
+                    .forEach((b) => b.classList.remove("chosen"));
+                document.getElementById("btn-" + name).classList.add("chosen");
+                if (window.recordChoice)
+                    recordChoice(name, "布局风格 " + name.toUpperCase());
+            }
+        </script>
+    </body>
+</html>

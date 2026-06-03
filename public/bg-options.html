@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>背景图片 · 药材主题 · 颐养阁</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0e0e12;
+  color: #fff;
+  padding: 40px 24px 64px;
+}
+h1 { text-align: center; font-size: 18px; font-weight: 500; color: rgba(255,255,255,0.6); letter-spacing: 0.12em; margin-bottom: 6px; }
+.subtitle { text-align: center; font-size: 12px; color: rgba(255,255,255,0.22); letter-spacing: 0.06em; margin-bottom: 48px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.card {
+  border-radius: 12px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.55); }
+
+.preview { height: 280px; display: flex; position: relative; overflow: hidden; }
+.preview-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: brightness(0.58) saturate(1.05);
+  transition: transform 6s ease-in-out;
+}
+.card:hover .preview-bg { transform: scale(1.05); }
+
+.preview-left {
+  width: 48%; background: rgba(28,55,41,0.55);
+  position: relative; z-index: 1;
+  padding: 20px 18px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.seal { width: 28px; height: 28px; background: #b33c2c; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; font-family: Georgia, serif; margin-bottom: 6px; }
+.brand-name { font-size: 14px; font-weight: 700; color: #fff; font-family: Georgia, serif; }
+.brand-sub { font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 2px; letter-spacing: 0.06em; }
+.chars { display: flex; align-items: flex-end; gap: 4px; margin-top: auto; height: 80px; }
+.char-a { width: 28px; height: 72px; background: #3d5c7a; border-radius: 3px 3px 0 0; }
+.char-b { width: 20px; height: 52px; background: #1e2c22; border-radius: 3px 3px 0 0; }
+.char-c { width: 38px; height: 36px; background: #a06040; border-radius: 20px 20px 0 0; }
+.char-d { width: 22px; height: 42px; background: #7a9e6a; border-radius: 12px 12px 0 0; }
+.quote { font-size: 12px; color: rgba(255,255,255,0.75); font-family: Georgia, serif; line-height: 1.5; }
+
+.preview-right { flex: 1; background: rgba(4,10,6,0.38); position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; }
+.form-mock { width: 100%; max-width: 140px; padding: 0 12px; }
+.tab-row { display: flex; margin-bottom: 14px; border-bottom: 1px solid rgba(92,131,116,0.25); }
+.tab { font-size: 10px; color: rgba(255,255,255,0.9); font-weight: 600; padding: 5px 0; margin-right: 12px; border-bottom: 1px solid #6dba90; margin-bottom: -1px; }
+.tab-off { font-size: 10px; color: rgba(255,255,255,0.3); padding: 5px 0; }
+.input-mock { height: 24px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; background: rgba(0,0,0,0.28); margin-bottom: 8px; }
+.btn-mock { height: 24px; background: #4a7260; border-radius: 4px; margin-top: 4px; }
+
+.card-info { padding: 14px 20px; background: #13141a; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; background: rgba(185,130,80,0.15); color: #c8945a; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.06em; margin-bottom: 6px; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.card-desc { font-size: 11px; color: rgba(255,255,255,0.38); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>背景图片 · 药材元素主题</h1>
+<p class="subtitle">所有图片均带有草本植物、香料或中医相关元素 · 告诉我选哪张</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1542736143-29a8432162bc?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">A</div><div class="card-title">草本植物</div><div class="card-desc">绿意草本，自然质感</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">B</div><div class="card-title">香料药材</div><div class="card-desc">香料/药材铺陈，暖色调</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1471193945509-9ad0617afabf?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">C</div><div class="card-title">蔬果药材</div><div class="card-desc">新鲜植物，色彩饱满</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">D</div><div class="card-title">中药材铺陈</div><div class="card-desc">干燥药材，传统质感</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1499744937866-d7e566a20a61?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">E</div><div class="card-title">植物叶脉</div><div class="card-desc">绿叶微距，清新自然</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1577375729152-4c8b5fcda381?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">F</div><div class="card-title">草药茶饮</div><div class="card-desc">草药冲泡，温润色调</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">G</div><div class="card-title">蔬食药食</div><div class="card-desc">新鲜蔬果，食药同源</div></div>
+  </div>
+
+  <div class="card">
+    <div class="preview">
+      <div class="preview-bg" style="background-image:url('https://images.unsplash.com/photo-1563453392212-326f5e854473?w=800&q=75&auto=format&fit=crop')"></div>
+      <div class="preview-left">
+        <div><div class="seal">颐</div><div class="brand-name">颐养阁</div><div class="brand-sub">顺应节气，调和阴阳</div></div>
+        <div class="chars"><div class="char-a"></div><div class="char-b"></div><div class="char-c"></div><div class="char-d"></div></div>
+        <div class="quote">天人合一<br>身心俱养</div>
+      </div>
+      <div class="preview-right"><div class="form-mock">
+        <div class="tab-row"><span class="tab">登录</span><span class="tab-off">注册</span></div>
+        <div class="input-mock"></div><div class="input-mock"></div><div class="btn-mock"></div>
+      </div></div>
+    </div>
+    <div class="card-info"><div class="tag">H</div><div class="card-title">药材香料</div><div class="card-desc">香料铺陈，暖褐色调，传统感强</div></div>
+  </div>
+
+</div>
+
+<p style="text-align:center;margin-top:40px;font-size:12px;color:rgba(255,255,255,0.18);letter-spacing:0.08em;">说 A~H 哪张 · 不喜欢就说"再换一批"</p>
+
+</body>
+</html>

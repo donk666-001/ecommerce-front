@@ -8,7 +8,10 @@ const router = createRouter({
     routes,
 });
 
-router.beforeEach(async (to): Promise<string | undefined> => {
+/** 不需要登录即可访问的公开路由 */
+const PUBLIC_PATHS = ["/login", "/landing","/customer/login"];
+
+router.beforeEach(async (to) => {
     const userStore = useUserStore();
 
     // 首次进入且非登录页时，通过 refreshToken 初始化登录态
@@ -54,8 +57,8 @@ router.beforeEach(async (to): Promise<string | undefined> => {
         );
     }
 
-    // 未登录访问非 /login 和非 /customer/login 页面 → 跳登录页
-    if (to.path !== "/login" && to.path !== "/customer/login" && !isLogin) {
+    // 未登录访问非公开路由 → 跳登录页
+    if (!PUBLIC_PATHS.includes(to.path) && !isLogin) {
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
     }
 
