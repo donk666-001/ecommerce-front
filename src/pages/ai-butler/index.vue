@@ -153,13 +153,12 @@
                             <span class="tagico">🥗</span> 体质食材推荐
                         </button>
                         <button
-                            class="quick-prompt quick-prompt--coming-soon"
+                            class="quick-prompt"
                             type="button"
-                            @click="showProductRecommendationComingSoon"
+                            @click="send('根据我的体质推荐适合的养生商品')"
                         >
                             <span class="tagico">🛍️</span>
                             商品推荐
-                            <span class="quick-prompt__badge">开发中</span>
                         </button>
                     </div>
 
@@ -359,10 +358,6 @@ const inputPlaceholder = computed(() => {
     if (isStreaming.value) return "AI \u7BA1\u5BB6\u6B63\u5728\u56DE\u590D...";
     return "\u95EE\u517B\u751F\u95EE\u9898 / \u8BA9 AI \u505A\u8BA1\u5212 / \u5206\u6790\u7761\u7720 \u2014 \u90FD\u5728\u8FD9\u91CC\u8BF4";
 });
-
-function showProductRecommendationComingSoon() {
-    toast("商城正在开发中，商品推荐即将上线");
-}
 
 // 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ Toast 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
@@ -1659,38 +1654,6 @@ async function loadCurrentSolarTerm() {
 }
 .quick-prompt .tagico {
     font-size: 11px;
-}
-.quick-prompt--coming-soon {
-    position: relative;
-    border-style: dashed;
-    border-color: rgba(92, 131, 116, 0.35);
-    background: linear-gradient(
-        135deg,
-        rgba(255, 252, 246, 0.96) 0%,
-        rgba(247, 251, 248, 0.98) 100%
-    );
-    color: var(--jade);
-}
-.quick-prompt--coming-soon:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(233, 243, 237, 0.96) 0%,
-        rgba(244, 249, 245, 0.98) 100%
-    );
-    border-color: var(--jade);
-    color: var(--jade);
-}
-.quick-prompt__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: rgba(92, 131, 116, 0.12);
-    color: var(--jade);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
 }
 
 // Chat Input

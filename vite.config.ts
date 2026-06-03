@@ -95,6 +95,23 @@ export default defineConfig(({ mode }) => {
                     target: "ws://localhost:9090",
                     ws: true,
                     changeOrigin: true,
+                    // 捕获 WebSocket 代理层的各类 socket 错误（ECONNABORTED/ECONNRESET/ECONNREFUSED）
+                    // 防止 ec-notification 未启动或连接中断时 Vite 进程在 Windows 上崩溃（exit code 0xC0000409）
+                    configure: (proxy: any) => {
+                        const ignore = (err: NodeJS.ErrnoException) => {
+                            const ignored = ["ECONNABORTED", "ECONNRESET", "ECONNREFUSED", "EPIPE"];
+                            if (!ignored.includes(err.code ?? "")) {
+                                console.error("[ws proxy error]", err.message);
+                            }
+                        };
+                        proxy.on("error", ignore);
+                        proxy.on("proxyReqWs", (_req: any, _socket: any, clientSocket: any) => {
+                            clientSocket?.on("error", ignore);
+                        });
+                        proxy.on("open", (proxySocket: any) => {
+                            proxySocket?.on("error", ignore);
+                        });
+                    },
                 },
             },
             open: "/e-commerce/landing", // 启动项目后，自动打开落地页

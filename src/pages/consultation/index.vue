@@ -132,7 +132,7 @@
                                 <div v-else class="doctor-avatar doctor-avatar-text">{{ avatarText(doc) }}</div>
                             </div>
                             <!-- 姓名 -->
-                            <div class="doctor-name font-serif">{{ doc.realName }}</div>
+                            <div class="doctor-name font-serif">{{ displayExpertName(doc) }}</div>
                             <!-- 专家标签 -->
                             <div class="doctor-tag">名医专家</div>
                             <!-- 职称（带装饰横线） -->
@@ -178,7 +178,7 @@
                                 <div class="ava font-serif">{{ avatarText(selectedExpert) }}</div>
                                 <div class="who">
                                     <h4>
-                                        {{ selectedExpert.realName }} {{ roleLabel(selectedExpert.roleType) }}
+                                        {{ displayExpertName(selectedExpert) }} {{ roleLabel(selectedExpert.roleType) }}
                                         <span :class="selectedExpert.isOnline ? 'pill pill-jade' : 'pill pill-gray'">
                                             {{ selectedExpert.isOnline ? '在线' : '离线' }}
                                         </span>
@@ -195,11 +195,15 @@
                                             <div class="bubble" :class="msg.handoff ? 'bub-me handoff' : 'bub-me'">{{ msg.text }}</div>
                                         </div>
                                     </div>
-                                    <div v-else-if="msg.kind === 'ai'" class="msg-row">
+                                    <div v-else-if="msg.kind === 'ai' || msg.kind === 'ai_streaming'" class="msg-row">
                                         <div class="msg-avatar ai">AI</div>
                                         <div class="bubble-wrap">
                                             <span v-if="msg.tag" class="bub-tag">{{ msg.tag }}</span>
-                                            <div class="bubble bub-ai">{{ msg.text }}</div>
+                                            <div class="bubble bub-ai">
+                                                <template v-if="msg.text">{{ msg.text }}</template>
+                                                <span v-else class="ai-thinking-dots">···</span>
+                                                <span v-if="msg.kind === 'ai_streaming'" class="ai-cursor">▋</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div v-else-if="msg.kind === 'sys'" class="msg-row sys">
@@ -602,7 +606,7 @@
                                 </span>
                                 <div>{{ slot.label }}</div>
                                 <small style="display:block; margin-top:4px; font-size:11px;">
-                                    {{ m4Attachments[slot.docType] ? m4Attachments[slot.docType].fileName : slot.hint }}
+                                    {{ attachmentLabel(slot) }}
                                 </small>
                                 <span class="req-tag" :class="{ optional: slot.optional }">
                                     {{ slot.optional ? '可选' : '必填' }}
@@ -754,7 +758,7 @@
                                     <img v-if="avatarUrl(doc)" :src="avatarUrl(doc)!" class="doctor-avatar" />
                                     <div v-else class="doctor-avatar doctor-avatar-text">{{ avatarText(doc) }}</div>
                                 </div>
-                                <div class="doctor-name font-serif">{{ doc.realName }}</div>
+                                <div class="doctor-name font-serif">{{ displayExpertName(doc) }}</div>
                                 <div class="doctor-tag">名医专家</div>
                                 <div class="doctor-title">{{ roleLabel(doc.roleType) }}</div>
                                 <div class="doctor-divider"></div>
@@ -857,6 +861,34 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </Teleport>
+
+        <!-- ===== 撤回申请确认弹窗 ===== -->
+        <Teleport to="body">
+            <div v-if="showWithdrawDialog" class="withdraw-dialog-overlay" @click.self="closeWithdrawDialog">
+                <section class="withdraw-dialog" role="dialog" aria-modal="true" aria-labelledby="withdraw-dialog-title">
+                    <div class="withdraw-dialog__header">
+                        <div class="withdraw-dialog__mark" aria-hidden="true">!</div>
+                        <div>
+                            <div class="withdraw-dialog__kicker">认证申请</div>
+                            <h3 id="withdraw-dialog-title" class="font-serif">确认撤回申请</h3>
+                        </div>
+                    </div>
+                    <div class="withdraw-dialog__body">
+                        <p>撤回后，本次申请记录将标记为已撤回。您可以重新整理资料，并重新提交新的认证申请。</p>
+                        <div class="withdraw-dialog__note">
+                            <span class="withdraw-dialog__note-dot"></span>
+                            <span>已上传的审核材料不会继续进入当前审核流程。</span>
+                        </div>
+                    </div>
+                    <div class="withdraw-dialog__actions">
+                        <button class="btn btn-ghost" :disabled="m4Withdrawing" @click="closeWithdrawDialog">取消</button>
+                        <button class="btn btn-cinnabar" :disabled="m4Withdrawing" @click="confirmWithdraw">
+                            {{ m4Withdrawing ? '撤回中...' : '确认撤回' }}
+                        </button>
+                    </div>
+                </section>
             </div>
         </Teleport>
     </div>
@@ -1034,7 +1066,7 @@ const solarTerm = ref<SolarTermVO | null>(null);
 const solarTermDateLabel = computed(() => {
     const dateStr = solarTerm.value?.today;
     if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
+    const [y = '', m = '1', d = '1'] = dateStr.split('-');
     return `${y} · ${parseInt(m)} · ${parseInt(d)} · 节气专题`;
 });
 
@@ -1060,11 +1092,12 @@ onMounted(async () => {
     if (!isExpertView.value) {
         subscribeOnline((expertId, online) => {
             const idx = expertList.value.findIndex(e => e.id === expertId);
-            if (idx !== -1) {
+            const expert = expertList.value[idx];
+            if (expert) {
                 // 直接属性赋值，保持对象引用不变。
                 // selectedExpert.value 与 expertList.value[idx] 指向同一响应式代理，
                 // 属性变更自动传播到聊天框头部的 isOnline 标签。
-                expertList.value[idx].isOnline = online;
+                expert.isOnline = online;
             }
         });
     }
@@ -1074,7 +1107,8 @@ onMounted(async () => {
 
 // ---- Module 2: 推荐专家（API 数据） ----
 interface ExpertCardDTO {
-    id: number; realName: string; avatar: string | null;
+    id: number; realName: string; realname?: string; real_name?: string; name?: string;
+    nickName?: string; nickname?: string; avatar: string | null;
     roleType: string; bio: string | null;
     isOnline: boolean;
 }
@@ -1108,12 +1142,42 @@ function scrollChatToBottom() {
     }
 }
 
-/** STOMP 收到帧时的回调 */
 /** STOMP 收到帧时的回调（用户侧） */
 function onStompMessage(frame: any) {
     const { event, data } = frame;
-    if (event === "consult.ai_message") {
-        // AI 预问诊阶段的 AI 回复
+    if (event === "consult.ai_thinking") {
+        // DeepSeek 开始生成，立即插入流式占位消息
+        consultMessages.value.push({ kind: "ai_streaming", text: "", tag: "AI · 回复" });
+    } else if (event === "consult.ai_chunk") {
+        // 逐 token 追加到最后一条流式消息
+        const streaming = [...consultMessages.value].reverse().find(m => m.kind === "ai_streaming");
+        if (streaming) {
+            streaming.text += data.chunk;
+        } else {
+            // 容错：没有占位符时新建
+            consultMessages.value.push({ kind: "ai_streaming", text: data.chunk, tag: "AI · 回复" });
+        }
+    } else if (event === "consult.ai_done") {
+        // 流式完成：将占位符升级为正式 ai 消息（保留已积累的文本，避免闪烁）
+        const idx = [...consultMessages.value].map((m, i) => ({ m, i }))
+            .reverse()
+            .find(({ m }) => m.kind === "ai_streaming")?.i ?? -1;
+        if (idx !== -1) {
+            consultMessages.value[idx] = {
+                kind: "ai",
+                text: stripMarkdownForDisplay(data.message.content),
+                tag: "AI · 回复",
+            };
+        } else {
+            // 容错：没有流式占位符时直接插入
+            consultMessages.value.push({
+                kind: "ai",
+                text: stripMarkdownForDisplay(data.message.content),
+                tag: "AI · 回复",
+            });
+        }
+    } else if (event === "consult.ai_message") {
+        // 兼容旧路径（非流式降级或历史会话）
         consultMessages.value.push({
             kind: "ai",
             text: stripMarkdownForDisplay(data.message.content),
@@ -1122,15 +1186,26 @@ function onStompMessage(frame: any) {
     } else if (event === "consult.system_event") {
         consultMessages.value.push({ kind: "sys", text: data.message.content });
     } else if (event === "consult.transferred") {
+        consultMessages.value = consultMessages.value.filter(
+            (msg) => msg.kind !== "ai_streaming",
+        );
         // 转人工成功：按正确顺序推三条消息
-        // 1. AI 小结生成通知（绿色成功提示）
+        // 1. 转人工发送通知（绿色成功提示）
         // 2. 转人工发送通知（普通系统提示）
-        // 3. AI 小结内联卡片（后续消息出现在小结下方）
+        // 3. AI 小结内联卡片（生成完成后自动补齐）
         aiSummary.value = data.summary;
         showAiSummary.value = true;
-        consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成，等待医生接入…", success: true });
+        consultMessages.value.push({ kind: "sys", text: "✓ 已提交转人工请求，等待医生接入…", success: true });
         consultMessages.value.push({ kind: "sys", text: "⏳ 转人工请求已发送，等待医生接入…" });
         consultMessages.value.push({ kind: "ai_summary", text: "" });
+    } else if (event === "consult.summary_updated") {
+        aiSummary.value = data.summary;
+        showAiSummary.value = true;
+        setQueueSummary(sessionId.value, data.summary ?? null);
+        if (!consultMessages.value.some(m => m.kind === "ai_summary")) {
+            consultMessages.value.push({ kind: "ai_summary", text: "" });
+        }
+        consultMessages.value.push({ kind: "sys", text: "✓ AI 预问诊小结已生成", success: true });
     } else if (event === "consult.expert_joined") {
         // 专家首次回复，状态切换到 HUMAN_CHATTING，给用户提示
         consultMessages.value.push({ kind: "sys", text: "✓ 医生已接入，开始为您诊疗", success: true });
@@ -1179,12 +1254,29 @@ async function startConsult(doc: ExpertCardDTO) {
         }
     } catch (err) {
         console.error("创建会话失败", err);
-        toast("连接失败，请稍后重试");
+        const tip = consultRequestTip(err);
+        toast(tip.title, tip.detail, "error");
     }
 
     nextTick(() => {
         chatShellRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+}
+
+function consultRequestTip(error: any) {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    const message = data?.message || data?.error;
+    if (status === 503) {
+        return {
+            title: "咨询服务暂时不可用",
+            detail: "请确认 ec-consult 已启动并已注册到网关。",
+        };
+    }
+    if (message && message !== "系统内部错误") {
+        return { title: "创建会话失败", detail: message };
+    }
+    return { title: "连接失败，请稍后重试", detail: "" };
 }
 
 function resetConsult() {
@@ -1253,9 +1345,20 @@ function formatDoctorBioLines(bio: string | null | undefined) {
     }
     return lines;
 }
+function displayExpertName(expert: ExpertCardDTO | null | undefined) {
+    const raw =
+        expert?.realName ||
+        expert?.realname ||
+        expert?.real_name ||
+        expert?.name ||
+        expert?.nickName ||
+        expert?.nickname ||
+        "";
+    return raw.trim() || "名医专家";
+}
 /** 头像是完整 URL 时直接用，否则取姓名首字 */
 function avatarText(expert: ExpertCardDTO) {
-    return (expert.realName || '?').charAt(0);
+    return displayExpertName(expert).charAt(0);
 }
 function genderLabel(gender: number | null | undefined) {
     if (gender === 1) return '男';
@@ -1454,6 +1557,14 @@ const currentExpertSession = computed(() =>
         : null
 );
 
+function setQueueSummary(targetSessionId: number | null | undefined, summary: AiSummaryVO | null) {
+    if (!targetSessionId) return;
+    const pendingItem = pendingList.value.find(i => i.sessionId === targetSessionId);
+    if (pendingItem) pendingItem.aiSummary = summary;
+    const activeItem = activeList.value.find(i => i.sessionId === targetSessionId);
+    if (activeItem) activeItem.aiSummary = summary;
+}
+
 /** 去重后的专家消息列表（防止并发转人工导致 ai_summary 重复渲染） */
 const displayedExpertMessages = computed(() => {
     let seenAiSummary = false;
@@ -1522,6 +1633,18 @@ async function openExpertSession(item: ExpertQueueItemVO) {
             // ✅ 用户发送的消息实时推送到专家端
             expertMessages.value.push(frame.data.message);
             scrollToBottom();
+        } else if (frame.event === 'consult.summary_updated') {
+            setQueueSummary(item.sessionId, frame.data?.summary ?? null);
+            if (!expertMessages.value.some(msg => msg.contentType === 'ai_summary')) {
+                expertMessages.value.push({
+                    id: Date.now(),
+                    senderType: 'ai',
+                    contentType: 'ai_summary',
+                    content: '',
+                    createdAt: new Date().toISOString(),
+                });
+            }
+            scrollToBottom();
         } else if (frame.event === 'consult.expert_joined') {
             // 专家首次回复后服务端推送状态变更确认（自己触发，通常已通过 HTTP 返回值处理）
             toast('已成功接入，开始问诊');
@@ -1550,7 +1673,9 @@ async function sendExpertMessage() {
             if (data.status === 'HUMAN_CHATTING') {
                 const idx = pendingList.value.findIndex(i => i.sessionId === expertSessionId.value);
                 if (idx !== -1) {
-                    const item = { ...pendingList.value[idx], status: 'HUMAN_CHATTING' as const };
+                    const pendingItem = pendingList.value[idx];
+                    if (!pendingItem) return;
+                    const item: ExpertQueueItemVO = { ...pendingItem, status: 'HUMAN_CHATTING' };
                     pendingList.value.splice(idx, 1);
                     activeList.value.unshift(item);
                     queueTab.value = 'active';
@@ -1576,7 +1701,7 @@ function formatTime(dateStr: string): string {
 }
 
 /** 文本截断：超过 maxLen 时截取前 maxLen 个字符并追加省略号 */
-function truncateText(text: string | null, maxLen: number): string {
+function truncateText(text: string | null | undefined, maxLen: number): string {
     if (!text) return '';
     if (text.length <= maxLen) return text;
     return text.slice(0, maxLen) + '…';
@@ -1617,11 +1742,6 @@ onUnmounted(() => {
     unsubscribeOnline(); // 用户侧断开在线状态订阅
 });
 
-const switchStates = ref({ autoPreAsk: true, autoHandoff: true, offHours: false });
-function toggleSwitch(key: keyof typeof switchStates.value) {
-    switchStates.value[key] = !switchStates.value[key];
-}
-
 // ---- Module 3 ----
 const profileMenus = [
     { ico: "📚", title: "我的课程", sub: "3 门 · 1 门学习中" },
@@ -1654,6 +1774,8 @@ const fileInputRefs = ref<Record<string, HTMLInputElement | null>>({});
 const m4Submitting = ref(false);
 // 撤回中
 const m4Withdrawing = ref(false);
+// 撤回确认弹窗
+const showWithdrawDialog = ref(false);
 // 签约开通中
 const m4Signing = ref(false);
 const m4Activating = ref(false);
@@ -1698,7 +1820,11 @@ const roleSlotMap: Record<string, { docType: string; label: string; hint: string
 
 // 当前角色的 slot 列表
 const currentSlots = computed(() =>
-    roleSlotMap[certRoles[m4RoleIdx.value].roleType] ?? []);
+    roleSlotMap[certRoles[m4RoleIdx.value]?.roleType ?? 'DOCTOR'] ?? []);
+
+function attachmentLabel(slot: { docType: string; hint: string }) {
+    return m4Attachments.value[slot.docType]?.fileName ?? slot.hint;
+}
 
 // 进度条步骤：状态 → 当前活跃步骤（1-based）
 const m4StepActive = computed<number>(() => {
@@ -1716,15 +1842,37 @@ const m4ShowForm = computed(() =>
     myApplication.value === null
     || myApplication.value?.status === 'REJECTED'
     || myApplication.value?.status === 'WITHDRAWN');
-const expertRealName = computed(() => expertProfile.value?.realName?.trim() || '');
+const expertRealName = computed(() => {
+    const profile = expertProfile.value as
+        | (ExpertBasicVO & {
+              realname?: string;
+              real_name?: string;
+              name?: string;
+              nickName?: string;
+              nickname?: string;
+          })
+        | null
+        | undefined;
+    return (
+        profile?.realName ||
+        profile?.realname ||
+        profile?.real_name ||
+        profile?.name ||
+        profile?.nickName ||
+        profile?.nickname ||
+        userStore.G_LoginInfo.nickName ||
+        userStore.G_LoginInfo.account ||
+        ''
+    ).trim();
+});
 const expertDoctorName = computed(() => {
     const realName = expertRealName.value.replace(/\s+/g, '');
     if (realName) {
         const compoundSurname = COMPOUND_SURNAMES.find(surname => realName.startsWith(surname));
         return `${compoundSurname ?? realName.charAt(0)}医生`;
     }
-    const nickname = userStore.G_LoginInfo.nickName?.trim();
-    return nickname ? `${nickname.charAt(0)}医生` : '医生';
+    // 专家资料未加载时显示通用称谓，避免误用昵称拼接
+    return '医生';
 });
 
 // 页面切到 m4 时加载申请状态
@@ -1784,7 +1932,7 @@ async function m4HandleFileSelect(docType: string, event: Event) {
 }
 
 async function m4Submit() {
-    const roleType = certRoles[m4RoleIdx.value].roleType;
+    const roleType = certRoles[m4RoleIdx.value]?.roleType ?? 'DOCTOR';
     if (!m4RealName.value.trim()) { alert('请填写真实姓名'); return; }
     if (m4Bio.value.trim().length < 10) { alert('个人简介至少 10 个字'); return; }
     // 检查必填附件是否已上传
@@ -1831,8 +1979,10 @@ async function confirmWithdraw() {
     if (!applicationId || m4Withdrawing.value) return;
     m4Withdrawing.value = true;
     try {
-        await ApiExpert.withdrawApplication(myApplication.value.id);
+        await ApiExpert.withdrawApplication(applicationId);
         myApplication.value = null;
+        showWithdrawDialog.value = false;
+        toast("申请已撤回", "您可以重新整理资料并再次提交认证申请。", "success");
     } catch {
         toast("撤回失败", "请稍后重试。", "error");
     } finally {
@@ -2480,6 +2630,17 @@ function m4ResetForm() {
     box-shadow: 0 1px 4px rgba(60, 50, 30, 0.04);
 }
 .bub-ai { background: var(--moon-soft); color: var(--ink); border-top-left-radius: 4px; }
+/* 流式光标：闪烁竖线 */
+.ai-cursor {
+    display: inline-block;
+    margin-left: 1px;
+    animation: blink 0.8s step-end infinite;
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+@keyframes blink { 0%, 100% { opacity: 0.7; } 50% { opacity: 0; } }
+/* 空状态等待点（还没收到第一个 token 时） */
+.ai-thinking-dots { letter-spacing: 3px; opacity: 0.5; }
 .bub-user { background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-top-left-radius: 4px; }
 .bub-me { background: var(--jade); color: white; border-top-right-radius: 4px; }
 .bub-me.handoff { background: var(--cinnabar); }
@@ -2936,6 +3097,116 @@ function m4ResetForm() {
 .queue-dialog h3 { font-family: "STKaiti", serif; font-size: 20px; color: var(--ink); margin-bottom: 10px; }
 .queue-dialog p { font-size: 14px; color: var(--ink-muted); line-height: 1.7; margin-bottom: 24px; }
 
+.withdraw-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(24, 32, 28, .42);
+    backdrop-filter: blur(2px);
+    animation: modalBgIn .25s ease;
+}
+.withdraw-dialog {
+    width: min(92vw, 460px);
+    overflow: hidden;
+    border-radius: 18px;
+    background: var(--paper);
+    border: 1px solid rgba(232, 223, 208, .82);
+    box-shadow: 0 22px 56px rgba(25, 33, 29, .18);
+    animation: modalSlideIn .3s cubic-bezier(.22,.61,.36,1);
+}
+.withdraw-dialog__header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 22px 24px 18px;
+    background:
+        radial-gradient(circle at 18% 20%, rgba(111, 143, 123, .12), transparent 32%),
+        linear-gradient(135deg, #FFFCF3 0%, #EEF6F1 100%);
+    border-bottom: 1px solid var(--line-soft);
+}
+.withdraw-dialog__mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--cinnabar-soft);
+    color: var(--cinnabar);
+    border: 1px solid rgba(179, 60, 44, .2);
+    font-size: 22px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+}
+.withdraw-dialog__kicker {
+    margin-bottom: 4px;
+    color: var(--jade);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+.withdraw-dialog h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 21px;
+    line-height: 1.25;
+}
+.withdraw-dialog__body {
+    padding: 20px 24px 18px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 1.8;
+}
+.withdraw-dialog__body p {
+    margin: 0;
+}
+.withdraw-dialog__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-soft);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.6;
+}
+.withdraw-dialog__note-dot {
+    width: 6px;
+    height: 6px;
+    margin-top: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--gold);
+}
+.withdraw-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px 22px;
+    background: var(--paper-warm);
+    border-top: 1px solid var(--line-soft);
+}
+.withdraw-dialog__actions .btn {
+    min-width: 104px;
+    justify-content: center;
+}
+.withdraw-dialog__actions .btn:disabled {
+    opacity: .58;
+    cursor: not-allowed;
+    transform: none;
+}
+.withdraw-dialog__actions .btn-cinnabar {
+    box-shadow: 0 8px 18px rgba(179, 60, 44, .16);
+}
+
 @media (max-width: 1024px) {
     .triage-shell {
         grid-template-columns: 180px 1fr;
@@ -2951,12 +3222,6 @@ function m4ResetForm() {
     }
     .flow-node:nth-child(odd):not(:last-child)::after {
         content: "";
-    }
-    .withdraw-dialog {
-        width: min(100%, 480px);
-    }
-    .withdraw-dialog__body {
-        flex-direction: column;
     }
     .withdraw-dialog__actions {
         flex-wrap: wrap;

@@ -18,6 +18,11 @@ function normalizeAssetUrl(url: string | null | undefined, baseURL?: string) {
 export interface ExpertCardVO {
     id: number;
     realName: string;
+    realname?: string;
+    real_name?: string;
+    name?: string;
+    nickName?: string;
+    nickname?: string;
     avatar: string | null;
     roleType: string;
     bio: string;
@@ -29,9 +34,42 @@ export interface ExpertBasicVO {
     id: number;
     userId: number;
     realName: string;
+    realname?: string;
+    real_name?: string;
+    name?: string;
+    nickName?: string;
+    nickname?: string;
     avatar: string | null;
     roleType: string;
     status: string;
+}
+
+function firstText(...values: unknown[]) {
+    for (const value of values) {
+        if (typeof value === "string" && value.trim()) {
+            return value.trim();
+        }
+    }
+    return "";
+}
+
+function normalizeExpertName<T extends Partial<ExpertCardVO | ExpertBasicVO>>(
+    expert: T,
+    fallback = "名医专家",
+) {
+    const name =
+        firstText(
+            expert.realName,
+            expert.realname,
+            expert.real_name,
+            expert.name,
+            expert.nickName,
+            expert.nickname,
+        ) || fallback;
+    expert.realName = name;
+    expert.realname = name;
+    expert.name = name;
+    return expert;
 }
 
 export interface AttachmentInfo {
@@ -90,10 +128,14 @@ export const ApiExpert = {
         const experts = response.data?.data;
         if (Array.isArray(experts)) {
             experts.forEach((expert: ExpertCardVO) => {
+                normalizeExpertName(expert);
                 expert.avatar = normalizeAssetUrl(
                     expert.avatar,
                     response.config.baseURL,
                 );
+                expert.roleType = expert.roleType || "DOCTOR";
+                expert.bio = firstText(expert.bio, "暂无简介");
+                expert.isOnline = Boolean(expert.isOnline);
             });
         }
         return response;
@@ -102,6 +144,9 @@ export const ApiExpert = {
     async getMyExpertProfile() {
         const response = await GAxiosWithCredentials.get("/experts/me");
         const expert = response.data?.data as ExpertBasicVO | null | undefined;
+        if (expert) {
+            normalizeExpertName(expert, "认证专家");
+        }
         if (expert?.avatar) {
             expert.avatar = normalizeAssetUrl(
                 expert.avatar,

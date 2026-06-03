@@ -48,9 +48,19 @@
                                     {{ unreadCount > 0 ? "有新消息" : "已全部读完" }}
                                 </div>
                             </div>
-                            <el-dropdown-item v-if="notifications.length === 0" disabled>
-                                暂无通知
-                            </el-dropdown-item>
+                            <template v-if="notifications.length === 0">
+                                <div class="notification-menu-header">
+                                    <div>
+                                        <div class="notification-menu-title">通知中心</div>
+                                        <div class="notification-menu-subtitle">暂无通知</div>
+                                    </div>
+                                    <div class="notification-menu-chip">已是最新</div>
+                                </div>
+                                <div class="notification-empty-body">
+                                    <div class="notification-empty-icon">🔔</div>
+                                    <div class="notification-empty-text">暂时没有新通知</div>
+                                </div>
+                            </template>
                             <el-dropdown-item
                                 v-for="item in notifications"
                                 :key="item.id"
@@ -993,6 +1003,26 @@ function handleFilterChange(filter: "all" | "unread") {
         );
         border-color: rgba(179, 60, 44, 0.18);
     }
+}
+
+.notification-empty-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 10px 36px;
+    gap: 10px;
+    min-height: 120px;
+}
+
+.notification-empty-icon {
+    font-size: 28px;
+    opacity: 0.35;
+}
+
+.notification-empty-text {
+    font-size: 13px;
+    color: var(--ink-muted);
 }
 
 .notification-menu-item {

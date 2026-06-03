@@ -26,7 +26,13 @@ export function useConsultSocket() {
                 );
             },
             onStompError: (frame) => {
-                console.error("[STOMP] 错误:", frame.headers["message"]);
+                console.error("[STOMP-Consult] STOMP 错误:", frame.headers["message"]);
+            },
+            onWebSocketError: (event) => {
+                console.error("[STOMP-Consult] WebSocket 连接失败:", event);
+            },
+            onDisconnect: () => {
+                console.warn("[STOMP-Consult] WebSocket 连接已断开");
             },
         });
         stompClient.activate();

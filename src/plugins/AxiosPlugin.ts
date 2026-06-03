@@ -191,6 +191,11 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
                 console.log(`[携带cookie]请求参数:`, config);
             }
 
+            // FormData 请求删除默认 Content-Type，让浏览器自动设置带 boundary 的 multipart/form-data
+            if (config.data instanceof FormData) {
+                delete config.headers["Content-Type"];
+            }
+
             // 如果正在刷新令牌，将请求加入等待队列
             if (refreshState === "refreshing") {
                 // 排除刷新接口本身，避免死锁
