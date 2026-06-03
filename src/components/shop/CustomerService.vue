@@ -36,9 +36,6 @@
                     </div>
                     <div>
                         <h4>客服 · {{ currentAgentObj.name }}</h4>
-                        <div class="desc">
-                            {{ currentAgentObj.desc }}
-                        </div>
                     </div>
                     <div class="chat-header-tip">
                         为保护用户体验，同一客服不会同时回复多用户
@@ -134,12 +131,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from "vue";
+import { ref, computed, nextTick, watch, onUnmounted } from "vue";
 
 interface Agent {
     id: string;
     name: string;
-    desc: string;
     tag: string;
     status: string;
     avatar: string;
@@ -176,7 +172,10 @@ interface Props {
 
 const props = defineProps<Props>();
 
-defineEmits<{
+const chatBodyRef = ref<HTMLElement | null>(null);
+let autoDismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+const emit = defineEmits<{
     "update:currentAgent": [value: string];
     "update:chatInput": [value: string];
     sendChat: [];
@@ -185,7 +184,27 @@ defineEmits<{
     dismissContextProduct: [];
 }>();
 
-const chatBodyRef = ref<HTMLElement | null>(null);
+function clearAutoDismiss() {
+    if (autoDismissTimer !== null) {
+        clearTimeout(autoDismissTimer);
+        autoDismissTimer = null;
+    }
+}
+
+watch(
+    () => props.contextProduct,
+    (val) => {
+        clearAutoDismiss();
+        if (val) {
+            autoDismissTimer = setTimeout(() => {
+                emit("dismissContextProduct");
+            }, 10000);
+        }
+    },
+    { immediate: true },
+);
+
+onUnmounted(clearAutoDismiss);
 
 const currentAgentObj = computed(
     () => props.agents.find((a) => a.id === props.currentAgent)!,

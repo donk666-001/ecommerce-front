@@ -129,6 +129,7 @@ const paginatedList = computed(() => {
 });
 
 let timerInterval: ReturnType<typeof setInterval>;
+let queuePollInterval: ReturnType<typeof setInterval>;
 
 function formatWaitTime(startedAt: string): string {
     const ms = now.value - new Date(startedAt).getTime();
@@ -227,10 +228,12 @@ onMounted(() => {
     timerInterval = setInterval(() => {
         now.value = Date.now();
     }, 1000);
+    queuePollInterval = setInterval(loadQueue, 8000);
 });
 
 onUnmounted(() => {
     clearInterval(timerInterval);
+    clearInterval(queuePollInterval);
 });
 </script>
 

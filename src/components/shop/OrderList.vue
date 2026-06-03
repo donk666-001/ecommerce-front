@@ -99,6 +99,11 @@
                     </span>
                     <div class="order-actions">
                         <template v-if="o.status === 'unpaid'">
+                            <div v-if="orderCountdowns[o.id]" class="order-countdown">
+                                <span class="cd-icon">⏱</span>
+                                {{ Math.floor(orderCountdowns[o.id] / 60) }}:{{ String(orderCountdowns[o.id] % 60).padStart(2, '0') }} 后自动取消
+                            </div>
+                            <span v-else class="order-countdown expire">即将自动取消</span>
                             <button
                                 class="btn btn-outline"
                                 @click="$emit('cancelOrder', o.no)"
@@ -165,12 +170,6 @@
                                         class="more-menu"
                                         :class="{ show: openMoreIdx === idx }"
                                     >
-                                        <div
-                                            class="more-menu-item"
-                                            @click="handleReBuyAndClose(o.no)"
-                                        >
-                                            再次拼单
-                                        </div>
                                         <div
                                             class="more-menu-item"
                                             @click="
@@ -273,12 +272,6 @@
                             >
                                 评价
                             </button>
-                            <button
-                                class="btn btn-outline"
-                                @click="$emit('reBuy', o.no)"
-                            >
-                                再次拼单
-                            </button>
                         </template>
                     </div>
                 </div>
@@ -328,6 +321,7 @@ interface Props {
     openMoreIdx: number;
     getProduct: (id: string) => Product;
     orderCount: (key: string) => number;
+    orderCountdowns: Record<number, number>;
 }
 
 const props = defineProps<Props>();
@@ -696,11 +690,37 @@ function handleExtendReceiptAndClose(no: string) {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 
     .btn {
         padding: 7px 16px;
         font-size: 13px;
     }
+}
+
+.order-countdown {
+    font-size: 12px;
+    color: var(--cinnabar);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 10px;
+    background: var(--cinnabar-soft);
+    border-radius: 12px;
+    white-space: nowrap;
+
+    .cd-icon { font-size: 13px; }
+
+    &.expire {
+        opacity: 0.7;
+        animation: blink 1s infinite;
+    }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
 .refund-status-tip,
