@@ -124,6 +124,8 @@
             v-model="showPayModal"
             :display-items="payModalItems"
             :total="payModalTotal"
+            :order-id="pendingOrderId"
+            :order-no="pendingOrderId ? orders.find(o => o.id === pendingOrderId)?.no || '' : ''"
             @confirm-pay="mockPaySuccess"
             @cancel-pay="handlePayCancel"
         />
@@ -161,10 +163,7 @@
                     </button>
                     <button
                         class="btn btn-cinnabar"
-                        @click="
-                            showConfirmModal = false;
-                            if (confirmCallback) confirmCallback();
-                        "
+                        @click="handleConfirmClick"
                     >
                         确认
                     </button>
@@ -187,6 +186,7 @@ import {
     watch,
     reactive,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import {
     ProductList,
@@ -246,11 +246,12 @@ interface Order {
     refundStatus?: number; // 退款状态（独立）：0=申请中, 1=审核通过, 2=退款中, 3=已完成, 4=已拒绝
     auditRemark?: string; // 退款审核备注（退款失败时显示原因）
 }
-interface Agent {
+// 本地客服数据结构（用于页面内部管理）
+interface LocalAgent {
     id: string;
     name: string;
     tag: string;
-    status: string;
+    status: "online" | "busy" | "off";
     avatar: string;
 }
 interface ChatMsg {
@@ -268,7 +269,7 @@ interface ChatMsg {
 
 // ── Static data ──────────────────────────────────────────────────────────────
 // 客服数据（保持静态）
-const agents: Agent[] = [
+const agents: LocalAgent[] = [
     {
         id: "cs1",
         name: "小翠",
@@ -293,6 +294,8 @@ const tabDefs = [
 ];
 
 // ── Reactive state ────────────────────────────────────────────────────────────
+const route = useRoute();
+const router = useRouter();
 const activeTab = ref("shop");
 const currentCat = ref("all");
 const searchKw = ref("");
@@ -1166,6 +1169,13 @@ function showConfirm(title: string, msg: string, icon: string, cb: () => void) {
     showConfirmModal.value = true;
 }
 
+function handleConfirmClick() {
+    showConfirmModal.value = false;
+    if (confirmCallback.value) {
+        confirmCallback.value();
+    }
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg: string) {
     toastMsg.value = msg;
@@ -1454,7 +1464,6 @@ onMounted(() => {
     loadCategories();
     loadCartList();
     loadOrders();
-    loadCustomerAgents();
 
     // 每秒刷新待支付订单的倒计时
     refreshCountdowns();
@@ -1465,7 +1474,6 @@ onUnmounted(() => {
     document.removeEventListener("click", handleGlobalClick);
     if (toastTimer) clearTimeout(toastTimer);
     if (countdownInterval) clearInterval(countdownInterval);
-    csSocket.disconnect();
 });
 </script>
 
