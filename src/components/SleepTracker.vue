@@ -287,7 +287,7 @@
                                 </div>
                                 <svg
                                     class="stage-svg"
-                                    viewBox="0 0 720 166"
+                                    viewBox="0 0 720 178"
                                     preserveAspectRatio="none"
                                     role="img"
                                     :aria-label="stageChartLabel"
@@ -788,11 +788,14 @@ type PhoneImportStatus =
     | "opening"
     | "transferring"
     | "completed";
-type SleepStage = "awake" | "light" | "deep";
+type SleepStage = "awake" | "rem" | "light" | "deep";
 type SleepStageSegment = {
     stage: SleepStage;
     start: string;
     end: string;
+    durationMinutes?: number;
+    startAtMs?: number;
+    endAtMs?: number;
 };
 
 type ImportedSleepData = {
@@ -809,6 +812,8 @@ type SleepRecord = Required<ImportedSleepData> & {
     serverId?: number | string;
     apiSleepStage?: string;
     durationMinutes?: number;
+    startAtMs?: number;
+    endAtMs?: number;
 };
 
 type ChartPoint = {
@@ -825,9 +830,10 @@ const initialWakeTime = "07:00";
 const userStore = useUserStore();
 const sleepSyncOrigin = `sleep-tracker-${Math.random().toString(36).slice(2)}`;
 const stageRows: { key: SleepStage; label: string; y: number }[] = [
-    { key: "awake", label: "清醒", y: 24 },
-    { key: "light", label: "浅睡", y: 74 },
-    { key: "deep", label: "深睡", y: 124 },
+    { key: "awake", label: "清醒", y: 18 },
+    { key: "rem", label: "REM", y: 56 },
+    { key: "light", label: "核心", y: 94 },
+    { key: "deep", label: "深睡", y: 132 },
 ];
 const sleepTime = ref(initialSleepTime);
 const wakeTime = ref(initialWakeTime);
@@ -1317,7 +1323,8 @@ function minutesFromStart(start: string, time: string) {
 function stageName(stage: SleepStage) {
     const names: Record<SleepStage, string> = {
         awake: "清醒",
-        light: "浅睡",
+        rem: "REM",
+        light: "核心",
         deep: "深睡",
     };
     return names[stage];
@@ -1337,9 +1344,11 @@ function buildStageSegments(
         { stage: "light", ratio: 0.13 },
         { stage: "deep", ratio: 0.18 },
         { stage: "light", ratio: 0.15 },
+        { stage: "rem", ratio: 0.08 },
         { stage: "awake", ratio: awakeCountValue > 0 ? 0.025 : 0 },
         { stage: "light", ratio: 0.18 },
         { stage: "deep", ratio: 0.17 },
+        { stage: "rem", ratio: 0.1 },
         { stage: "awake", ratio: awakeCountValue > 1 ? 0.025 : 0 },
         { stage: "light", ratio: 0.16 },
         { stage: "awake", ratio: awakeCountValue > 2 ? 0.02 : 0 },
@@ -1369,6 +1378,7 @@ function buildStageSegments(
             stage: item.stage,
             start: segmentStart,
             end: segmentEnd,
+            durationMinutes: minutes,
         };
     });
 }
@@ -1403,11 +1413,13 @@ function buildStageSegmentsByDominantStage(
             stage: "light",
             start,
             end: addMinutesToTime(start, firstChunk),
+            durationMinutes: firstChunk,
         },
         {
             stage: dominantStage,
             start: addMinutesToTime(start, firstChunk),
             end: addMinutesToTime(start, firstChunk + secondChunk),
+            durationMinutes: secondChunk,
         },
     ];
     cursor += firstChunk + secondChunk;
@@ -1417,6 +1429,7 @@ function buildStageSegmentsByDominantStage(
             stage: "awake",
             start: addMinutesToTime(start, cursor),
             end: addMinutesToTime(start, cursor + awakeMinutes),
+            durationMinutes: awakeMinutes,
         });
         cursor += awakeMinutes;
     }
@@ -1426,6 +1439,7 @@ function buildStageSegmentsByDominantStage(
             stage: dominantStage === "awake" ? "light" : dominantStage,
             start: addMinutesToTime(start, cursor),
             end,
+            durationMinutes: lastChunk,
         });
     }
 
@@ -1466,6 +1480,42 @@ function applySleepRecordToForm(record: SleepRecord) {
     sleepTagSelected.value = [...record.tags];
 }
 
+function getSegmentDurationMinutes(
+    segment: SleepStageSegment,
+    record?: Pick<SleepRecord, "sleepTime" | "wakeTime" | "startAtMs">,
+) {
+    if (segment.durationMinutes && segment.durationMinutes > 0) {
+        return Math.round(segment.durationMinutes);
+    }
+    if (
+        segment.startAtMs !== undefined &&
+        segment.endAtMs !== undefined &&
+        segment.endAtMs > segment.startAtMs
+    ) {
+        return Math.round((segment.endAtMs - segment.startAtMs) / 60000);
+    }
+    if (!record?.sleepTime) return 0;
+
+    const startOffset = minutesFromStart(record.sleepTime, segment.start);
+    const endOffset = minutesFromStart(record.sleepTime, segment.end);
+    if (endOffset > startOffset) return endOffset - startOffset;
+    return 0;
+}
+
+function getSegmentStartOffsetMinutes(
+    record: SleepRecord,
+    segment: SleepStageSegment,
+) {
+    if (
+        record.startAtMs !== undefined &&
+        segment.startAtMs !== undefined &&
+        segment.startAtMs >= record.startAtMs
+    ) {
+        return Math.round((segment.startAtMs - record.startAtMs) / 60000);
+    }
+    return minutesFromStart(record.sleepTime, segment.start);
+}
+
 function buildStageChartSegments(record?: SleepRecord | null) {
     if (!record || !hasRecordTimeRange(record) || !record.stages.length) {
         return [];
@@ -1475,9 +1525,11 @@ function buildStageChartSegments(record?: SleepRecord | null) {
     const total = calcDurationBetween(record.sleepTime, record.wakeTime);
 
     const segments = record.stages.map((segment) => {
-        const startOffset = minutesFromStart(record.sleepTime, segment.start);
-        const endOffset = minutesFromStart(record.sleepTime, segment.end);
-        const duration = Math.max(1, endOffset - startOffset);
+        const startOffset = getSegmentStartOffsetMinutes(record, segment);
+        const duration = Math.max(
+            1,
+            getSegmentDurationMinutes(segment, record),
+        );
 
         return {
             ...segment,
@@ -1501,14 +1553,11 @@ function formatMinutesCompact(minutes: number) {
 function buildStageSummary(record?: SleepRecord | null) {
     const totals = record?.stages.reduce<Record<SleepStage, number>>(
         (next, segment) => {
-            next[segment.stage] += calcDurationBetween(
-                segment.start,
-                segment.end,
-            );
+            next[segment.stage] += getSegmentDurationMinutes(segment, record);
             return next;
         },
-        { awake: 0, light: 0, deep: 0 },
-    ) ?? { awake: 0, light: 0, deep: 0 };
+        { awake: 0, rem: 0, light: 0, deep: 0 },
+    ) ?? { awake: 0, rem: 0, light: 0, deep: 0 };
 
     return stageRows.map((row) => ({
         stage: row.key,
@@ -1669,8 +1718,7 @@ function getStageDuration(
     return record.stages
         .filter((segment) => segment.stage === stage)
         .reduce(
-            (sum, segment) =>
-                sum + calcDurationBetween(segment.start, segment.end),
+            (sum, segment) => sum + getSegmentDurationMinutes(segment, record),
             0,
         );
 }
@@ -1830,28 +1878,69 @@ function ensureTimeValue(value: string, fallback: string) {
     return formatTime(hour, minute);
 }
 
+function readDateTimeMs(value: unknown) {
+    if (value == null) return undefined;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.getTime();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value < 1_000_000_000_000 ? value * 1000 : value;
+    }
+
+    const text = String(value).trim();
+    if (!text) return undefined;
+    const parsed = parseApiDateTime(text) ?? new Date(text);
+    const timestamp = parsed.getTime();
+    return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function sleepNightDateFromMs(timestamp: number) {
+    const date = new Date(timestamp);
+    date.setHours(date.getHours() - 12);
+    return toISODate(date);
+}
+
 function inferRecordDateFromSource(
     source: Record<string, unknown>,
     fallbackDateISO: string,
 ) {
-    const rawDate = readStringField(
+    const explicitDate = readStringField(
         source,
-        ["date", "recordDate", "sleepDate", "sleepTime"],
-        fallbackDateISO,
+        ["date", "recordDate", "sleepDate", "statDate", "day"],
+        "",
     );
-    return normalizeDateValue(rawDate);
+    if (explicitDate) return normalizeDateValue(explicitDate, fallbackDateISO);
+
+    const startMs = readDateTimeMs(
+        readFieldValue(source, [
+            "sleepTime",
+            "bedTime",
+            "bedtime",
+            "startTime",
+        ]),
+    );
+    if (startMs) return sleepNightDateFromMs(startMs);
+
+    return fallbackDateISO;
 }
 
 function normalizeStageName(value: string): SleepStage {
     const normalized = value.toLowerCase();
-    if (
-        normalized.includes("awake") ||
-        normalized.includes("rem") ||
-        value.includes("清醒")
-    ) {
+    if (normalized.includes("awake") || value.includes("清醒")) {
         return "awake";
     }
+    if (normalized.includes("rem")) return "rem";
     if (normalized.includes("deep") || value.includes("深睡")) return "deep";
+    if (
+        normalized.includes("light") ||
+        normalized.includes("core") ||
+        normalized.includes("asleep") ||
+        value.includes("核心") ||
+        value.includes("浅睡") ||
+        value.includes("睡眠")
+    ) {
+        return "light";
+    }
     return "light";
 }
 
@@ -1889,6 +1978,14 @@ function parseStageValue(
         .map((item) => {
             if (typeof item !== "object" || item === null) return null;
             const source = item as Record<string, unknown>;
+            const rawStage = readStringField(
+                source,
+                ["stage", "type", "name"],
+                "light",
+            );
+            if (/in[_-]?bed|unknown|在床|未知/i.test(rawStage)) return null;
+            const rawStart = readFieldValue(source, ["start", "startTime"]);
+            const rawEnd = readFieldValue(source, ["end", "endTime"]);
             const start = ensureTimeValue(
                 readStringField(
                     source,
@@ -1901,10 +1998,25 @@ function parseStageValue(
                 readStringField(source, ["end", "endTime"], fallbackWakeTime),
                 fallbackWakeTime,
             );
-            const stage = normalizeStageName(
-                readStringField(source, ["stage", "type", "name"], "light"),
-            );
-            return { stage, start, end };
+            const durationMinutes =
+                readDurationFromFields(
+                    source,
+                    [
+                        "durationMinutes",
+                        "durationMinute",
+                        "durationInMinutes",
+                        "minutes",
+                    ],
+                    "minutes",
+                ) || readDurationFromFields(source, ["duration"], "auto");
+            const startAtMs = readDateTimeMs(rawStart);
+            const endAtMs = readDateTimeMs(rawEnd);
+            const stage = normalizeStageName(rawStage);
+            const segment: SleepStageSegment = { stage, start, end };
+            if (durationMinutes > 0) segment.durationMinutes = durationMinutes;
+            if (startAtMs !== undefined) segment.startAtMs = startAtMs;
+            if (endAtMs !== undefined) segment.endAtMs = endAtMs;
+            return segment;
         })
         .filter((item): item is SleepStageSegment => item !== null);
     return stages.length ? stages : null;
@@ -1950,23 +2062,67 @@ function normalizeSleepRecord(
     fallbackDateISO: string,
 ): SleepRecord {
     const source = data as Record<string, unknown>;
-    const dateISO = inferRecordDateFromSource(source, fallbackDateISO);
+    const parsedStages = parseStageValue(
+        source.stages ?? source.sleepStages,
+        initialSleepTime,
+        initialWakeTime,
+    );
+    const sortedStages = parsedStages
+        ? [...parsedStages].sort(
+              (left, right) => (left.startAtMs ?? 0) - (right.startAtMs ?? 0),
+          )
+        : null;
+    const firstStage = sortedStages?.[0];
+    const lastStage = sortedStages
+        ? [...sortedStages].sort(
+              (left, right) => (right.endAtMs ?? 0) - (left.endAtMs ?? 0),
+          )[0]
+        : undefined;
+    const dateISO =
+        firstStage?.startAtMs !== undefined
+            ? sleepNightDateFromMs(firstStage.startAtMs)
+            : inferRecordDateFromSource(source, fallbackDateISO);
     const rawSleepTime = readStringField(
         source,
         ["sleepTime", "bedTime", "bedtime", "startTime"],
-        "",
+        firstStage?.start ?? "",
     );
     const rawWakeTime = readStringField(
         source,
         ["wakeTime", "getUpTime", "endTime"],
-        "",
+        lastStage?.end ?? "",
     );
     const normalizedSleepTime = ensureTimeValue(rawSleepTime, initialSleepTime);
     const normalizedWakeTime = ensureTimeValue(rawWakeTime, initialWakeTime);
     const hasTimeRange = Boolean(rawSleepTime && rawWakeTime);
-    const sleepDurationMinutes = hasTimeRange
-        ? calcDurationBetween(normalizedSleepTime, normalizedWakeTime)
-        : getWeeklyDuration(data as SleepWeeklyStatDTO);
+    const durationFromFields = getWeeklyDuration(data as SleepWeeklyStatDTO);
+    const durationContext: Pick<
+        SleepRecord,
+        "sleepTime" | "wakeTime" | "startAtMs"
+    > = {
+        sleepTime: normalizedSleepTime,
+        wakeTime: normalizedWakeTime,
+    };
+    if (firstStage?.startAtMs !== undefined) {
+        durationContext.startAtMs = firstStage.startAtMs;
+    }
+    const durationFromStages = sortedStages
+        ? sortedStages
+              .filter((segment) => segment.stage !== "awake")
+              .reduce(
+                  (sum, segment) =>
+                      sum + getSegmentDurationMinutes(segment, durationContext),
+                  0,
+              )
+        : 0;
+    const sleepDurationMinutes =
+        durationFromFields > 0
+            ? durationFromFields
+            : durationFromStages > 0
+              ? durationFromStages
+              : hasTimeRange
+                ? calcDurationBetween(normalizedSleepTime, normalizedWakeTime)
+                : 0;
     const normalizedAwakeCount = Math.max(
         0,
         Math.round(
@@ -1978,11 +2134,7 @@ function normalizeSleepRecord(
         ),
     );
     const stages = hasTimeRange
-        ? (parseStageValue(
-              source.stages ?? source.sleepStages,
-              normalizedSleepTime,
-              normalizedWakeTime,
-          ) ??
+        ? (sortedStages ??
           buildStageSegmentsByDominantStage(
               normalizedSleepTime,
               normalizedWakeTime,
@@ -2018,7 +2170,13 @@ function normalizeSleepRecord(
         stages,
     };
     if (sleepDurationMinutes > 0) {
-        record.durationMinutes = sleepDurationMinutes;
+        record.durationMinutes = Math.round(sleepDurationMinutes);
+    }
+    if (firstStage?.startAtMs !== undefined) {
+        record.startAtMs = firstStage.startAtMs;
+    }
+    if (lastStage?.endAtMs !== undefined) {
+        record.endAtMs = lastStage.endAtMs;
     }
     const serverId = source.id;
     if (typeof serverId === "number" || typeof serverId === "string") {
@@ -3280,7 +3438,7 @@ onBeforeUnmount(() => {
     grid-column: 2;
     grid-row: 1;
     width: 100%;
-    height: 166px;
+    height: 178px;
     overflow: visible;
 }
 .stage-grid {
@@ -3296,6 +3454,9 @@ onBeforeUnmount(() => {
 }
 .stage-block.awake {
     fill: #f07c8b;
+}
+.stage-block.rem {
+    fill: #c23adf;
 }
 .stage-block.light {
     fill: #2fd0e6;
@@ -3348,6 +3509,9 @@ onBeforeUnmount(() => {
 }
 .stage-legend .awake i {
     background: #f07c8b;
+}
+.stage-legend .rem i {
+    background: #c23adf;
 }
 .stage-legend .light i {
     background: #2fd0e6;

@@ -19,3 +19,4 @@ export * from "./logistics.ts";
 export * from "./recommendation.ts";
 export * from "./tcmCourse.ts";
 export * from "./wellnessMedia.ts";
+export * from "./alipay.ts";

@@ -124,7 +124,9 @@
             v-model="showPayModal"
             :display-items="payModalItems"
             :total="payModalTotal"
-            @confirm-pay="mockPaySuccess"
+            :order-id="pendingOrderId"
+            :order-no="pendingOrderNo"
+            @paid="handlePayPaid"
             @cancel-pay="handlePayCancel"
         />
 
@@ -381,6 +383,7 @@ const pendingProductQty = ref(1);
 
 // 支付弹窗状态（统一管理：立即购买 / 购物车结算 / 从订单列表补支付）
 const pendingOrderId = ref<number | null>(null);
+const pendingOrderNo = ref("");
 const payModalItems = ref<{ name: string; qty: number; price: number }[]>([]);
 const payModalTotal = ref(0);
 const payFromOrdersList = ref(false); // 标记是否从订单列表发起支付
@@ -737,18 +740,20 @@ async function doBuyNow(addr: AddressFormData) {
         if (!cartItemId) { showToast("操作失败，请重试"); return; }
 
         // 2. 仅用该购物车项创建订单（该商品被自动移出购物车）
-        const orderRes = await ApiOrder.createOrder({
+        const createOrderPayload: Parameters<typeof ApiOrder.createOrder>[0] = {
             cartIds: [cartItemId],
             receiverName: addr.name,
             receiverPhone: addr.phone,
             receiverAddress: addr.address,
-            remark: addr.remark || undefined,
-        });
+        };
+        if (addr.remark) createOrderPayload.remark = addr.remark;
+        const orderRes = await ApiOrder.createOrder(createOrderPayload);
         const order = orderRes.data?.data;
         if (!order) { showToast("创建订单失败，请重试"); return; }
 
         // 3. 记录时间 + 填充支付弹窗
         pendingOrderId.value = order.id;
+        pendingOrderNo.value = order.orderNo;
         payFromOrdersList.value = false;
         recordOrderTime(order.id);
         payModalItems.value = order.items.map((i) => ({
@@ -771,17 +776,19 @@ async function doBuyNow(addr: AddressFormData) {
 async function doCartCheckout(addr: AddressFormData) {
     try {
         const cartIds = cartItems.value.map((item) => item.id);
-        const orderRes = await ApiOrder.createOrder({
+        const createOrderPayload: Parameters<typeof ApiOrder.createOrder>[0] = {
             cartIds,
             receiverName: addr.name,
             receiverPhone: addr.phone,
             receiverAddress: addr.address,
-            remark: addr.remark || undefined,
-        });
+        };
+        if (addr.remark) createOrderPayload.remark = addr.remark;
+        const orderRes = await ApiOrder.createOrder(createOrderPayload);
         const order = orderRes.data?.data;
         if (!order) { showToast("创建订单失败，请重试"); return; }
 
         pendingOrderId.value = order.id;
+        pendingOrderNo.value = order.orderNo;
         payFromOrdersList.value = false;
         recordOrderTime(order.id);
         payModalItems.value = order.items.map((i) => ({
@@ -802,32 +809,27 @@ async function doCartCheckout(addr: AddressFormData) {
     }
 }
 
-/** 模拟支付成功：对已创建的订单调用 simulatePay */
-async function mockPaySuccess() {
-    if (!pendingOrderId.value) { showToast("无待支付订单"); return; }
+/** 支付宝回调/轮询确认支付成功后，同步页面状态 */
+async function handlePayPaid(orderId: number) {
+    clearOrderTime(orderId);
+    showToast("支付成功！");
 
-    try {
-        await ApiOrder.simulatePay(pendingOrderId.value);
-        clearOrderTime(pendingOrderId.value);
-        showToast("支付成功！");
+    pendingOrderId.value = null;
+    pendingOrderNo.value = "";
+    payModalItems.value = [];
+    payModalTotal.value = 0;
+    payFromOrdersList.value = false;
+    showPayModal.value = false;
 
-        pendingOrderId.value = null;
-        payModalItems.value = [];
-        payModalTotal.value = 0;
-        showPayModal.value = false;
-
-        await loadOrders();
-        activeTab.value = "order";
-    } catch (error) {
-        console.error("支付失败:", error);
-        showToast("支付失败，请重试");
-    }
+    await loadOrders();
+    activeTab.value = "order";
 }
 
 /** 暂不支付：关闭弹窗，订单保留在"待支付"，非订单列表发起时跳转到订单页 */
 function handlePayCancel() {
     showPayModal.value = false;
     pendingOrderId.value = null;
+    pendingOrderNo.value = "";
     payModalItems.value = [];
     payModalTotal.value = 0;
 
@@ -878,6 +880,7 @@ async function payOrder(no: string) {
     if (!order) { showToast("订单不存在"); return; }
 
     pendingOrderId.value = order.id;
+    pendingOrderNo.value = order.no;
     payFromOrdersList.value = true;
     payModalItems.value = order.items.map((it) => ({
         name: it.name,
