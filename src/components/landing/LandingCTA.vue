@@ -26,6 +26,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- 滚动大字幕 -->
+        <div class="cta-wordmark-marquee" aria-hidden="true">
+            <div class="cta-wordmark-track">
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
+            </div>
+        </div>
     </section>
 </template>
 
@@ -50,7 +60,7 @@ const ctaFeatures = [
 
 <style lang="scss" scoped>
 .cta-section {
-    padding: 120px 0;
+    padding: 120px 0 0;
     background: rgba(6, 10, 5, 0.7);
     position: relative;
     overflow: hidden;
@@ -136,7 +146,7 @@ const ctaFeatures = [
     display: flex;
     gap: 36px;
     justify-content: center;
-    margin-top: 52px;
+    margin-top: 12px;
     flex-wrap: wrap;
 }
 .cta-feature-item {
@@ -156,6 +166,64 @@ const ctaFeatures = [
         align-items: center;
         justify-content: center;
         font-size: 10px;
+    }
+}
+
+/* 滚动大字幕区域，占半页高度 */
+.cta-wordmark-marquee {
+    width: 100%;
+    height: 32vh;
+    min-height: 160px;
+    overflow: visible; /* 允许字母超出容器，由 .cta-section 的 overflow:hidden 裁剪 */
+    display: flex;
+    align-items: flex-end;
+    margin-top: 40px;
+    opacity: 0.18;
+    mask-image: linear-gradient(
+        90deg,
+        transparent,
+        black 12%,
+        black 88%,
+        transparent
+    );
+}
+
+.cta-wordmark-track {
+    display: flex;
+    align-items: flex-end;
+    /* 大写字母无降部，视觉底边比文字盒底边高约 18%，用负 margin-bottom 补偿使视觉底边贴齐区块底边 */
+    margin-bottom: -0.18em;
+    width: max-content;
+    gap: clamp(36px, 7vw, 92px);
+    animation: ctaWordmarkDrift 28s linear infinite;
+
+    span {
+        color: rgba(255, 255, 255, 0.9);
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.9);
+        font-family:
+            Georgia, "Times New Roman", "PingFang SC", "Microsoft YaHei",
+            serif;
+        font-size: clamp(5rem, 13vw, 11rem);
+        font-weight: 700;
+        line-height: 0.9;
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+}
+
+@keyframes ctaWordmarkDrift {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(calc(-50% - clamp(18px, 3.5vw, 46px)), 0, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cta-wordmark-track {
+        animation: none !important;
+        transform: translateX(-12%);
     }
 }
 </style>
