@@ -2,6 +2,8 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const startStreamMock = vi.fn();
+
 vi.mock("vue-router", () => ({
     useRouter: () => ({
         push: vi.fn(),
@@ -39,7 +41,7 @@ vi.mock("@/composables/useAiButlerStream", () => ({
         isStreaming: { value: false },
         lastEventSeq: { value: 0 },
         currentRequestId: { value: null },
-        startStream: vi.fn(),
+        startStream: startStreamMock,
         reconnect: vi.fn(),
         cancelStream: vi.fn(),
     }),
@@ -120,7 +122,7 @@ describe("AI 管家页面", () => {
         expect(wrapper.text()).toContain("咨询专业医师");
     });
 
-    it("快速提示区保留商品推荐占位，但不出现交易文案", async () => {
+    it("快速提示区保留商品推荐入口，但不出现交易动作文案", async () => {
         const wrapper = await mountPage();
 
         const prompts = wrapper.findAll(".quick-prompt");
@@ -128,12 +130,13 @@ describe("AI 管家页面", () => {
 
         const allText = prompts.map((btn) => btn.text()).join(" ");
         expect(allText).toContain("商品推荐");
-        expect(allText).toContain("开发中");
         expect(allText).not.toMatch(/购物车|下单|立即购买|价格/);
     });
 
-    it("点击商品推荐占位时提示商城开发中", async () => {
+    it("点击商品推荐入口时发起 AI 会话请求", async () => {
         const wrapper = await mountPage();
+        await wrapper.find(".new-chat-btn").trigger("click");
+        await Promise.resolve();
         const buttons = wrapper.findAll(".quick-prompt");
         const productButton = buttons.find((btn) =>
             btn.text().includes("商品推荐"),
@@ -142,7 +145,10 @@ describe("AI 管家页面", () => {
         expect(productButton).toBeTruthy();
         await productButton!.trigger("click");
 
-        expect(wrapper.text()).toContain("商城正在开发中，商品推荐即将上线");
+        expect(startStreamMock).toHaveBeenCalledTimes(1);
+        const request = startStreamMock.mock.calls[0]?.[0];
+        expect(request).toBeTruthy();
+        expect(request.message).toContain("根据我的体质推荐适合的养生商品");
     });
 
     it("无会话时显示欢迎状态", async () => {

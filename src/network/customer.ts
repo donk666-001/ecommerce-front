@@ -1,3 +1,6 @@
+import type { ApiResponse } from "./common";
+import { GAxios } from "@/plugins";
+
 // 客服会话类型
 export interface CustomerSession {
     id: string;
@@ -39,6 +42,7 @@ export interface CustomerMessage {
 
 // 排队客户类型
 export interface QueuedCustomer {
+    sessionId?: number;
     queueNum: number;
     custName: string;
     source: string;
@@ -85,6 +89,8 @@ export interface CustomerStats {
 
 // 客服同事信息
 export interface AgentColleague {
+    id?: string;
+    userId?: string;
     name: string;
     role: "presale" | "aftersale";
     status: "online" | "break" | "off";
@@ -93,255 +99,364 @@ export interface AgentColleague {
     todayServed: number;
 }
 
+export interface CustomerProductSearchItem {
+    id: string;
+    name: string;
+    icon: string;
+    price: number;
+    desc: string;
+}
+
+export interface CustomerOrderSearchItem {
+    id: string;
+    productName: string;
+    custName: string;
+    amount: number;
+    status: string;
+    date: string;
+}
+
+type RawRecord = Record<string, any>;
+type HistoryResponse = { records?: RawRecord[]; total?: number };
+
+const WORKBENCH_BASE = "/customer/workbench";
+
+function unwrap<T>(response: ApiResponse<T>): T {
+    if (response.code === 200) return response.data;
+    throw new Error(response.message || "客服接口请求失败");
+}
+
+function asArray(value: unknown): RawRecord[] {
+    return Array.isArray(value) ? (value as RawRecord[]) : [];
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toSourceTag(value: unknown): "product" | "order" | "general" {
+    return value === "product" || value === "order" ? value : "general";
+}
+
+function toQueueSourceTag(value: unknown): "product" | "order" {
+    return value === "order" ? "order" : "product";
+}
+
+function toRole(value: unknown): "presale" | "aftersale" {
+    const normalized = String(value ?? "").toLowerCase();
+    return normalized === "aftersale" ? "aftersale" : "presale";
+}
+
+function toStatus(value: unknown): "online" | "break" | "off" {
+    const normalized = String(value ?? "").toLowerCase();
+    if (
+        normalized === "online" ||
+        normalized === "break" ||
+        normalized === "off"
+    ) {
+        return normalized;
+    }
+    return "off";
+}
+
+function toMessageFrom(value: unknown): "sys" | "customer" | "me" {
+    if (value === "customer" || value === "me") return value;
+    return "sys";
+}
+
+function toMessageType(value: unknown): "product" | "order" | "image" | undefined {
+    if (value === "product" || value === "order" || value === "image") {
+        return value;
+    }
+    return undefined;
+}
+
+function nowTime(): string {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function startedAtFromWait(waitTime: unknown): string {
+    if (typeof waitTime !== "string") return new Date().toISOString();
+    const [minutes = "0", seconds = "0"] = waitTime.split(":");
+    const elapsed =
+        toNumber(minutes) * 60 * 1000 + toNumber(seconds) * 1000;
+    return new Date(Date.now() - elapsed).toISOString();
+}
+
+function mapMessage(raw: RawRecord): CustomerMessage {
+    const meta = raw.meta && typeof raw.meta === "object" ? raw.meta : undefined;
+    const message: CustomerMessage = {
+        from: toMessageFrom(raw.from),
+        text: String(raw.text ?? raw.content ?? ""),
+        time: String(raw.time ?? ""),
+    };
+    const type = toMessageType(raw.type);
+    if (type) message.type = type;
+    if (meta) message.meta = meta;
+    return message;
+}
+
+function mapSession(raw: RawRecord): CustomerSession {
+    const custName = String(raw.custName ?? raw.customerName ?? "访客");
+    const startedAt = raw.startedAt
+        ? String(raw.startedAt)
+        : new Date().toISOString();
+
+    return {
+        id: String(raw.id ?? raw.sessionId ?? ""),
+        custId: String(raw.custId ?? raw.customerId ?? ""),
+        custName,
+        avatar: String(raw.avatar ?? custName.slice(-1) ?? "客"),
+        source: String(raw.source ?? "客服咨询"),
+        sourceTag: toSourceTag(raw.sourceTag),
+        startedAt,
+        unread: toNumber(raw.unread),
+        lastMsg: String(raw.lastMsg ?? raw.lastMessage ?? ""),
+        custTags: Array.isArray(raw.custTags) ? raw.custTags.map(String) : [],
+        custCity: String(raw.custCity ?? ""),
+        custReg: String(raw.custReg ?? ""),
+        custSpent: String(raw.custSpent ?? "¥0"),
+        custOrderCount: toNumber(raw.custOrderCount),
+        custCart: asArray(raw.custCart).map((item) => ({
+            name: String(item.name ?? ""),
+            icon: String(item.icon ?? ""),
+            qty: toNumber(item.qty),
+            price: toNumber(item.price),
+        })),
+        cartTotal: toNumber(raw.cartTotal),
+        messages: asArray(raw.messages).map(mapMessage),
+    };
+}
+
+function mapQueuedCustomer(raw: RawRecord): QueuedCustomer {
+    return {
+        sessionId: raw.sessionId !== undefined ? toNumber(raw.sessionId) : undefined,
+        queueNum: toNumber(raw.queueNum),
+        custName: String(raw.custName ?? "访客"),
+        source: String(raw.source ?? "客服咨询"),
+        sourceTag: toQueueSourceTag(raw.sourceTag),
+        firstMsg: String(raw.firstMsg ?? ""),
+        startedAt: raw.startedAt
+            ? String(raw.startedAt)
+            : startedAtFromWait(raw.waitTime),
+        roleType: toRole(raw.roleType),
+    };
+}
+
+function mapHistory(raw: RawRecord): HistorySession {
+    return {
+        id: String(raw.id ?? raw.sessionId ?? ""),
+        custId: String(raw.custId ?? raw.customerId ?? "-"),
+        custName: String(raw.custName ?? "访客"),
+        agentId: String(raw.agentId ?? "-"),
+        agentName: String(raw.agentName ?? "-"),
+        msgCount: toNumber(raw.msgCount),
+        startTime: String(raw.startTime ?? ""),
+        endTime: String(raw.endTime ?? raw.duration ?? ""),
+        endReason: raw.endReason === "timeout" ? "timeout" : "manual",
+    };
+}
+
+function mapStats(raw: RawRecord): CustomerStats {
+    return {
+        currentSessions: toNumber(raw.currentSessions),
+        maxSessions: toNumber(raw.maxSessions),
+        queueCount: toNumber(raw.queueCount),
+        todayServed: toNumber(raw.todayServed),
+        todayMessages: toNumber(raw.todayMessages),
+        avgFirstResponse: toNumber(raw.avgFirstResponse),
+    };
+}
+
+function mapColleague(raw: RawRecord): AgentColleague {
+    return {
+        id: raw.id !== undefined ? String(raw.id) : undefined,
+        userId: raw.userId !== undefined ? String(raw.userId) : undefined,
+        name: String(raw.name ?? ""),
+        role: toRole(raw.role),
+        status: toStatus(raw.status),
+        currentLoad: toNumber(raw.currentLoad),
+        maxLoad: toNumber(raw.maxLoad),
+        todayServed: toNumber(raw.todayServed),
+    };
+}
+
+function mapProduct(raw: RawRecord): CustomerProductSearchItem {
+    return {
+        id: String(raw.id ?? raw.productId ?? ""),
+        name: String(raw.name ?? raw.productName ?? ""),
+        icon: String(raw.icon ?? ""),
+        price: toNumber(raw.price ?? raw.discountPrice),
+        desc: String(raw.desc ?? raw.description ?? raw.efficacy ?? ""),
+    };
+}
+
+function mapOrder(raw: RawRecord): CustomerOrderSearchItem {
+    return {
+        id: String(raw.id ?? raw.orderNo ?? ""),
+        productName: String(raw.productName ?? raw.name ?? ""),
+        custName: String(raw.custName ?? raw.receiverName ?? ""),
+        amount: toNumber(raw.amount ?? raw.payAmount ?? raw.totalAmount),
+        status: String(raw.statusText ?? raw.status ?? ""),
+        date: String(raw.date ?? raw.createdAt ?? ""),
+    };
+}
+
+function buildSessionFromQueue(item: QueuedCustomer): CustomerSession {
+    const time = nowTime();
+    return {
+        id: `queue_${item.queueNum}`,
+        custId: `queue_${item.queueNum}`,
+        custName: item.custName,
+        avatar: item.custName.slice(-1),
+        source: item.source,
+        sourceTag: item.sourceTag,
+        startedAt: new Date().toISOString(),
+        unread: 1,
+        lastMsg: item.firstMsg,
+        custTags: [],
+        custCity: "",
+        custReg: "",
+        custSpent: "¥0",
+        custOrderCount: 0,
+        custCart: [],
+        cartTotal: 0,
+        messages: [
+            { from: "sys", text: `会话开始 · ${time}`, time: "" },
+            { from: "customer", text: item.firstMsg, time },
+        ],
+    };
+}
+
 export class ApiCustomer {
-    // 获取当前客服的会话列表
     static async getSessions() {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/sessions')
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data as CustomerSession[]
-        // } else {
-        //     console.log(res.message)
-        //     return []
-        // }
-
-        // 模拟数据
-        return [
-            {
-                id: "s1",
-                custId: "c1",
-                custName: "清风明月",
-                avatar: "风",
-                source: "商品 · 枸杞红枣茶",
-                sourceTag: "product" as const,
-                startedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-                unread: 0,
-                lastMsg: "请问这个孕妇可以喝吗？",
-                custTags: ["气虚体质", "VIP"],
-                custCity: "浙江 · 杭州",
-                custReg: "2024-08-12",
-                custSpent: "¥ 1,286",
-                custOrderCount: 9,
-                custCart: [
-                    { name: "枸杞红枣茶", icon: "🍵", qty: 1, price: 38 },
-                    { name: "四物汤药膳包", icon: "🌿", qty: 1, price: 48 },
-                ],
-                cartTotal: 86,
-                messages: [
-                    { from: "sys", text: "会话开始 · 10:24", time: "" },
-                    {
-                        from: "customer",
-                        text: "你好客服，我想问一下这款枸杞红枣茶",
-                        time: "10:24",
-                    },
-                    {
-                        from: "me",
-                        text: "您好，这边是颐养阁售前客服小翠，很高兴为您服务～请问您想了解哪方面呢？",
-                        time: "10:24",
-                    },
-                    {
-                        from: "customer",
-                        type: "product",
-                        text: "枸杞红枣茶",
-                        meta: {
-                            icon: "🍵",
-                            desc: "滋阴补血",
-                            price: 38,
-                            productId: "p1",
-                        },
-                        time: "10:25",
-                    },
-                    {
-                        from: "customer",
-                        text: "这个孕妇可以喝吗？",
-                        time: "10:26",
-                    },
-                ],
-            },
-            {
-                id: "s2",
-                custId: "c2",
-                custName: "云栖之客",
-                avatar: "云",
-                source: "订单 · YYG…008",
-                sourceTag: "order" as const,
-                startedAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-                unread: 2,
-                lastMsg: "物流好像停了，能帮我查一下吗",
-                custTags: ["阳虚体质"],
-                custCity: "江苏 · 苏州",
-                custReg: "2024-03-05",
-                custSpent: "¥ 642",
-                custOrderCount: 4,
-                custCart: [],
-                cartTotal: 0,
-                messages: [
-                    { from: "sys", text: "会话开始 · 10:17", time: "" },
-                    {
-                        from: "customer",
-                        text: "我那个订单 YYG20260525008，3 天没动了",
-                        time: "10:17",
-                    },
-                    {
-                        from: "me",
-                        text: "稍等，我帮您查一下物流信息",
-                        time: "10:18",
-                    },
-                    {
-                        from: "customer",
-                        text: "物流好像停了，能帮我查一下吗",
-                        time: "10:29",
-                    },
-                ],
-            },
-        ] as CustomerSession[];
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            `${WORKBENCH_BASE}/sessions`,
+        );
+        return unwrap(response.data).map(mapSession);
     }
 
-    // 获取单个会话详情
     static async getSessionDetail(sessionId: string) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get(`/customer/sessions/${sessionId}`)
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data as CustomerSession
-        // } else {
-        //     return null
-        // }
-
-        // 模拟数据
-        const sessions = await this.getSessions();
-        return sessions.find((s) => s.id === sessionId) || null;
+        const response = await GAxios.get<ApiResponse<RawRecord>>(
+            `${WORKBENCH_BASE}/sessions/${sessionId}`,
+        );
+        const data = unwrap(response.data);
+        return data ? mapSession(data) : null;
     }
 
-    // 发送消息
     static async sendMessage(sessionId: string, message: string) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.post(`/customer/sessions/${sessionId}/messages`, {
-        //     text: message,
-        // })
-        // const res = response.data
-        // return res.code === 200
-
-        // 模拟成功
-        console.log(`发送消息到会话 ${sessionId}: ${message}`);
-        return true;
+        const response = await GAxios.post<ApiResponse<boolean>>(
+            `${WORKBENCH_BASE}/sessions/${sessionId}/messages`,
+            { text: message },
+        );
+        return unwrap(response.data) === true;
     }
 
-    // 结束会话
     static async endSession(sessionId: string) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.post(`/customer/sessions/${sessionId}/end`)
-        // const res = response.data
-        // return res.code === 200
-
-        // 模拟成功
-        console.log(`结束会话 ${sessionId}`);
-        return true;
+        const response = await GAxios.post<ApiResponse<boolean>>(
+            `${WORKBENCH_BASE}/sessions/${sessionId}/end`,
+        );
+        return unwrap(response.data) === true;
     }
 
-    // 转接会话
     static async transferSession(
         sessionId: string,
         targetAgentId: string,
         note: string,
     ) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.post(`/customer/sessions/${sessionId}/transfer`, {
-        //     targetAgentId,
-        //     note,
-        // })
-        // const res = response.data
-        // return res.code === 200
-
-        // 模拟成功
-        console.log(
-            `转接会话 ${sessionId} 给客服 ${targetAgentId}, 备注: ${note}`,
+        const numericTargetAgentId = Number(targetAgentId);
+        const response = await GAxios.post<ApiResponse<boolean>>(
+            `${WORKBENCH_BASE}/sessions/${sessionId}/transfer`,
+            {
+                targetAgentId: Number.isFinite(numericTargetAgentId)
+                    ? numericTargetAgentId
+                    : targetAgentId,
+                note,
+            },
         );
-        return true;
+        return unwrap(response.data) === true;
     }
 
-    // 获取排队队列
     static async getQueueList() {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/queue')
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data as QueuedCustomer[]
-        // } else {
-        //     return []
-        // }
-
-        // 模拟数据
-        return [
-            {
-                queueNum: 1,
-                custName: "山水之间",
-                source: "商品 · 当归生姜羊肉汤",
-                sourceTag: "product" as const,
-                firstMsg: "请问这个适合什么体质的人喝？",
-                startedAt: new Date(
-                    Date.now() - 6 * 60 * 1000 - 20 * 1000,
-                ).toISOString(),
-                roleType: "presale" as const,
-            },
-            {
-                queueNum: 2,
-                custName: "月下独酌",
-                source: "订单 · YYG…012",
-                sourceTag: "order" as const,
-                firstMsg: "我的订单什么时候能发货？",
-                startedAt: new Date(
-                    Date.now() - 2 * 60 * 1000 - 10 * 1000,
-                ).toISOString(),
-                roleType: "aftersale" as const,
-            },
-        ] as QueuedCustomer[];
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            `${WORKBENCH_BASE}/queue`,
+        );
+        return unwrap(response.data).map(mapQueuedCustomer);
     }
 
-    // 从队列接入客户，返回新建会话
     static async acceptFromQueue(
         queueNum: number,
     ): Promise<CustomerSession | null> {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.post('/customer/queue/accept', { queueNum })
-        // const res = response.data
-        // if (res.code === 200) return res.data as CustomerSession
-        // return null
-
         const queue = await this.getQueueList();
         const item = queue.find((q) => q.queueNum === queueNum);
-        if (!item) return null;
+        const response = await GAxios.post<ApiResponse<boolean | RawRecord>>(
+            `${WORKBENCH_BASE}/queue/accept`,
+            { queueNum },
+        );
+        const data = unwrap(response.data);
 
-        const now = new Date();
-        const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        if (data && typeof data === "object") {
+            return mapSession(data);
+        }
 
-        console.log(`从队列接入客户 #${queueNum}`);
-        return {
-            id: `session_${queueNum}_${Date.now()}`,
-            custId: `cust_queue_${queueNum}`,
-            custName: item.custName,
-            avatar: item.custName[0],
-            source: item.source,
-            sourceTag: item.sourceTag,
-            startedAt: new Date().toISOString(),
-            unread: 1,
-            lastMsg: item.firstMsg,
-            custTags: [],
-            custCity: "",
-            custReg: "",
-            custSpent: "¥0",
-            custOrderCount: 0,
-            custCart: [],
-            cartTotal: 0,
-            messages: [
-                { from: "sys" as const, text: `会话开始 · ${time}`, time: "" },
-                { from: "customer" as const, text: item.firstMsg, time },
-            ],
-        };
+        return data === true && item ? buildSessionFromQueue(item) : null;
     }
 
-    // 获取历史会话
+    /**
+     * 按会话 ID 接入排队会话（真实会话接入入口）
+     * @param sessionId 排队会话 ID
+     * @returns 接入后的会话对象，失败返回 null
+     */
+    static async acceptSession(sessionId: number): Promise<CustomerSession | null> {
+        const response = await GAxios.post<ApiResponse<boolean | RawRecord>>(
+            `${WORKBENCH_BASE}/sessions/${sessionId}/accept`,
+        );
+        const data = unwrap(response.data);
+        if (data && typeof data === "object") {
+            return mapSession(data);
+        }
+        if (data === true) {
+            // 后端返回 true 时，加载会话详情以获取用户发送的历史消息
+            try {
+                const detail = await this.getSessionDetail(String(sessionId));
+                if (detail) {
+                    // 在历史消息前插入"接入"系统提示
+                    return {
+                        ...detail,
+                        messages: [
+                            { from: "sys", text: `会话已接入 · ${nowTime()}`, time: "" },
+                            ...detail.messages,
+                        ],
+                    };
+                }
+            } catch {
+                // 加载详情失败则降级为最小化会话对象
+            }
+            return {
+                id: String(sessionId),
+                custId: String(sessionId),
+                custName: "客户",
+                avatar: "客",
+                source: "商品咨询",
+                sourceTag: "product",
+                startedAt: new Date().toISOString(),
+                unread: 0,
+                lastMsg: "",
+                custTags: [],
+                custCity: "",
+                custReg: "",
+                custSpent: "¥0",
+                custOrderCount: 0,
+                custCart: [],
+                cartTotal: 0,
+                messages: [{ from: "sys", text: `会话已接入 · ${nowTime()}`, time: "" }],
+            };
+        }
+        return null;
+    }
+
     static async getHistorySessions(
         page: number,
         pageSize: number,
@@ -351,184 +466,59 @@ export class ApiCustomer {
             endDate?: string;
         },
     ) {
-        // TODO: 替换为真实API调用
-
-        const mockData: HistorySession[] = [
+        const response = await GAxios.get<ApiResponse<HistoryResponse>>(
+            `${WORKBENCH_BASE}/history`,
             {
-                id: "h1",
-                custId: "C001",
-                custName: "清风明月",
-                agentId: "CS001",
-                agentName: "小翠",
-                msgCount: 28,
-                startTime: "2026-05-29 10:24",
-                endTime: "2026-05-29 10:39",
-                endReason: "manual" as const,
+                params: {
+                    page,
+                    pageSize,
+                    custName: filters?.keyword,
+                    startDate: filters?.startDate,
+                    endDate: filters?.endDate,
+                },
             },
-            {
-                id: "h2",
-                custId: "C002",
-                custName: "云栖之客",
-                agentId: "CS002",
-                agentName: "阿岚",
-                msgCount: 12,
-                startTime: "2026-05-29 14:15",
-                endTime: "2026-05-29 14:23",
-                endReason: "manual" as const,
-            },
-            {
-                id: "h3",
-                custId: "C003",
-                custName: "山水之间",
-                agentId: "CS001",
-                agentName: "小翠",
-                msgCount: 45,
-                startTime: "2026-05-28 09:30",
-                endTime: "2026-05-28 09:52",
-                endReason: "timeout" as const,
-            },
-        ];
-
-        let result = [...mockData];
-
-        if (filters) {
-            const { keyword, startDate, endDate } = filters;
-            if (keyword) {
-                const kw = keyword.toLowerCase();
-                result = result.filter(
-                    (r) =>
-                        r.custId.toLowerCase().includes(kw) ||
-                        r.custName.toLowerCase().includes(kw) ||
-                        r.agentId.toLowerCase().includes(kw) ||
-                        r.agentName.toLowerCase().includes(kw),
-                );
-            }
-            if (startDate)
-                result = result.filter((r) => r.endTime >= startDate);
-            if (endDate)
-                result = result.filter((r) => r.endTime <= endDate + " 23:59");
-        }
-
+        );
+        const data = unwrap(response.data);
+        const records = asArray(data?.records).map(mapHistory);
         return {
-            records: result.slice((page - 1) * pageSize, page * pageSize),
-            total: result.length,
+            records,
+            total: toNumber(data?.total, records.length),
         };
     }
 
-    // 获取客服统计数据
     static async getStats() {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/stats')
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data as CustomerStats
-        // } else {
-        //     return null
-        // }
-
-        // 模拟数据
-        return {
-            currentSessions: 3,
-            maxSessions: 5,
-            queueCount: 2,
-            todayServed: 28,
-            todayMessages: 412,
-            avgFirstResponse: 38,
-        } as CustomerStats;
+        const response = await GAxios.get<ApiResponse<RawRecord>>(
+            `${WORKBENCH_BASE}/stats`,
+        );
+        return mapStats(unwrap(response.data));
     }
 
-    // 获取客服同事列表
     static async getColleagues() {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/colleagues')
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data as AgentColleague[]
-        // } else {
-        //     return []
-        // }
-
-        // 模拟数据
-        return [
-            {
-                name: "小翠（我）",
-                role: "presale" as const,
-                status: "online" as const,
-                currentLoad: 3,
-                maxLoad: 5,
-                todayServed: 28,
-            },
-            {
-                name: "阿岚",
-                role: "aftersale" as const,
-                status: "online" as const,
-                currentLoad: 2,
-                maxLoad: 5,
-                todayServed: 19,
-            },
-            {
-                name: "暮雨",
-                role: "presale" as const,
-                status: "break" as const,
-                currentLoad: 0,
-                maxLoad: 5,
-                todayServed: 15,
-            },
-        ] as AgentColleague[];
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            `${WORKBENCH_BASE}/colleagues`,
+        );
+        return unwrap(response.data).map(mapColleague);
     }
 
-    // 更新客服状态
+    static async getProductCsAgents() {
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            "/product/cs/agents",
+        );
+        return unwrap(response.data).map(mapColleague);
+    }
+
     static async updateStatus(status: "online" | "break" | "off") {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.post('/customer/status', {
-        //     status,
-        // })
-        // const res = response.data
-        // return res.code === 200
-
-        // 模拟成功
-        console.log(`更新客服状态为: ${status}`);
-        return true;
+        const response = await GAxios.post<ApiResponse<boolean>>(
+            `${WORKBENCH_BASE}/status`,
+            { status },
+        );
+        return unwrap(response.data) === true;
     }
 
-    // 获取他人转接排队列表
     static async getTransferQueue(): Promise<TransferredCustomer[]> {
-        return [
-            {
-                queueNum: 101,
-                custName: "梅花三弄",
-                source: "商品 · 酸枣仁百合茶",
-                sourceTag: "product" as const,
-                firstMsg: "这个可以配合其他药一起吃吗？",
-                startedAt: new Date(Date.now() - 9 * 60 * 1000).toISOString(),
-                fromAgent: "暮雨",
-                history: [
-                    {
-                        from: "sys" as const,
-                        text: "会话开始 · 10:40",
-                        time: "",
-                    },
-                    {
-                        from: "customer" as const,
-                        text: "你好，这款酸枣仁百合茶可以配合其他药一起吃吗？",
-                        time: "10:40",
-                    },
-                    {
-                        from: "me" as const,
-                        text: "您好，我是客服暮雨，请问您目前在服用哪些药物呢？",
-                        time: "10:41",
-                    },
-                    {
-                        from: "customer" as const,
-                        text: "我在吃阿司匹林，不知道有没有影响",
-                        time: "10:42",
-                    },
-                ],
-            },
-        ];
+        return [];
     }
 
-    // 接受转接客户，返回带历史记录的会话
     static async acceptTransfer(
         queueNum: number,
     ): Promise<CustomerSession | null> {
@@ -544,7 +534,7 @@ export class ApiCustomer {
             id: `transfer_${queueNum}_${Date.now()}`,
             custId: `cust_transfer_${queueNum}`,
             custName: transfer.custName,
-            avatar: transfer.custName[0],
+            avatar: transfer.custName.slice(-1),
             source: transfer.source,
             sourceTag: transfer.sourceTag,
             startedAt: transfer.startedAt,
@@ -560,13 +550,13 @@ export class ApiCustomer {
             cartTotal: 0,
             messages: [
                 {
-                    from: "sys" as const,
+                    from: "sys",
                     text: `由 ${transfer.fromAgent} 转接 · 以下为历史记录`,
                     time: "",
                 },
                 ...transfer.history,
                 {
-                    from: "sys" as const,
+                    from: "sys",
                     text: "—— 历史记录结束，以下由您接待 ——",
                     time: "",
                 },
@@ -574,103 +564,19 @@ export class ApiCustomer {
         };
     }
 
-    // 搜索商品
     static async searchProducts(keyword: string) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/products/search', {
-        //     params: { keyword },
-        // })
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data
-        // } else {
-        //     return []
-        // }
-
-        // 模拟数据
-        const allProducts = [
-            {
-                id: "p1",
-                name: "枸杞红枣茶",
-                icon: "🍵",
-                price: 38,
-                desc: "滋阴补血",
-            },
-            {
-                id: "p2",
-                name: "四物汤药膳包",
-                icon: "🌿",
-                price: 48,
-                desc: "调理气血",
-            },
-            {
-                id: "p3",
-                name: "当归生姜羊肉汤",
-                icon: "🥘",
-                price: 68,
-                desc: "温补阳气",
-            },
-            {
-                id: "p4",
-                name: "酸枣仁百合茶",
-                icon: "🍵",
-                price: 42,
-                desc: "安神助眠",
-            },
-        ];
-
-        if (!keyword) return allProducts;
-        return allProducts.filter((p) => p.name.includes(keyword));
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            `${WORKBENCH_BASE}/products/search`,
+            { params: { keyword } },
+        );
+        return unwrap(response.data).map(mapProduct);
     }
 
-    // 查询订单
     static async searchOrders(keyword: string) {
-        // TODO: 替换为真实API调用
-        // const response = await GAxios.get('/customer/orders/search', {
-        //     params: { keyword },
-        // })
-        // const res = response.data
-        // if (res.code === 200) {
-        //     return res.data
-        // } else {
-        //     return []
-        // }
-
-        // 模拟数据
-        const allOrders = [
-            {
-                id: "YYG20260525008",
-                custName: "云栖之客",
-                productName: "四物汤药膳包",
-                amount: 128,
-                status: "运输中",
-                date: "2026-05-25",
-            },
-            {
-                id: "YYG20260524012",
-                custName: "清风明月",
-                productName: "枸杞红枣茶",
-                amount: 86,
-                status: "已签收",
-                date: "2026-05-24",
-            },
-            {
-                id: "YYG20260523005",
-                custName: "山水之间",
-                productName: "当归生姜羊肉汤",
-                amount: 256,
-                status: "已发货",
-                date: "2026-05-23",
-            },
-        ];
-
-        if (!keyword) return allOrders;
-        const kw = keyword.toLowerCase();
-        return allOrders.filter(
-            (o) =>
-                o.id.toLowerCase().includes(kw) ||
-                o.productName.toLowerCase().includes(kw) ||
-                o.custName.toLowerCase().includes(kw),
+        const response = await GAxios.get<ApiResponse<RawRecord[]>>(
+            `${WORKBENCH_BASE}/orders/search`,
+            { params: { keyword } },
         );
+        return unwrap(response.data).map(mapOrder);
     }
 }

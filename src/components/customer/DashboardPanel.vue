@@ -6,11 +6,8 @@
         <div class="stats-grid">
             <div class="stat-card jade">
                 <div class="stat-label">接待中</div>
-                <div class="stat-value">
-                    {{ chatCount
-                    }}<span class="stat-denom">/{{ stats.maxSessions }}</span>
-                </div>
-                <div class="stat-foot">当前同时接待 / 上限</div>
+                <div class="stat-value">{{ chatCount }}</div>
+                <div class="stat-foot">当前同时接待</div>
             </div>
             <div class="stat-card gold">
                 <div class="stat-label">排队中</div>
@@ -61,7 +58,7 @@
                                 ></span>
                                 {{ getStatusText(c.status) }}
                             </td>
-                            <td>{{ c.currentLoad }} / {{ c.maxLoad }}</td>
+                            <td>{{ c.currentLoad }}</td>
                             <td>{{ c.todayServed }}</td>
                         </tr>
                     </tbody>
@@ -264,12 +261,6 @@ onUnmounted(() => clearInterval(pollTimer));
     font-weight: 700;
     margin-top: 6px;
     color: var(--ink);
-}
-
-.stat-denom {
-    font-size: 18px;
-    color: var(--ink-muted);
-    font-weight: 400;
 }
 
 .stat-foot {

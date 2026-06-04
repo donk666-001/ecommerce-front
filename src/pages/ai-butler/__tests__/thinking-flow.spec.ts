@@ -225,6 +225,9 @@ describe("AI Butler thinking flow", () => {
 
         const assistantMessages = wrapper.findAll(".msg-stub");
         const latestAssistant = assistantMessages[assistantMessages.length - 1];
+        if (!latestAssistant) {
+            throw new Error("Expected assistant message after stream completion");
+        }
         expect(latestAssistant.attributes("data-structured")).toContain(
             "handoff",
         );

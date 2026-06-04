@@ -3,31 +3,39 @@
         <div class="service-layout">
             <div class="agent-list">
                 <div class="agent-list-title">颐养阁官方店铺 · 客服</div>
-                <div
-                    v-for="a in agents"
-                    :key="a.id"
-                    class="agent-item"
-                    :class="{ active: currentAgent === a.id }"
-                    @click="$emit('update:currentAgent', a.id)"
-                >
-                    <div class="agent-avatar">
-                        {{ a.avatar }}
-                        <div class="agent-status-dot" :class="a.status"></div>
-                    </div>
-                    <div class="agent-info">
-                        <div class="agent-name">{{ a.name }}</div>
-                        <div class="agent-tag">
-                            {{ a.tag }} ·
-                            {{
-                                a.status === "online"
-                                    ? "在线"
-                                    : a.status === "busy"
-                                      ? "忙碌"
-                                      : "离线"
-                            }}
+                <div v-if="agentsLoading" class="agent-empty">
+                    客服列表加载中...
+                </div>
+                <div v-else-if="agents.length === 0" class="agent-empty">
+                    暂无可用客服
+                </div>
+                <template v-else>
+                    <div
+                        v-for="a in agents"
+                        :key="a.id"
+                        class="agent-item"
+                        :class="{ active: currentAgent === a.id }"
+                        @click="$emit('update:currentAgent', a.id)"
+                    >
+                        <div class="agent-avatar">
+                            {{ a.avatar }}
+                            <div class="agent-status-dot" :class="a.status"></div>
+                        </div>
+                        <div class="agent-info">
+                            <div class="agent-name">{{ a.name }}</div>
+                            <div class="agent-tag">
+                                {{ a.tag }} ·
+                                {{
+                                    a.status === "online"
+                                        ? "在线"
+                                        : a.status === "busy"
+                                          ? "忙碌"
+                                          : "离线"
+                                }}
+                            </div>
                         </div>
                     </div>
-                </div>
+                </template>
             </div>
             <div class="chat-panel">
                 <div class="chat-header">
@@ -112,6 +120,7 @@
                 <div class="chat-input-row">
                     <input
                         :value="chatInput"
+                        :disabled="!canSendChat"
                         @input="
                             $emit(
                                 'update:chatInput',
@@ -121,7 +130,11 @@
                         placeholder="输入您想咨询的问题，按 Enter 发送..."
                         @keydown.enter="$emit('sendChat')"
                     />
-                    <button class="btn btn-jade" @click="$emit('sendChat')">
+                    <button
+                        class="btn btn-jade"
+                        :disabled="!canSendChat"
+                        @click="$emit('sendChat')"
+                    >
                         发送
                     </button>
                 </div>
@@ -137,7 +150,7 @@ interface Agent {
     id: string;
     name: string;
     tag: string;
-    status: string;
+    status: "online" | "busy" | "off";
     avatar: string;
 }
 
@@ -164,6 +177,7 @@ interface ContextProduct {
 
 interface Props {
     agents: Agent[];
+    agentsLoading?: boolean;
     currentAgent: string;
     chatHistory: Record<string, ChatMsg[]>;
     chatInput: string;
@@ -207,11 +221,23 @@ watch(
 onUnmounted(clearAutoDismiss);
 
 const currentAgentObj = computed(
-    () => props.agents.find((a) => a.id === props.currentAgent)!,
+    () =>
+        props.agents.find((a) => a.id === props.currentAgent) ||
+        props.agents[0] || {
+            id: "",
+            name: props.agentsLoading ? "加载中" : "暂无客服",
+            tag: "客服咨询",
+            status: "off",
+            avatar: "客",
+        },
 );
 
 const currentChatHistory = computed(
     () => props.chatHistory[props.currentAgent] || [],
+);
+
+const canSendChat = computed(
+    () => Boolean(currentAgentObj.value.id) && !props.agentsLoading,
 );
 
 // 监听聊天历史变化，自动滚动到底部
@@ -257,6 +283,13 @@ function scrollChatToBottom() {
     color: var(--ink-muted);
     padding: 4px 10px 10px;
     border-bottom: 1px solid var(--line);
+}
+
+.agent-empty {
+    padding: 18px 10px;
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
 }
 
 .agent-item {
@@ -463,6 +496,11 @@ function scrollChatToBottom() {
         &:focus {
             border-color: var(--jade);
         }
+
+        &:disabled {
+            background: var(--cream);
+            cursor: not-allowed;
+        }
     }
 }
 
@@ -477,6 +515,11 @@ function scrollChatToBottom() {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
 
     &-jade {
         background: var(--jade);

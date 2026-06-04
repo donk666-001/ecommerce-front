@@ -160,6 +160,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { ApiCustomer } from "@/network/customer";
+import { ElMessage } from "element-plus";
 
 const searchType = ref<"product" | "order">("product");
 

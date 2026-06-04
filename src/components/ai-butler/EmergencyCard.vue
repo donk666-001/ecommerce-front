@@ -42,7 +42,9 @@ const parsed = computed<EmergencyData>(() => {
 
 const primaryAction = computed<EmergencyAction | null>(() => {
     const actions = parsed.value.actions;
-    return Array.isArray(actions) && actions.length > 0 ? actions[0] : null;
+    return Array.isArray(actions) && actions.length > 0
+        ? (actions[0] ?? null)
+        : null;
 });
 
 const title = computed(() => parsed.value.title?.trim() || DEFAULT_TITLE);

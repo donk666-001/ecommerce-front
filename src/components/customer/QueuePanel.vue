@@ -91,8 +91,9 @@ import {
     bridgeAgentAccept,
 } from "@/network/chatBridge";
 
-interface QueueItem extends QueuedCustomer {
-    bridgeId?: string;
+interface QueueItem extends Omit<QueuedCustomer, "sourceTag"> {
+    sourceTag: "product" | "order" | "general";
+    bridgeId?: string | undefined;
 }
 
 const emit = defineEmits<{
@@ -199,13 +200,18 @@ async function handleAccept(item: QueueItem) {
         ElMessage.success("已成功接入，正在跳转接待中...");
         emit("switch-to-chat", session);
     } else {
-        // 原有 mock 排队
+        // 真实会话：按 sessionId 接入
+        const sessionIdNum = (item as any).sessionId;
+        if (!sessionIdNum) {
+            ElMessage.error("无法获取会话ID，接入失败");
+            return;
+        }
         try {
-            const session = await ApiCustomer.acceptFromQueue(item.queueNum);
+            const session = await ApiCustomer.acceptSession(sessionIdNum);
             if (session) {
                 ElMessage.success("已成功接入，正在跳转接待中...");
                 queueList.value = queueList.value.filter(
-                    (q) => q.queueNum !== item.queueNum,
+                    (q) => (q as any).sessionId !== sessionIdNum,
                 );
                 emit("switch-to-chat", session);
             } else {
@@ -235,6 +241,9 @@ onUnmounted(() => {
     clearInterval(timerInterval);
     clearInterval(queuePollInterval);
 });
+
+/** 暴露给父组件，用于 STOMP 排队事件触发实时刷新 */
+defineExpose({ loadQueue });
 </script>
 
 <style scoped lang="scss">

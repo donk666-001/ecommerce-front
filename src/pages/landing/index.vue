@@ -11,6 +11,7 @@
             <main>
                 <LandingHero @go-login="router.push('/login')" />
                 <LandingStats />
+                <LandingCapabilityStory />
                 <LandingFeatures />
                 <LandingAIButler />
                 <LandingHowTo />
@@ -29,6 +30,7 @@ import LandingScene from "@/components/landing/LandingScene.vue";
 import LandingNav from "@/components/landing/LandingNav.vue";
 import LandingHero from "@/components/landing/LandingHero.vue";
 import LandingStats from "@/components/landing/LandingStats.vue";
+import LandingCapabilityStory from "@/components/landing/LandingCapabilityStory.vue";
 import LandingFeatures from "@/components/landing/LandingFeatures.vue";
 import LandingAIButler from "@/components/landing/LandingAIButler.vue";
 import LandingHowTo from "@/components/landing/LandingHowTo.vue";
@@ -48,7 +50,7 @@ const router = useRouter();
     font-family:
         "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     line-height: 1.6;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .page-content {
@@ -59,6 +61,19 @@ const router = useRouter();
 
 <!-- 全局 reduced-motion（非 scoped，影响子组件动画） -->
 <style lang="scss">
+/* Hero 以外的所有书法字体统一替换为鸿雷行书简体 */
+.landing-page :is(
+    .section-title,
+    .intro-heading,
+    .step-heading,
+    .tl-pivot,
+    .card-seal,
+    .card-title,
+    .fg-icon
+) {
+    font-family: "HongLeiXingShuSub", "STKaiti", "KaiTi", serif !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .landing-page *,
     .landing-page *::before,

@@ -3,10 +3,7 @@
         <!-- 左侧：会话列表 -->
         <div class="col-card session-list-card">
             <div class="session-head">
-                <span
-                    >接待中
-                    <span class="count">{{ sessions.length }} / 5</span></span
-                >
+                <span>接待中</span>
                 <button class="tool-btn" @click="emit('switch-to-queue')">
                     从队列接入
                 </button>
@@ -394,9 +391,9 @@ import {
     type HistorySession,
 } from "@/network/customer";
 import { useQuickReplies } from "@/composables/useQuickReplies";
-import { customerWS } from "@/network/customer.ws";
+import { useProductCsWorkbenchSocket, type WorkbenchEvent } from "@/composables/useProductCsWorkbenchSocket";
+import { useUserStore } from "@/store/user";
 import { ElMessage } from "element-plus";
-import { bridgeAgentSend, bridgeEndSession } from "@/network/chatBridge";
 
 interface Session extends CustomerSession {
     // 扩展类型以兼容现有代码
@@ -404,11 +401,18 @@ interface Session extends CustomerSession {
 
 const props = defineProps<{ agentName?: string; agentId?: string }>();
 
+/** 当前登录用户 store（用于获取客服的 userId 来订阅 STOMP 工作台频道） */
+const userStore = useUserStore();
+/** 工作台 STOMP 封装（接收用户发来的消息） */
+const workbenchSocket = useProductCsWorkbenchSocket();
+
 const emit = defineEmits<{
     "switch-to-queue": [];
     "count-update": [count: number];
     "session-ended": [record: HistorySession];
     "msg-count-update": [delta: number];
+    /** 排队中的会话有新消息，父组件需刷新排队列表 */
+    "queue-new-message": [];
 }>();
 
 const sessions = ref<Session[]>([]);
@@ -592,9 +596,6 @@ function endSession(session: Session, reason: "manual" | "timeout") {
     const record = buildHistoryRecord(session, reason);
     emit("session-ended", record);
     waitingForCustomerSince.delete(session.id);
-    if (session.id.startsWith("bridge_")) {
-        bridgeEndSession(session.id);
-    }
     sessions.value = sessions.value.filter((s) => s.id !== session.id);
     if (currentSessionId.value === session.id) {
         currentSessionId.value = sessions.value[0]?.id || "";
@@ -686,17 +687,7 @@ async function sendMessage() {
             markWaitingForCustomer(currentSession.value.id);
             emit("msg-count-update", 1);
             inputText.value = "";
-
-            // 桥会话直接同步到 bridge，不走 WS 模拟回复
-            if (currentSession.value.id.startsWith("bridge_")) {
-                bridgeAgentSend(currentSession.value.id, text);
-            } else {
-                customerWS.send({
-                    type: "send_message",
-                    sessionId: currentSession.value.id,
-                    message: { text, time },
-                });
-            }
+            // 消息通过 REST API 发送，服务端会通过 STOMP 实时推送给用户
         } else {
             ElMessage.error("发送失败");
         }
@@ -706,32 +697,38 @@ async function sendMessage() {
     }
 }
 
-// WebSocket消息处理
-function handleWSMessage(data: any) {
-    console.log("[ChatPanel] 收到WS消息:", data);
+/** 处理工作台 STOMP 推送（接收用户发来的消息） */
+function handleWorkbenchEvent(event: WorkbenchEvent) {
+    if (event.event !== "new_message" || event.senderType !== "user") return;
 
-    switch (data.type) {
-        case "new_message":
-            // 收到新消息
-            const session = sessions.value.find((s) => s.id === data.sessionId);
-            if (session) {
-                session.messages.push(data.message);
-                session.lastMsg = data.message.text;
-                if (data.message.from === "customer") {
-                    markCustomerReplied(data.sessionId);
-                }
-                emit("msg-count-update", 1);
-                if (currentSessionId.value !== data.sessionId) {
-                    session.unread++;
-                }
-            }
-            break;
+    const sessionId = String(event.sessionId);
+    const session = sessions.value.find((s) => s.id === sessionId);
+    if (!session) return;
 
-        case "session_assigned":
-            // 分配新会话
-            ElMessage.info(`新会话分配: ${data.session.custName}`);
-            loadSessions();
-            break;
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    session.messages.push({
+        from: "customer",
+        text: event.content || "",
+        time,
+    });
+    session.lastMsg = event.content || "";
+    markCustomerReplied(sessionId);
+    emit("msg-count-update", 1);
+    if (currentSessionId.value !== sessionId) {
+        session.unread++;
+    }
+    setTimeout(() => {
+        if (chatBodyRef.value)
+            chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
+    }, 50);
+}
+
+/** 处理排队频道推送：等待中会话有新消息，通知父组件刷新排队列表 */
+function handleQueueEvent(event: WorkbenchEvent) {
+    // 排队中的用户发了新消息，通知父组件刷新排队列表以更新展示
+    if (event.event === "new_message" && event.senderType === "user") {
+        emit("queue-new-message");
     }
 }
 
@@ -754,13 +751,17 @@ const closePopups = () => {
 
 onMounted(async () => {
     await loadSessions();
-    await customerWS.connect();
-    customerWS.onMessage(handleWSMessage);
+    // 连接工作台 STOMP，工作台频道处理 CHATTING 会话消息，排队频道通知父组件刷新排队列表
+    const userId = userStore.G_LoginInfo.id;
+    if (userId && !isNaN(userId)) {
+        workbenchSocket.connect(userId, handleWorkbenchEvent, handleQueueEvent);
+    }
     customerTimeoutInterval = setInterval(checkCustomerTimeouts, 30 * 1000);
     document.addEventListener("click", closePopups);
 });
 
 onUnmounted(() => {
+    workbenchSocket.disconnect();
     clearInterval(customerTimeoutInterval);
     document.removeEventListener("click", closePopups);
 });
@@ -970,10 +971,6 @@ defineExpose({ loadSessions, selectSession, injectSession });
     align-items: center;
     font-size: 17px;
 
-    .count {
-        color: var(--cinnabar);
-        font-weight: 600;
-    }
 }
 
 .tool-btn {

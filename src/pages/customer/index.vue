@@ -11,30 +11,71 @@
             </div>
 
             <nav class="nav">
-                <button
-                    v-for="item in navItems"
-                    :key="item.panel"
-                    class="nav-item"
-                    :class="{ active: currentPanel === item.panel }"
-                    @click="switchPanel(item.panel)"
-                >
-                    <span>{{ item.label }}</span>
-                    <span
-                        v-if="item.panel === 'chat' && chatCount > 0"
-                        class="nav-badge"
+                <template v-for="item in navItems" :key="item.panel">
+                    <div v-if="item.section" class="nav-section">
+                        {{ item.section }}
+                    </div>
+                    <button
+                        class="nav-item"
+                        :class="{ active: currentPanel === item.panel }"
+                        @click="switchPanel(item.panel)"
                     >
-                        {{ chatCount }}
-                    </span>
-                    <span
-                        v-if="item.panel === 'queue' && queueCount > 0"
-                        class="nav-badge gold"
-                    >
-                        {{ queueCount }}
-                    </span>
-                </button>
+                        <svg
+                            class="nav-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                        >
+                            <template v-if="item.panel === 'dashboard'">
+                                <rect x="3" y="3" width="7" height="9" rx="1.5" />
+                                <rect x="14" y="3" width="7" height="5" rx="1.5" />
+                                <rect x="14" y="12" width="7" height="9" rx="1.5" />
+                                <rect x="3" y="16" width="7" height="5" rx="1.5" />
+                            </template>
+                            <template v-else-if="item.panel === 'chat'">
+                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                            </template>
+                            <template v-else-if="item.panel === 'queue'">
+                                <path d="M8 6h13" />
+                                <path d="M8 12h13" />
+                                <path d="M8 18h13" />
+                                <circle cx="3.5" cy="6" r="1.5" />
+                                <circle cx="3.5" cy="12" r="1.5" />
+                                <circle cx="3.5" cy="18" r="1.5" />
+                            </template>
+                            <template v-else-if="item.panel === 'history'">
+                                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                                <path d="M3 4v6h6" />
+                                <path d="M12 7v5l3 2" />
+                            </template>
+                            <template v-else-if="item.panel === 'tools'">
+                                <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />
+                                <path d="M7 7h.01" />
+                            </template>
+                            <template v-else>
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V22a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 18l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7.1 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z" />
+                            </template>
+                        </svg>
+                        <span>{{ item.label }}</span>
+                        <span
+                            v-if="item.panel === 'chat' && chatCount > 0"
+                            class="nav-badge"
+                        >
+                            {{ chatCount }}
+                        </span>
+                        <span
+                            v-if="item.panel === 'queue' && queueCount > 0"
+                            class="nav-badge gold"
+                        >
+                            {{ queueCount }}
+                        </span>
+                    </button>
+                </template>
             </nav>
 
-            <div class="sidebar-account-wrap">
+            <div class="sidebar-account-wrap" ref="accountMenuRef">
                 <Transition name="account-menu">
                     <div v-if="showAccountMenu" class="account-menu">
                         <div class="account-profile">
@@ -154,6 +195,7 @@
                         @switch-to-queue="currentPanel = 'queue'"
                         @session-ended="handleSessionEnded"
                         @msg-count-update="dashboardPanelRef?.addMessages($event)"
+                        @queue-new-message="handleQueueNewMessage"
                     />
                 </div>
 
@@ -163,6 +205,7 @@
                     class="panel panel-scroll"
                 >
                     <QueuePanel
+                        ref="queuePanelRef"
                         @switch-to-chat="handleSwitchToChat"
                         @count-update="queueCount = $event"
                     />
@@ -220,15 +263,17 @@ const router = useRouter();
 const chatPanelRef = ref<InstanceType<typeof ChatPanel>>();
 const historyPanelRef = ref<InstanceType<typeof HistoryPanel>>();
 const dashboardPanelRef = ref<InstanceType<typeof DashboardPanel>>();
+const queuePanelRef = ref<InstanceType<typeof QueuePanel>>();
 const userStore = useUserStore();
+const accountMenuRef = ref<HTMLElement | null>(null);
 
 // 导航配置
 const navItems = [
-    { panel: "dashboard", label: "工作台" },
+    { panel: "dashboard", label: "工作台", section: "接待" },
     { panel: "chat", label: "接待中" },
     { panel: "queue", label: "排队队列" },
     { panel: "history", label: "历史会话" },
-    { panel: "tools", label: "商品订单速查" },
+    { panel: "tools", label: "商品订单速查", section: "工具" },
     { panel: "settings", label: "个人设置" },
 ];
 
@@ -237,7 +282,8 @@ const chatCount = ref(0);
 const queueCount = ref(0);
 
 // 客服状态管理
-const agentStatus = ref<"online" | "break" | "off">("online");
+type AgentStatus = "online" | "break" | "off";
+const agentStatus = ref<AgentStatus>("online");
 const showAccountMenu = ref(false);
 const showLogoutConfirm = ref(false);
 const logoutLoading = ref(false);
@@ -263,6 +309,11 @@ function handleSwitchToChat(session: CustomerSession) {
     chatPanelRef.value?.injectSession(session);
 }
 
+// 排队中的会话有新消息（STOMP 实时推送），立即刷新排队列表
+function handleQueueNewMessage() {
+    queuePanelRef.value?.loadQueue();
+}
+
 // 会话结束 → 同步历史 + 今日接待数 +1
 function handleSessionEnded(record: HistorySession) {
     historyPanelRef.value?.addRecord(record);
@@ -274,20 +325,42 @@ function toggleAccountMenu() {
     showAccountMenu.value = !showAccountMenu.value;
 }
 
-async function setStatus(status: string, label: string) {
+function onDocClick(e: MouseEvent) {
+    if (
+        accountMenuRef.value &&
+        !accountMenuRef.value.contains(e.target as Node)
+    ) {
+        showAccountMenu.value = false;
+    }
+}
+
+function onKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+        showAccountMenu.value = false;
+        showLogoutConfirm.value = false;
+    }
+}
+
+async function syncAgentStatus(status: AgentStatus, options?: { silent?: boolean; label?: string }) {
     try {
-        const success = await ApiCustomer.updateStatus(status as any);
+        const success = await ApiCustomer.updateStatus(status);
         if (success) {
-            agentStatus.value = status as any;
+            agentStatus.value = status;
             showAccountMenu.value = false;
-            ElMessage.success(`状态已切换：${label}`);
+            if (!options?.silent) {
+                ElMessage.success(`状态已切换：${options?.label ?? status}`);
+            }
         } else {
-            ElMessage.error("状态切换失败");
+            if (!options?.silent) ElMessage.error("状态切换失败");
         }
     } catch (error) {
         console.error("切换状态失败:", error);
-        ElMessage.error("状态切换失败");
+        if (!options?.silent) ElMessage.error("状态切换失败");
     }
+}
+
+async function setStatus(status: string, label: string) {
+    await syncAgentStatus(status as AgentStatus, { label });
 }
 
 // 退出登录
@@ -299,10 +372,11 @@ function handleLogout() {
 async function confirmLogout() {
     logoutLoading.value = true;
     try {
+        await syncAgentStatus("off", { silent: true });
         await userStore.logout();
         showLogoutConfirm.value = false;
         ElMessage.success("已退出登录");
-        router.push("/customer/login");
+        await router.replace({ path: "/login" });
     } finally {
         logoutLoading.value = false;
     }
@@ -310,20 +384,23 @@ async function confirmLogout() {
 
 // 点击外部关闭状态菜单
 onMounted(async () => {
-    document.addEventListener("click", () => {
-        showAccountMenu.value = false;
-    });
+    document.addEventListener("click", onDocClick);
+    window.addEventListener("keydown", onKeydown);
 
     // 连接WebSocket
     try {
         await customerWS.connect();
         console.log("[CustomerPage] WebSocket已连接");
+        await syncAgentStatus("online", { silent: true });
     } catch (error) {
         console.error("[CustomerPage] WebSocket连接失败:", error);
     }
 });
 
 onUnmounted(() => {
+    document.removeEventListener("click", onDocClick);
+    window.removeEventListener("keydown", onKeydown);
+    void syncAgentStatus("off", { silent: true });
     // 页面卸载时断开WebSocket
     customerWS.disconnect();
     console.log("[CustomerPage] WebSocket已断开");
@@ -762,6 +839,340 @@ onUnmounted(() => {
     .logout-dialog {
         transform: translateY(12px) scale(0.97);
         opacity: 0;
+    }
+}
+
+/* Admin-aligned customer shell */
+.customer-workspace {
+    background: var(--cream, #faf6ee);
+}
+
+.sidebar {
+    width: 240px;
+    background: linear-gradient(180deg, #eaf1e4 0%, #d5e3d0 100%);
+    border-right: 1px solid rgba(92, 131, 116, 0.18);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    height: 64px;
+    gap: 12px;
+    padding: 0 20px;
+}
+
+.logo-seal {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    font-size: 20px;
+    box-shadow: 0 3px 10px rgba(179, 60, 44, 0.28);
+}
+
+.sidebar-title {
+    font-size: 18px;
+}
+
+.sidebar-sub {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.nav {
+    padding: 12px 10px;
+}
+
+.nav-section {
+    padding: 12px 10px 6px;
+    color: var(--ink-muted, #6b7c7a);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.nav-item {
+    min-height: 40px;
+    margin-bottom: 2px;
+    padding: 10px 12px;
+    border-left: none;
+    border-radius: 9px;
+    font-size: 14px;
+    gap: 10px;
+    color: var(--ink-light, #4a565a);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.5);
+        color: #456660;
+    }
+
+    &.active {
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--cinnabar, #b33c2c);
+        border-left-color: transparent;
+        box-shadow: 0 2px 12px rgba(60, 50, 30, 0.06);
+    }
+}
+
+.nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.nav-badge {
+    font-size: 11px;
+    line-height: 18px;
+    padding: 1px 7px;
+}
+
+.sidebar-account-wrap {
+    padding: 10px 12px;
+}
+
+.sidebar-account {
+    border-radius: 12px;
+    padding: 8px;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.46);
+
+    &:hover,
+    &.open {
+        background: rgba(255, 255, 255, 0.82);
+    }
+}
+
+.agent-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--jade, #5c8374), #456660);
+    font-size: 15px;
+    box-shadow: 0 4px 12px rgba(69, 102, 96, 0.2);
+}
+
+.account-name {
+    font-size: 13px;
+    line-height: 1.25;
+}
+
+.account-role {
+    font-size: 11px;
+}
+
+.account-menu {
+    bottom: calc(100% + 8px);
+    border-radius: 14px;
+    border-color: rgba(232, 223, 208, 0.86);
+    box-shadow:
+        0 18px 38px rgba(60, 50, 30, 0.16),
+        0 2px 8px rgba(60, 50, 30, 0.08);
+    padding: 8px;
+}
+
+.account-profile {
+    padding: 9px 9px 11px;
+    border-bottom: 1px solid rgba(232, 223, 208, 0.7);
+    margin-bottom: 5px;
+}
+
+.account-sep {
+    display: none;
+}
+
+.account-menu-item {
+    height: 38px;
+    border-radius: 9px;
+    padding: 0 10px;
+    font-size: 13px;
+}
+
+.main {
+    background: var(--cream, #faf6ee);
+}
+
+.content {
+    background:
+        linear-gradient(180deg, rgba(255, 254, 249, 0.58), rgba(250, 246, 238, 0)),
+        var(--cream, #faf6ee);
+}
+
+.panel-scroll {
+    padding: 22px 24px;
+}
+
+.logout-dialog {
+    border-radius: 18px;
+}
+
+:deep(.section-title) {
+    margin-bottom: 16px;
+    font-size: 20px;
+    color: var(--ink, #2c3639);
+}
+
+:deep(.panel-card),
+:deep(.col-card) {
+    border-radius: 14px;
+    border: 1px solid rgba(232, 223, 208, 0.72);
+    box-shadow: 0 8px 24px rgba(60, 50, 30, 0.08);
+    background: var(--paper, #fffef9);
+}
+
+:deep(.panel-card-head),
+:deep(.session-head),
+:deep(.chat-head) {
+    min-height: 58px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #fffef9 0%, #fbf8ef 100%);
+}
+
+:deep(.panel-card-head h3) {
+    font-size: 16px;
+}
+
+:deep(.stats-grid) {
+    gap: 12px;
+}
+
+:deep(.stat-card) {
+    border-radius: 14px;
+    padding: 18px 16px;
+}
+
+:deep(.stat-label),
+:deep(.stat-foot),
+:deep(.head-note),
+:deep(.refresh-hint) {
+    font-size: 13px;
+}
+
+:deep(.stat-value) {
+    font-size: 28px;
+}
+
+:deep(.queue-table),
+:deep(.history-table),
+:deep(.order-table) {
+    font-size: 14px;
+}
+
+:deep(.queue-table th),
+:deep(.history-table th),
+:deep(.order-table th) {
+    padding: 11px 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+:deep(.queue-table td),
+:deep(.history-table td),
+:deep(.order-table td) {
+    padding: 12px 14px;
+}
+
+:deep(.chat-layout) {
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px;
+}
+
+:deep(.session-name),
+:deep(.session-time),
+:deep(.session-msg),
+:deep(.chat-banner),
+:deep(.msg-meta),
+:deep(.bubble),
+:deep(.send-row),
+:deep(.chat-input),
+:deep(.tool-btn),
+:deep(.btn) {
+    font-size: 14px;
+}
+
+:deep(.session-item) {
+    padding: 11px 13px;
+}
+
+:deep(.chat-banner) {
+    padding: 8px 16px;
+}
+
+:deep(.chat-body) {
+    padding: 16px;
+    gap: 12px;
+}
+
+:deep(.chat-input-area) {
+    padding: 10px 12px;
+}
+
+:deep(.chat-input) {
+    height: 68px;
+}
+
+:deep(.bubble) {
+    border-radius: 11px;
+    line-height: 1.55;
+}
+
+:deep(.msg-avatar),
+:deep(.session-avatar) {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+}
+
+:deep(.send-btn) {
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+:deep(.product-card),
+:deep(.card-msg) {
+    border-radius: 12px;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 210px;
+    }
+
+    :deep(.chat-layout) {
+        grid-template-columns: 280px minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .customer-workspace {
+        display: block;
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+    }
+
+    .nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nav-section {
+        grid-column: 1 / -1;
+    }
+
+    .main {
+        min-height: 720px;
+    }
+
+    :deep(.chat-layout) {
+        grid-template-columns: 1fr;
     }
 }
 </style>

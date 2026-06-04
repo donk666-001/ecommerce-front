@@ -1100,6 +1100,7 @@ onMounted(async () => {
                 expert.isOnline = online;
             }
         });
+        await restoreLatestConsultSession();
     }
 
     loadQuickReplies();
@@ -1139,6 +1140,73 @@ const aiSummary = ref<AiSummaryVO | null>(null);
 function scrollChatToBottom() {
     if (chatBodyEl.value) {
         chatBodyEl.value.scrollTop = chatBodyEl.value.scrollHeight;
+    }
+}
+
+function parseAiSummary(content: string | null | undefined): AiSummaryVO | null {
+    if (!content) return null;
+    try {
+        return JSON.parse(content) as AiSummaryVO;
+    } catch {
+        return null;
+    }
+}
+
+function appendConsultHistoryMessage(msg: MessageVO) {
+    if (msg.contentType === "ai_summary") {
+        aiSummary.value = parseAiSummary(msg.content) ?? aiSummary.value;
+        showAiSummary.value = true;
+        if (!consultMessages.value.some(item => item.kind === "ai_summary")) {
+            consultMessages.value.push({ kind: "ai_summary", text: "" });
+        }
+        return;
+    }
+
+    if (!msg.content) return;
+
+    if (msg.senderType === "ai" && msg.contentType === "text") {
+        consultMessages.value.push({
+            kind: "ai",
+            text: stripMarkdownForDisplay(msg.content),
+            tag: "AI · 预问诊",
+        });
+    } else if (msg.senderType === "user") {
+        consultMessages.value.push({ kind: "me", text: msg.content });
+    } else if (msg.senderType === "expert") {
+        consultMessages.value.push({ kind: "expert", text: msg.content });
+    } else if (msg.senderType === "system") {
+        consultMessages.value.push({ kind: "sys", text: msg.content });
+    }
+}
+
+function hydrateConsultHistory(messages: MessageVO[] = [], summary?: AiSummaryVO | null) {
+    for (const msg of messages) {
+        appendConsultHistoryMessage(msg);
+    }
+    if (summary) {
+        aiSummary.value = summary;
+        showAiSummary.value = true;
+        if (!consultMessages.value.some(item => item.kind === "ai_summary")) {
+            consultMessages.value.push({ kind: "ai_summary", text: "" });
+        }
+    }
+}
+
+function applyConsultSession(doc: ExpertCardDTO, session: any, scrollIntoView = true) {
+    selectedExpert.value = doc;
+    consultMessages.value = [];
+    showAiSummary.value = false;
+    aiSummary.value = null;
+    sessionId.value = session.sessionId;
+    hydrateConsultHistory(session.messages ?? [], session.aiSummary ?? null);
+
+    const { connect } = useConsultSocket();
+    connect(session.sessionId, onStompMessage);
+
+    if (scrollIntoView) {
+        nextTick(() => {
+            chatShellRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
     }
 }
 
@@ -1210,8 +1278,10 @@ function onStompMessage(frame: any) {
         // 专家首次回复，状态切换到 HUMAN_CHATTING，给用户提示
         consultMessages.value.push({ kind: "sys", text: "✓ 医生已接入，开始为您诊疗", success: true });
     } else if (event === "consult.expert_message") {
-        // ✅ 专家发出的消息实时推送到用户端（此前缺失导致用户看不到专家回复）
-        consultMessages.value.push({ kind: "expert", text: data.message.content });
+        const message = data?.message ?? frame.message;
+        if (message?.content) {
+            consultMessages.value.push({ kind: "expert", text: message.content });
+        }
     } else if (event === "consult.closed") {
         consultMessages.value.push({ kind: "sys", text: "— 会话已关闭 —", success: true });
     }
@@ -1229,38 +1299,56 @@ async function startConsult(doc: ExpertCardDTO) {
         const res = await ApiConsult.createSession(doc.id);
         const session = res.data?.data;
         if (session) {
-            sessionId.value = session.sessionId;
-            for (const msg of session.messages ?? []) {
-                if (msg.senderType === "ai" && msg.contentType === "text") {
-                    consultMessages.value.push({
-                        kind: "ai",
-                        text: stripMarkdownForDisplay(msg.content),
-                        tag: "AI · 预问诊",
-                    });
-                } else if (msg.senderType === "user") {
-                    consultMessages.value.push({ kind: "me", text: msg.content });
-                } else if (msg.senderType === "system") {
-                    consultMessages.value.push({ kind: "sys", text: msg.content });
-                }
-            }
-            if (session.aiSummary) {
-                aiSummary.value = session.aiSummary;
-                showAiSummary.value = true;
-                // 会话已转人工时，将小结帧插入消息流末尾，保证后续消息出现在小结下方
-                consultMessages.value.push({ kind: "ai_summary", text: "" });
-            }
-            const { connect } = useConsultSocket();
-            connect(session.sessionId, onStompMessage);
+            applyConsultSession(doc, session);
         }
     } catch (err) {
         console.error("创建会话失败", err);
         const tip = consultRequestTip(err);
         toast(tip.title, tip.detail, "error");
     }
+}
 
-    nextTick(() => {
-        chatShellRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+function resolveSessionExpert(item: any): ExpertCardDTO | null {
+    const expertId = Number(item?.expert?.id);
+    if (!Number.isFinite(expertId)) return null;
+
+    const existing = expertList.value.find(expert => expert.id === expertId);
+    if (existing) return existing;
+
+    const name = item?.expert?.name || "名医专家";
+    return {
+        id: expertId,
+        realName: name,
+        name,
+        avatar: item?.expert?.avatar ?? null,
+        roleType: item?.expert?.roleType ?? item?.expert?.roleLabel ?? "DOCTOR",
+        bio: null,
+        isOnline: false,
+    };
+}
+
+async function restoreLatestConsultSession() {
+    if (!isLoggedIn.value || isExpertView.value || selectedExpert.value || sessionId.value) {
+        return;
+    }
+
+    try {
+        const res = await ApiConsult.listSessions({ page: 1, pageSize: 20 });
+        const sessions = res.data?.data ?? [];
+        const latestActive = sessions.find((item: any) => item.status !== "CLOSED");
+        if (!latestActive) return;
+
+        const expert = resolveSessionExpert(latestActive);
+        if (!expert) return;
+
+        const sessionRes = await ApiConsult.createSession(expert.id);
+        const session = sessionRes.data?.data;
+        if (session) {
+            applyConsultSession(expert, session, false);
+        }
+    } catch (err) {
+        console.error("恢复咨询会话失败", err);
+    }
 }
 
 function consultRequestTip(error: any) {

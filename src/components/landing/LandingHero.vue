@@ -3,7 +3,6 @@
     <section class="hero">
         <!-- 左侧文案 -->
         <div class="hero-left">
-            <div class="hero-badge">🌿 传承东方养生智慧 · 顺时而为</div>
             <h1 class="hero-title">
                 <span class="light">让每一天</span>
                 <span ref="typeEl"></span>
@@ -14,10 +13,12 @@
                 让养生回归最本真的节律。
             </p>
             <div class="hero-btns">
-                <button class="hero-btn-p" @click="$emit('go-login')">
-                    🌿 开启养生之旅
+                <button class="hero-btn-p" type="button" @click="$emit('go-login')">
+                    开启养生之旅
                 </button>
-                <button class="hero-btn-o">了解更多</button>
+                <button class="hero-btn-o" type="button" @click="scrollToStory">
+                    了解核心能力
+                </button>
             </div>
         </div>
 
@@ -31,12 +32,21 @@
                 :style="{ '--card-delay': card.delay }"
             >
                 <div class="fg-icon-wrap">
-                    <span class="fg-icon">{{ card.icon }}</span>
+                    <span class="fg-icon">{{ card.seal }}</span>
                 </div>
                 <div>
                     <div class="fg-name">{{ card.name }}</div>
                     <div class="fg-desc">{{ card.desc }}</div>
                 </div>
+            </div>
+        </div>
+
+        <div class="hero-wordmark-marquee" aria-hidden="true">
+            <div class="hero-wordmark-track">
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
+                <span>YIYANGGE</span>
             </div>
         </div>
 
@@ -57,42 +67,56 @@ const typeEl = ref<HTMLElement | null>(null);
 
 const cards = [
     {
-        icon: "🌿",
+        seal: "节",
         name: "节气养生",
-        desc: "随二十四节气变化，调整饮食起居，顺时而为",
+        desc: "按节气、地域与体质生成每日饮食起居建议",
         delay: "1.1s",
     },
     {
-        icon: "🌙",
+        seal: "眠",
         name: "睡眠作息",
-        desc: "追踪记录，优化你的自然睡眠节律",
+        desc: "拆解深睡、夜醒与晚间习惯，找到调理线索",
         delay: "1.2s",
     },
     {
-        icon: "🍵",
+        seal: "方",
         name: "中医智慧",
-        desc: "体质辨识，古法今用，调和阴阳平衡",
+        desc: "体质辨识与古方课程，帮助传统知识进入日常",
         delay: "1.3s",
     },
     {
-        icon: "🤖",
+        seal: "AI",
         name: "AI 管家",
-        desc: "专属健康顾问，智能分析每日状态",
+        desc: "结合最近记录持续追问，给出可调整的方案",
         delay: "1.4s",
     },
     {
-        icon: "👩‍⚕️",
+        seal: "诊",
         name: "名医健康圈 · 在线问诊",
-        desc: "50+ 三甲医院认证专家，随时在线，专业守护",
+        desc: "50+ 三甲医院认证专家，承接 AI 识别到的专业边界",
         wide: true,
         delay: "1.5s",
     },
 ];
 
+function scrollToStory() {
+    const target = document.querySelector<HTMLElement>("#capability-story-section");
+    if (!target) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start",
+    });
+}
+
 onMounted(() => {
     const el = typeEl.value;
     if (!el) return;
     const text = "与自然同频";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        el.textContent = text;
+        return;
+    }
     let i = 0;
     function type() {
         if (i <= text.length) {
@@ -126,7 +150,7 @@ onMounted(() => {
     align-items: center;
     max-width: 1240px;
     margin: 0 auto;
-    padding: 140px 48px 110px;
+    padding: 100px 48px 110px;
     z-index: 1;
 
     &::after {
@@ -145,47 +169,40 @@ onMounted(() => {
     }
 }
 
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
-    padding: 7px 18px;
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 1.5px;
-    margin-bottom: 32px;
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    animation: heroFadeUp 0.8s 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
 
 .hero-title {
-    font-size: clamp(3rem, 5.5vw, 5.4rem);
-    font-weight: 600;
+    font-size: clamp(3rem, 5.2vw, 5.2rem);
+    font-weight: 400;
     color: white;
-    line-height: 1.2;
-    margin-bottom: 24px;
-    font-family: "STKaiti", "KaiTi", "STSong", serif;
-    text-shadow: 0 4px 40px rgba(0, 0, 0, 0.45);
+    line-height: 1.15;
+    margin-bottom: 28px;
+    font-family: "HongLeiXingShu", "STKaiti", "KaiTi", cursive;
+    text-shadow:
+        0 4px 40px rgba(0, 0, 0, 0.5),
+        0 2px 12px rgba(0, 0, 0, 0.3);
     text-wrap: balance;
     opacity: 0;
-    animation: heroFadeUp 0.9s 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: heroFadeUp 0.9s 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 
     .light {
-        font-weight: 300;
-        font-size: clamp(2rem, 3.6vw, 3.6rem);
+        font-weight: 400;
+        font-size: clamp(2.2rem, 4vw, 4rem);
         display: block;
-        opacity: 0.78;
-        margin-bottom: 6px;
+        opacity: 0.72;
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+    }
+
+    /* 主打字行不换行 */
+    > span:not(.light) {
+        display: block;
+        white-space: nowrap;
     }
 }
 
 .hero-sub {
     font-size: 17px;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(239, 245, 232, 0.76);
     line-height: 1.9;
     max-width: 420px;
     margin-bottom: 40px;
@@ -203,35 +220,62 @@ onMounted(() => {
 }
 
 .hero-btn-p {
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--ld-moss);
+    background: rgba(238, 246, 226, 0.96);
+    color: rgba(22, 47, 28, 0.95);
     border-radius: 999px;
     padding: 16px 34px;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    transition: all 0.25s;
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.22);
+    transition:
+        transform 0.25s var(--ld-ease-out),
+        background 0.25s var(--ld-ease-out),
+        box-shadow 0.25s var(--ld-ease-out);
     border: none;
 
     &:hover {
-        transform: scale(1.04) translateY(-2px);
+        transform: translateY(-2px);
+        background: rgba(250, 253, 243, 0.98);
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.98);
+    }
+
+    &:focus-visible {
+        outline: 2px solid rgba(221, 239, 202, 0.75);
+        outline-offset: 3px;
     }
 }
 
 .hero-btn-o {
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.07);
-    color: white;
+    border: 1px solid rgba(232, 241, 211, 0.24);
+    background: rgba(232, 241, 211, 0.07);
+    color: rgba(245, 250, 239, 0.88);
     border-radius: 999px;
     padding: 16px 30px;
     font-size: 16px;
     cursor: pointer;
-    backdrop-filter: blur(8px);
-    transition: all 0.25s;
+    backdrop-filter: blur(6px);
+    transition:
+        transform 0.25s var(--ld-ease-out),
+        background 0.25s var(--ld-ease-out),
+        border-color 0.25s var(--ld-ease-out);
 
     &:hover {
-        background: rgba(255, 255, 255, 0.16);
+        transform: translateY(-2px);
+        background: rgba(232, 241, 211, 0.12);
+        border-color: rgba(232, 241, 211, 0.38);
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.98);
+    }
+
+    &:focus-visible {
+        outline: 2px solid rgba(221, 239, 202, 0.68);
+        outline-offset: 3px;
     }
 }
 
@@ -243,31 +287,34 @@ onMounted(() => {
 
 .fg-card {
     position: relative;
-    border-radius: 22px;
+    border-radius: 16px;
     padding: 26px 20px 22px;
     overflow: hidden;
     cursor: default;
     transition:
-        transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1),
-        box-shadow 0.3s,
-        background 0.3s;
-    background: rgba(255, 255, 255, 0.11);
-    backdrop-filter: blur(18px) saturate(1.45);
-    -webkit-backdrop-filter: blur(18px) saturate(1.45);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+        transform 0.3s var(--ld-ease-out),
+        border-color 0.3s var(--ld-ease-out),
+        background 0.3s var(--ld-ease-out),
+        box-shadow 0.3s var(--ld-ease-out);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(1.6) brightness(1.08);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow:
-        0 6px 24px rgba(0, 0, 0, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+        0 8px 32px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.04);
     opacity: 0;
     animation: heroFadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     animation-delay: var(--card-delay, 1.1s);
 
     &:hover {
-        transform: translateY(-7px) scale(1.028);
+        transform: translateY(-5px);
+        border-color: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.13);
         box-shadow:
-            0 18px 44px rgba(0, 0, 0, 0.26),
-            inset 0 1px 0 rgba(255, 255, 255, 0.42);
-        background: rgba(255, 255, 255, 0.16);
+            0 12px 40px rgba(0, 0, 0, 0.28),
+            inset 0 1px 0 rgba(255, 255, 255, 0.28);
     }
 
     &.wide {
@@ -290,7 +337,7 @@ onMounted(() => {
         content: "";
         width: 1px;
         height: 24px;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(221, 239, 202, 0.18);
         flex-shrink: 0;
     }
 
@@ -304,19 +351,28 @@ onMounted(() => {
 }
 
 .fg-icon {
-    font-size: 28px;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    background: rgba(201, 220, 180, 0.13);
+    border: 1px solid rgba(201, 220, 180, 0.14);
+    color: rgba(239, 247, 229, 0.94);
+    font-family: "STKaiti", "KaiTi", "STSong", serif;
+    font-size: 17px;
+    font-weight: 700;
     line-height: 1;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
 }
 .fg-name {
     font-size: 14px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.96);
+    color: rgba(246, 250, 239, 0.94);
     margin-bottom: 5px;
 }
 .fg-desc {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(233, 241, 224, 0.62);
     line-height: 1.6;
 }
 
@@ -335,9 +391,8 @@ onMounted(() => {
 
 .scroll-hint-text {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.45);
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    color: rgba(233, 241, 224, 0.45);
+    letter-spacing: 0;
 }
 
 .scroll-line {
@@ -351,6 +406,119 @@ onMounted(() => {
     animation: scrollLine 2s ease-in-out infinite;
 }
 
+.hero-wordmark-marquee {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    bottom: 18px;
+    width: 100vw;
+    height: clamp(92px, 11vw, 150px);
+    transform: translateX(-50%);
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.22;
+    mask-image: linear-gradient(
+        90deg,
+        transparent,
+        black 16%,
+        black 84%,
+        transparent
+    );
+}
+
+.hero-wordmark-track {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    gap: clamp(36px, 7vw, 92px);
+    animation: wordmarkDrift 28s linear infinite;
+
+    span {
+        color: rgba(255, 255, 255, 0.9);
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.9);
+        font-family:
+            Georgia, "Times New Roman", "PingFang SC", "Microsoft YaHei",
+            serif;
+        font-size: clamp(5rem, 13vw, 11rem);
+        font-weight: 700;
+        line-height: 0.9;
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+}
+
+@keyframes wordmarkDrift {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(calc(-50% - clamp(18px, 3.5vw, 46px)), 0, 0);
+    }
+}
+
+@media (max-width: 980px) {
+    .hero {
+        grid-template-columns: 1fr;
+        gap: 38px;
+        padding: 126px 32px 92px;
+    }
+
+    .hero-right {
+        max-width: 620px;
+    }
+}
+
+@media (max-width: 620px) {
+    .hero {
+        min-height: auto;
+        padding: 110px 20px 82px;
+    }
+
+    .hero-title {
+        font-size: clamp(3.2rem, 16vw, 5rem);
+
+        .light {
+            font-size: clamp(2rem, 9vw, 3rem);
+        }
+    }
+
+    .hero-sub {
+        font-size: 15px;
+        max-width: 100%;
+    }
+
+    .hero-btns {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-btn-p,
+    .hero-btn-o {
+        width: 100%;
+        padding: 15px 22px;
+    }
+
+    .hero-right {
+        grid-template-columns: 1fr;
+    }
+
+    .fg-card.wide {
+        grid-column: auto;
+        border-radius: 16px;
+        padding: 24px 20px;
+        align-items: flex-start;
+    }
+
+    .scroll-hint {
+        display: none;
+    }
+
+    .hero-wordmark-marquee {
+        bottom: 20px;
+        opacity: 0.16;
+    }
+}
+
 @keyframes scrollLine {
     0%,
     100% {
@@ -360,6 +528,13 @@ onMounted(() => {
     50% {
         transform: scaleY(0.6) translateY(6px);
         opacity: 0.4;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-wordmark-track {
+        animation: none !important;
+        transform: translateX(-12%);
     }
 }
 </style>

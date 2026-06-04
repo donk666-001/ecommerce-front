@@ -12,10 +12,12 @@
                 {{ isUser ? userInitial : aiAvatarText }}
             </template>
         </div>
+
         <div class="bubble-wrap">
             <span v-if="!isUser" class="bub-tag" :class="tagClass">
                 {{ tagText }}
             </span>
+
             <div class="bubble" :class="isUser ? 'bub-me' : 'bub-ai'">
                 <template v-if="isTextType">
                     <template v-if="isThinking">
@@ -44,18 +46,26 @@
                             </span>
                         </span>
                     </template>
+
                     <template v-else>
-                        <span
-                            class="msg-text"
-                            v-for="(line, index) in contentLines"
-                            :key="index"
-                        >
-                            {{ line
-                            }}<br v-if="index < contentLines.length - 1" />
-                        </span>
-                        <span v-if="isStreaming" class="cursor">▍</span>
+                        <ProductRecommendationCard
+                            v-if="hasProductRecommendations"
+                            :content="displayContent"
+                            :structured-json="structuredJson"
+                        />
+                        <template v-else>
+                            <span
+                                v-for="(line, index) in contentLines"
+                                :key="index"
+                                class="msg-text"
+                            >
+                                {{ line
+                                }}<br v-if="index < contentLines.length - 1" />
+                            </span>
+                            <span v-if="isStreaming" class="cursor">▋</span>
+                        </template>
                     </template>
-                    <!-- 轻症/严重非急症：TEXT 下方追加咨询卡片 -->
+
                     <ConsultHandoffCard
                         v-if="hasHandoff"
                         :structured-json="handoffJson"
@@ -70,8 +80,6 @@
                     v-else-if="contentType === 'WELLNESS_PLAN'"
                     :structured-json="structuredJson"
                 />
-
-                <!-- 急症：EmergencyCard（拨打 120） -->
                 <EmergencyCard
                     v-else-if="contentType === 'EMERGENCY'"
                     :structured-json="structuredJson"
@@ -88,10 +96,9 @@
                 />
 
                 <template v-else-if="contentType === 'ERROR'">
-                    <span class="error-text"
-                        >{{ errorPrefix }}
-                        {{ content || defaultErrorText }}</span
-                    >
+                    <span class="error-text">
+                        {{ errorPrefix }} {{ content || defaultErrorText }}
+                    </span>
                 </template>
             </div>
         </div>
@@ -105,6 +112,8 @@ import WellnessPlanCard from "./WellnessPlanCard.vue";
 import CitationList from "./CitationList.vue";
 import ConsultHandoffCard from "./ConsultHandoffCard.vue";
 import EmergencyCard from "./EmergencyCard.vue";
+import ProductRecommendationCard from "./ProductRecommendationCard.vue";
+import { hasProductRecommendationItems } from "./productRecommendation";
 
 const props = defineProps<{
     role: "USER" | "ASSISTANT" | "SYSTEM";
@@ -126,7 +135,10 @@ const userAvatarLoadFailed = ref(false);
 
 const isUser = computed(() => props.role === "USER");
 const isTextType = computed(
-    () => !props.contentType || props.contentType === "TEXT",
+    () =>
+        !props.contentType ||
+        props.contentType === "TEXT" ||
+        props.contentType === "PRODUCT_RECOMMENDATION",
 );
 const showUserAvatarImage = computed(
     () =>
@@ -140,102 +152,96 @@ const isThinking = computed(
         Boolean(props.isThinking) &&
         props.contentType !== "ERROR",
 );
+
 watch(
     () => props.userAvatar,
     () => {
         userAvatarLoadFailed.value = false;
     },
 );
+
+const parsedStructuredJson = computed<Record<string, unknown> | null>(() => {
+    if (!props.structuredJson) return null;
+
+    try {
+        return JSON.parse(props.structuredJson) as Record<string, unknown>;
+    } catch {
+        return null;
+    }
+});
+
 const hasCitations = computed(() => {
-    if (!props.structuredJson) return false;
-    try {
-        const parsed = JSON.parse(props.structuredJson);
-        return Array.isArray(parsed.citations) && parsed.citations.length > 0;
-    } catch {
-        return false;
-    }
+    const parsed = parsedStructuredJson.value;
+    return Boolean(
+        parsed &&
+            Array.isArray((parsed as { citations?: unknown[] }).citations) &&
+            (parsed as { citations?: unknown[] }).citations!.length > 0,
+    );
 });
 
-/** structuredJson 中是否包含 handoff 对象（轻症/严重非急症路径写入） */
 const hasHandoff = computed(() => {
-    if (!props.structuredJson) return false;
-    try {
-        const parsed = JSON.parse(props.structuredJson);
-        return !!parsed?.handoff;
-    } catch {
-        return false;
-    }
+    const parsed = parsedStructuredJson.value;
+    return Boolean(parsed && (parsed as { handoff?: unknown }).handoff);
 });
 
-/** 提取 structuredJson.handoff 子对象并序列化，供 ConsultHandoffCard 解析 */
 const handoffJson = computed<string | undefined>(() => {
-    if (!props.structuredJson) return undefined;
-    try {
-        const parsed = JSON.parse(props.structuredJson);
-        const handoff = parsed?.handoff;
-        return handoff ? JSON.stringify(handoff) : undefined;
-    } catch {
-        return undefined;
-    }
+    const parsed = parsedStructuredJson.value;
+    if (!parsed) return undefined;
+
+    const handoff = (parsed as { handoff?: unknown }).handoff;
+    return handoff ? JSON.stringify(handoff) : undefined;
 });
 
-const isFullWidth = computed(() =>
-    ["SLEEP_ANALYSIS", "WELLNESS_PLAN"].includes(props.contentType ?? ""),
+const hasProductRecommendations = computed(() =>
+    hasProductRecommendationItems(parsedStructuredJson.value),
+);
+
+const isFullWidth = computed(
+    () =>
+        ["SLEEP_ANALYSIS", "WELLNESS_PLAN", "PRODUCT_RECOMMENDATION"].includes(
+            props.contentType ?? "",
+        ) || hasProductRecommendations.value,
 );
 
 function stripMarkdownForDisplay(content: string): string {
     return content
-        // 行内编号列表：在序号前插入换行（AI 常输出在同一行）
-        .replace(/([。！？])\s+(\d+)\.\s/g, "$1\n$2. ")
-        // 代码块
+        .replace(/([。！；])\s+(\d+)\.\s/g, "$1\n$2. ")
         .replace(/```[\w-]*\r?\n?/g, "")
         .replace(/```/g, "")
-        // 行内代码
         .replace(/`([^`]+)`/g, "$1")
-        // 图片 ![alt](url)
         .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
-        // 链接 [text](url)
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-        // 按行处理
         .split("\n")
         .map((line) => {
             let normalizedLine = line
-                // 标题
                 .replace(/^\s{0,3}#{1,6}\s*/u, "")
-                // 引用
                 .replace(/^\s*>\s?/u, "")
-                // 列表标记（无序 + 有序）
                 .replace(/^\s*(?:[-*+]|(?:\d+\.))\s+/u, "");
 
-            // 表格分隔行（|---|---|）
             if (/^\s*\|?[\s:-]+\|[\s|:-]+\s*$/u.test(normalizedLine)) {
                 return "";
             }
-            // 表格行：移除首尾管道符并替换中间管道符为空格
+
             if (/^\s*\|.+\|\s*$/u.test(normalizedLine)) {
                 normalizedLine = normalizedLine
                     .replace(/^\s*\|\s*/u, "")
                     .replace(/\s*\|\s*$/u, "")
                     .replace(/\s*\|\s*/gu, "  ");
             }
-            // 水平线
+
             if (/^\s*[-*_]{3,}\s*$/u.test(normalizedLine)) {
                 return "";
             }
+
             return normalizedLine;
         })
         .join("\n")
-        // 粗体（双星号/双下划线，必须在斜体之前处理）
         .replace(/\*\*(.+?)\*\*/g, "$1")
         .replace(/__(.+?)__/g, "$1")
-        // 斜体（单星号/单下划线）
         .replace(/\*(.+?)\*/g, "$1")
         .replace(/(?<!\w)_(.+?)_(?!\w)/g, "$1")
-        // 删除线
         .replace(/~~(.+?)~~/g, "$1")
-        // 换行符统一
         .replace(/\r\n/g, "\n")
-        // 压缩多余空行
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 }
@@ -261,14 +267,14 @@ const thinkingParts = computed(() => {
             dots: [] as string[],
         };
     }
+
     return {
         label: match[1],
-        dots: Array.from(match[2]),
+        dots: Array.from(match[2] ?? ""),
     };
 });
 
 const thinkingLabel = computed(() => thinkingParts.value.label);
-
 const thinkingDots = computed(() => thinkingParts.value.dots);
 
 const tagText = computed(() => {
@@ -281,9 +287,14 @@ const tagText = computed(() => {
             return "AI 管家 · 转专家";
         case "EMERGENCY":
             return "AI 管家 · 紧急提示";
+        case "PRODUCT_RECOMMENDATION":
+            return "AI 管家 · 商品推荐";
         case "ERROR":
             return "AI 管家 · 系统提示";
         default:
+            if (hasProductRecommendations.value) {
+                return "AI 管家 · 商品推荐";
+            }
             return "AI 管家 · 养生建议";
     }
 });
@@ -295,11 +306,12 @@ const tagClass = computed(() => {
         case "HANDOFF":
             return "tag-cinnabar";
         case "EMERGENCY":
-            return "tag-error";
         case "ERROR":
             return "tag-error";
+        case "PRODUCT_RECOMMENDATION":
+            return "tag-product";
         default:
-            return "";
+            return hasProductRecommendations.value ? "tag-product" : "";
     }
 });
 
@@ -421,16 +433,24 @@ function handleUserAvatarError() {
 .error-text {
     color: var(--cinnabar);
 }
+
 .tag-gold {
     background: var(--gold-soft) !important;
     color: var(--gold-deep) !important;
 }
+
 .tag-cinnabar {
     background: var(--cinnabar-soft) !important;
     color: var(--cinnabar) !important;
 }
+
 .tag-error {
     background: var(--cinnabar-soft) !important;
     color: var(--cinnabar) !important;
+}
+
+.tag-product {
+    background: rgba(226, 187, 83, 0.18) !important;
+    color: #8c6420 !important;
 }
 </style>

@@ -17,13 +17,6 @@
                         {{ agentId }} · {{ agentName }}
                     </div>
                 </div>
-                <div class="setting-row">
-                    <div>
-                        <div class="setting-label">同时接待上限</div>
-                        <div class="setting-desc">达到上限后不再分配新客户</div>
-                    </div>
-                    <div class="setting-value">5 个会话</div>
-                </div>
             </div>
         </div>
 
