@@ -1,3 +1,4 @@
+import { API_BASE_URL, buildApiUrl } from "@/config/api";
 import axios, {
     type AxiosInstance,
     type InternalAxiosRequestConfig,
@@ -29,13 +30,14 @@ async function performTokenRefresh(): Promise<boolean> {
 
     try {
         // 直接使用原生 fetch 避免循环依赖和拦截器干扰
-        const baseURL = "/e-commerce/api";
-        const requestUrl = `${baseURL}/users/refresh`;
+        const requestUrl = buildApiUrl("/users/refresh");
 
         console.log("[Token Refresh] 请求配置:", {
-            baseURL,
+            baseURL: API_BASE_URL,
             requestUrl,
-            fullUrl: window.location.origin + requestUrl,
+            fullUrl: /^https?:\/\//i.test(requestUrl)
+                ? requestUrl
+                : window.location.origin + requestUrl,
         });
 
         const response = await fetch(requestUrl, {
@@ -170,10 +172,7 @@ async function handleUnauthorized() {
  */
 const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     const instance = axios.create({
-        baseURL: "/e-commerce/api", // 开发时使用
-        // baseURL: "http://localhost:9090", // 本地虚拟机使用
-        // baseURL: "https://dev.ppsnav.cn/e-commerce/local/api", // 云服务器专用版
-        // baseURL: "http://154.219.104.242:9090", // 云服务器专用版
+        baseURL: API_BASE_URL,
         timeout: 10000,
         withCredentials,
         headers: {
@@ -351,5 +350,5 @@ const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
 };
 
 // ==================== 导出实例 ====================
-export const GAxios = createAxiosInstance(false); // 不带凭证
+export const GAxios = createAxiosInstance(true); // 默认携带登录 Cookie
 export const GAxiosWithCredentials = createAxiosInstance(true); // 带凭证

@@ -16,6 +16,14 @@
                     <h3>记录睡眠</h3>
                 </div>
                 <div class="sleep-head-actions">
+                    <div
+                        class="auto-sync-pill"
+                        :class="sleepSyncStatus"
+                        aria-live="polite"
+                    >
+                        <span class="sync-dot"></span>
+                        <span>{{ sleepSyncText }}</span>
+                    </div>
                     <button
                         class="phone-sync-btn"
                         type="button"
@@ -743,6 +751,13 @@ import {
     type SleepWeeklyStatDTO,
 } from "@/network/sleep";
 import {
+    addSleepRecordSyncedListener,
+    emitSleepRecordSynced,
+    useSleepRecordSync,
+    type SleepRecordSyncSource,
+    type SleepRecordSyncedDetail,
+} from "@/composables/useSleepRecordSync";
+import {
     ApiWellnessMedia,
     type WellnessMediaResourceVO,
 } from "@/network/wellnessMedia";
@@ -808,6 +823,7 @@ type ChartPoint = {
 const initialSleepTime = "23:18";
 const initialWakeTime = "07:00";
 const userStore = useUserStore();
+const sleepSyncOrigin = `sleep-tracker-${Math.random().toString(36).slice(2)}`;
 const stageRows: { key: SleepStage; label: string; y: number }[] = [
     { key: "awake", label: "清醒", y: 24 },
     { key: "light", label: "浅睡", y: 74 },
@@ -832,6 +848,7 @@ const isSavingSleep = ref(false);
 const toastMessage = ref("睡眠记录已保存，今日建议已同步更新");
 let phoneImportTimers: ReturnType<typeof setTimeout>[] = [];
 let loadedUserId: number | null = null;
+let removeSleepSyncedListener: (() => void) | null = null;
 const savedRecordDates = ref<Record<string, boolean>>({});
 const sleepRecords = ref<Record<string, SleepRecord>>({});
 const weeklyStats = ref<SleepWeeklyStatDTO[]>([]);
@@ -1079,6 +1096,30 @@ const activeUserId = computed(() => {
     const loginId = Number(userStore.G_LoginInfo.id);
     const infoId = Number(userStore.G_UserInfo.id);
     return Number.isFinite(loginId) && loginId > 0 ? loginId : infoId;
+});
+const { syncStatus: sleepSyncStatus } = useSleepRecordSync({
+    userId: () => activeUserId.value,
+    dateISO: () => todayISO,
+    enabled: () => isValidUserId(activeUserId.value),
+    intervalMs: 5000,
+    origin: sleepSyncOrigin,
+    onRecord: (record) => applySyncedSleepRecord(record),
+    onError: (error) => {
+        console.error("今日睡眠数据监听失败", error);
+    },
+});
+const sleepSyncText = computed(() => {
+    if (!isValidUserId(activeUserId.value)) return "登录后自动同步";
+    switch (sleepSyncStatus.value) {
+        case "syncing":
+            return "识别今日数据";
+        case "synced":
+            return "今日数据已同步";
+        case "error":
+            return "监听待恢复";
+        default:
+            return "今日数据监听中";
+    }
 });
 const showTodayRoutineCards = computed(() => true);
 const selectedSleepRecord = computed(
@@ -2087,6 +2128,33 @@ async function loadWeeklyStats() {
     }
 }
 
+async function applySyncedSleepRecord(data: SleepRecordDTO) {
+    if (!hasSleepRecordPayload(data)) return;
+    const record = normalizeSleepRecord(data, todayISO);
+    upsertSleepRecord(record, true);
+
+    if (record.dateISO === todayISO) {
+        todayRecordUpdated.value = true;
+        if (recordDateISO.value === todayISO) {
+            applySleepRecordToForm(record);
+        }
+    }
+
+    await loadWeeklyStats();
+}
+
+function handleSleepRecordSynced(detail: SleepRecordSyncedDetail) {
+    if (
+        detail.origin === sleepSyncOrigin ||
+        detail.userId !== activeUserId.value ||
+        detail.dateISO !== todayISO
+    ) {
+        return;
+    }
+
+    void applySyncedSleepRecord(detail.record);
+}
+
 async function reloadSleepDataForActiveUser() {
     if (!isValidUserId(activeUserId.value)) return;
     if (loadedUserId !== activeUserId.value) {
@@ -2099,7 +2167,11 @@ async function reloadSleepDataForActiveUser() {
     await Promise.all([loadSleepRecord(todayISO, true), loadWeeklyStats()]);
 }
 
-async function persistSleepRecord(record: SleepRecord, successMessage: string) {
+async function persistSleepRecord(
+    record: SleepRecord,
+    successMessage: string,
+    source: SleepRecordSyncSource = "manual",
+) {
     if (!isValidUserId(activeUserId.value)) {
         throw new Error("缺少登录用户 ID");
     }
@@ -2148,7 +2220,54 @@ async function persistSleepRecord(record: SleepRecord, successMessage: string) {
         await loadSleepRecord(savedRecord.dateISO, false);
     }
     await loadWeeklyStats();
+    emitSyncedSleepRecord(savedRecord, source);
     showToast(successMessage);
+}
+
+function emitSyncedSleepRecord(
+    record: SleepRecord,
+    source: SleepRecordSyncSource,
+) {
+    if (!isValidUserId(activeUserId.value)) return;
+    emitSleepRecordSynced({
+        userId: activeUserId.value,
+        dateISO: record.dateISO,
+        record: buildSleepRecordSyncDTO(record),
+        source,
+        syncedAt: new Date().toISOString(),
+        origin: sleepSyncOrigin,
+    });
+}
+
+function buildSleepRecordSyncDTO(record: SleepRecord): SleepRecordDTO {
+    const dto: SleepRecordDTO = {
+        userId: activeUserId.value,
+        date: record.dateISO,
+        recordDate: record.dateISO,
+        sleepDate: record.dateISO,
+        quality: record.quality,
+        sleepQuality: record.quality,
+        sleepStage: inferApiSleepStage(record),
+        awakeCount: record.awakeCount,
+        wakeCount: record.awakeCount,
+        tags: [...record.tags],
+        sleepTagsJson: JSON.stringify(record.tags),
+        stages: record.stages,
+        durationMinutes: getRecordDurationMinutes(record),
+    };
+
+    if (record.serverId != null) dto.id = record.serverId;
+    if (hasRecordTimeRange(record)) {
+        dto.sleepTime = toApiDateTime(record.dateISO, record.sleepTime);
+        dto.wakeTime = toApiDateTime(
+            record.dateISO,
+            record.wakeTime,
+            calcDurationBetween(record.sleepTime, record.wakeTime) >
+                minutesFromStart("00:00", record.wakeTime),
+        );
+    }
+
+    return dto;
 }
 
 function showToast(message: string) {
@@ -2342,6 +2461,7 @@ function setPhoneImportState(
             void persistSleepRecord(
                 buildCurrentSleepRecord(todayISO),
                 "手机睡眠数据已同步",
+                "phone",
             ).catch((error: unknown) => {
                 console.error("手机睡眠数据保存失败", error);
                 showToast("手机数据已导入，保存到后端失败");
@@ -2485,6 +2605,9 @@ async function toggleAudio(audio: AudioItem) {
 }
 
 onMounted(() => {
+    removeSleepSyncedListener = addSleepRecordSyncedListener(
+        handleSleepRecordSynced,
+    );
     void reloadSleepDataForActiveUser();
     void loadSleepAudios();
 });
@@ -2503,6 +2626,7 @@ watch(showTimePicker, (visible) => {
 
 onBeforeUnmount(() => {
     if (toastTimer) clearTimeout(toastTimer);
+    removeSleepSyncedListener?.();
     clearPhoneImportTimers();
     stopSleepAudio();
     if (typeof document !== "undefined") {
@@ -2598,6 +2722,55 @@ onBeforeUnmount(() => {
     justify-content: flex-end;
     gap: 10px;
     flex-wrap: wrap;
+}
+.auto-sync-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 1px solid rgba(92, 131, 116, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.56);
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--jade-light);
+    box-shadow: 0 0 0 4px rgba(92, 131, 116, 0.1);
+}
+.auto-sync-pill.syncing .sync-dot {
+    animation: syncPulse 1.1s ease-out infinite;
+}
+.auto-sync-pill.synced {
+    color: var(--jade);
+    border-color: rgba(92, 131, 116, 0.32);
+    background: color-mix(in srgb, var(--jade-soft) 74%, white);
+}
+.auto-sync-pill.synced .sync-dot {
+    background: var(--jade);
+}
+.auto-sync-pill.error {
+    color: var(--cinnabar);
+    border-color: rgba(179, 60, 44, 0.24);
+    background: color-mix(in srgb, var(--cinnabar-soft) 70%, white);
+}
+.auto-sync-pill.error .sync-dot {
+    background: var(--cinnabar);
+    box-shadow: 0 0 0 4px rgba(179, 60, 44, 0.1);
+}
+@keyframes syncPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(92, 131, 116, 0.24);
+    }
+    100% {
+        box-shadow: 0 0 0 8px rgba(92, 131, 116, 0);
+    }
 }
 .eyebrow {
     font-size: 12px;

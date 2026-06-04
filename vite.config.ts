@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
 
     // 从环境变量中读取 VITE_BASE_URL
     const baseUrl = projectEnv.VITE_BASE_URL || "/";
+    const apiProxyTarget =
+        projectEnv.VITE_API_TARGET || "http://localhost:9090";
     console.log("baseUrl:", baseUrl);
     // 只输出 VITE_ 开头的环境变量
     const viteEnv: Record<string, any> = {};
@@ -86,7 +88,7 @@ export default defineConfig(({ mode }) => {
             // },
             proxy: {
                 "/e-commerce/api": {
-                    target: "http://localhost:9090",
+                    target: apiProxyTarget,
                     changeOrigin: true,
                     secure: false, // 相当于 Node 端的 rejectUnauthorized: false，允许代理到 https 且忽略证书校验
                     rewrite: (path) => path.replace(/^\/e-commerce\/api/, ""), // 去掉路径前缀，因为后端没有这个路径
@@ -99,15 +101,23 @@ export default defineConfig(({ mode }) => {
                     // 防止 ec-notification 未启动或连接中断时 Vite 进程在 Windows 上崩溃（exit code 0xC0000409）
                     configure: (proxy: any) => {
                         const ignore = (err: NodeJS.ErrnoException) => {
-                            const ignored = ["ECONNABORTED", "ECONNRESET", "ECONNREFUSED", "EPIPE"];
+                            const ignored = [
+                                "ECONNABORTED",
+                                "ECONNRESET",
+                                "ECONNREFUSED",
+                                "EPIPE",
+                            ];
                             if (!ignored.includes(err.code ?? "")) {
                                 console.error("[ws proxy error]", err.message);
                             }
                         };
                         proxy.on("error", ignore);
-                        proxy.on("proxyReqWs", (_req: any, _socket: any, clientSocket: any) => {
-                            clientSocket?.on("error", ignore);
-                        });
+                        proxy.on(
+                            "proxyReqWs",
+                            (_req: any, _socket: any, clientSocket: any) => {
+                                clientSocket?.on("error", ignore);
+                            },
+                        );
                         proxy.on("open", (proxySocket: any) => {
                             proxySocket?.on("error", ignore);
                         });
