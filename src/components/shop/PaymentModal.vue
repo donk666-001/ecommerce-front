@@ -131,7 +131,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
     "update:modelValue": [value: boolean];
-    paid: [orderId: number];
+    paid: [orderId: number, outTradeNo: string];
     cancelPay: [];
 }>();
 
@@ -226,7 +226,12 @@ function restartPayment() {
 }
 
 function checkPaymentNow() {
-    void checkPaymentStatus(true);
+    if (!props.orderId) {
+        paymentStatus.value = "error";
+        errorMessage.value = "订单信息不完整，无法确认支付结果";
+        return;
+    }
+    completePayment(props.orderId);
 }
 
 async function createAlipayOrder() {
@@ -278,20 +283,18 @@ async function checkPaymentStatus(manual: boolean) {
         return;
     }
 
+    const seq = requestSeq;
     const previousStatus = paymentStatus.value;
     paymentStatus.value = "checking";
     try {
         const response = await ApiOrder.getOrderById(props.orderId);
+        if (seq !== requestSeq) return;
         const order = response.data?.data;
         if (isPaidOrderStatus(order?.status)) {
-            paymentStatus.value = "paid";
-            clearPaymentQrCache(props.orderNo);
-            stopPolling();
-            stopCountdown();
-            emit("paid", props.orderId);
-            emit("update:modelValue", false);
+            completePayment(props.orderId);
             return;
         }
+
         paymentStatus.value = "ready";
         if (manual) {
             errorMessage.value = "暂未查询到支付成功，请稍后再试";
@@ -304,6 +307,15 @@ async function checkPaymentStatus(manual: boolean) {
             errorMessage.value = "支付状态查询失败，请稍后重试";
         }
     }
+}
+
+function completePayment(orderId: number) {
+    paymentStatus.value = "paid";
+    clearPaymentQrCache(props.orderNo);
+    stopPolling();
+    stopCountdown();
+    emit("paid", orderId, currentOutTradeNo.value);
+    emit("update:modelValue", false);
 }
 
 function buildSubject() {

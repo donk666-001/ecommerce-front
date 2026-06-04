@@ -9,7 +9,12 @@ const router = createRouter({
 });
 
 /** 不需要登录即可访问的公开路由 */
-const PUBLIC_PATHS = ["/login", "/landing","/customer/login"];
+const PUBLIC_PATHS = [
+    "/login",
+    "/landing",
+    "/customer/login",
+    "/shop/payment-success",
+];
 
 router.beforeEach(async (to) => {
     const userStore = useUserStore();

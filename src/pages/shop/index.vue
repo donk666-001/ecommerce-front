@@ -189,6 +189,7 @@ import {
     watch,
     reactive,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import {
     ProductList,
@@ -299,15 +300,23 @@ const presetReplies: Record<string, string[]> = {
     ],
 };
 
+const route = useRoute();
+const router = useRouter();
 const tabDefs = [
     { key: "shop", icon: "🏪", label: "商品浏览" },
     { key: "cart", icon: "🛒", label: "购物车" },
     { key: "order", icon: "📦", label: "我的订单" },
     { key: "service", icon: "💬", label: "客服咨询" },
-];
+] as const;
+type ShopTab = (typeof tabDefs)[number]["key"];
+
+function resolveShopTab(value: unknown): ShopTab {
+    const tab = Array.isArray(value) ? value[0] : value;
+    return tabDefs.some((item) => item.key === tab) ? (tab as ShopTab) : "shop";
+}
 
 // ── Reactive state ────────────────────────────────────────────────────────────
-const activeTab = ref("shop");
+const activeTab = ref<ShopTab>(resolveShopTab(route.query.tab));
 const currentCat = ref("all");
 const searchKw = ref("");
 
@@ -810,7 +819,8 @@ async function doCartCheckout(addr: AddressFormData) {
 }
 
 /** 支付宝回调/轮询确认支付成功后，同步页面状态 */
-async function handlePayPaid(orderId: number) {
+async function handlePayPaid(orderId: number, outTradeNo: string) {
+    const paidOrderNo = pendingOrderNo.value;
     clearOrderTime(orderId);
     showToast("支付成功！");
 
@@ -821,8 +831,14 @@ async function handlePayPaid(orderId: number) {
     payFromOrdersList.value = false;
     showPayModal.value = false;
 
-    await loadOrders();
-    activeTab.value = "order";
+    await router.push({
+        path: "/shop/payment-success",
+        query: {
+            order_id: String(orderId),
+            order_no: paidOrderNo,
+            out_trade_no: outTradeNo,
+        },
+    });
 }
 
 /** 暂不支付：关闭弹窗，订单保留在"待支付"，非订单列表发起时跳转到订单页 */
@@ -1428,6 +1444,13 @@ watch(activeTab, (newTab, oldTab) => {
             break;
     }
 });
+
+watch(
+    () => route.query.tab,
+    (tab) => {
+        activeTab.value = resolveShopTab(tab);
+    },
+);
 
 onMounted(() => {
     document.addEventListener("click", handleGlobalClick);
