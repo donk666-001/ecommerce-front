@@ -1,4 +1,4 @@
-import { GAxios } from "@/plugins";
+import { GAxios, GAxiosWithCredentials } from "@/plugins";
 
 export interface ApiResult<T> {
     code?: number;
@@ -6,7 +6,7 @@ export interface ApiResult<T> {
     data?: T;
 }
 
-export interface PageResult<T> {
+export interface CommunityPageResult<T> {
     page?: number;
     size?: number;
     total?: number;
@@ -179,6 +179,27 @@ export interface DailyContentVO {
     status?: number;
 }
 
+export interface CheckInDailyContentVO {
+    id?: number;
+    userId?: number;
+    targetTitle?: string;
+    content?: string;
+    status?: number;
+    statusText?: string;
+    sortOrder?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CheckInDailyContentSaveDTO {
+    userId: number;
+    id?: number;
+    targetTitle: string;
+    content: string;
+    status: number;
+    sortOrder?: number;
+}
+
 export interface SolarTermVO {
     id?: number;
     termNo?: number;
@@ -296,7 +317,7 @@ export class ApiCircle {
     }
 
     static publishDynamic(data: WellnessDynamicPublishDTO) {
-        return GAxios.post<ApiResult<WellnessDynamicVO>>(
+        return GAxiosWithCredentials.post<ApiResult<WellnessDynamicVO>>(
             "/wellness-dynamics",
             data,
         );
@@ -307,27 +328,27 @@ export class ApiCircle {
         size?: number;
         dynamicType?: number;
     }) {
-        return GAxios.get<ApiResult<PageResult<WellnessDynamicVO>>>(
+        return GAxiosWithCredentials.get<ApiResult<CommunityPageResult<WellnessDynamicVO>>>(
             "/wellness-dynamics/page",
             { params },
         );
     }
 
     static getDynamicDetail(id: number) {
-        return GAxios.get<ApiResult<WellnessDynamicVO>>(
+        return GAxiosWithCredentials.get<ApiResult<WellnessDynamicVO>>(
             `/wellness-dynamics/${id}`,
         );
     }
 
     static deleteDynamic(id: number, userId: number) {
-        return GAxios.delete<ApiResult<WellnessDynamicVO>>(
+        return GAxiosWithCredentials.delete<ApiResult<WellnessDynamicVO>>(
             `/wellness-dynamics/${id}`,
             { params: { userId } },
         );
     }
 
     static publishDynamicComment(data: WellnessDynamicCommentSaveDTO) {
-        return GAxios.post<ApiResult<WellnessDynamicCommentVO>>(
+        return GAxiosWithCredentials.post<ApiResult<WellnessDynamicCommentVO>>(
             "/wellness-dynamics/comment",
             data,
         );
@@ -338,78 +359,84 @@ export class ApiCircle {
         page?: number;
         size?: number;
     }) {
-        return GAxios.get<ApiResult<PageResult<WellnessDynamicCommentVO>>>(
+        return GAxiosWithCredentials.get<ApiResult<CommunityPageResult<WellnessDynamicCommentVO>>>(
             "/wellness-dynamics/comment/page",
             { params },
         );
     }
 
     static getDietRoutineToday(userId: number) {
-        return GAxios.get<ApiResult<DietSleepTrendVO>>("/diet-routine/today", {
+        return GAxiosWithCredentials.get<ApiResult<DietSleepTrendVO>>("/diet-routine/today", {
             params: { userId },
         });
     }
 
     static getLastNightSleep(userId: number) {
-        return GAxios.get<ApiResult<LastNightSleepVO>>(
+        return GAxiosWithCredentials.get<ApiResult<LastNightSleepVO>>(
             "/diet-routine/sleep/last-night",
             { params: { userId } },
         );
     }
 
     static getWeeklySleepTrend(userId: number) {
-        return GAxios.get<ApiResult<WeeklySleepTrendVO>>(
+        return GAxiosWithCredentials.get<ApiResult<WeeklySleepTrendVO>>(
             "/diet-routine/sleep/weekly-trend",
             { params: { userId } },
         );
     }
 
     static saveDietRoutineRecord(data: DietRecordSaveDTO) {
-        return GAxios.post<ApiResult<DietRecordVO>>(
+        return GAxiosWithCredentials.post<ApiResult<DietRecordVO>>(
             "/diet-routine/record",
             data,
         );
     }
 
     static getTodayDietRecords(userId: number) {
-        return GAxios.get<ApiResult<DietRecordVO[]>>(
+        return GAxiosWithCredentials.get<ApiResult<DietRecordVO[]>>(
             "/diet-routine/records/today",
             { params: { userId } },
         );
     }
 
     static getTodayCalorie(userId: number) {
-        return GAxios.get<ApiResult<DietDailyCalorieSummaryVO>>(
+        return GAxiosWithCredentials.get<ApiResult<DietDailyCalorieSummaryVO>>(
             "/diet-routine/calorie/today",
             { params: { userId } },
         );
     }
 
     static setCalorieLimit(data: DietDailyCalorieLimitSaveDTO) {
-        return GAxios.put<ApiResult<DietDailyCalorieSummaryVO>>(
+        return GAxiosWithCredentials.put<ApiResult<DietDailyCalorieSummaryVO>>(
             "/diet-routine/calorie/limit",
             data,
         );
     }
 
     static saveDietRecord(data: DietRecordSaveDTO) {
-        return GAxios.post<ApiResult<DietRecordVO>>("/diet/record", data);
+        return GAxiosWithCredentials.post<ApiResult<DietRecordVO>>("/diet/record", data);
+    }
+
+    static deleteDietRecord(id: number, userId: number) {
+        return GAxiosWithCredentials.delete<ApiResult<DietRecordVO>>(`/diet/record/${id}`, {
+            params: { userId },
+        });
     }
 
     static getDietRecordList(params: { userId: number; date?: string }) {
-        return GAxios.get<ApiResult<DietRecordVO[]>>("/diet/record/list", {
+        return GAxiosWithCredentials.get<ApiResult<DietRecordVO[]>>("/diet/record/list", {
             params,
         });
     }
 
     static getDietSleepTrend(userId: number) {
-        return GAxios.get<ApiResult<DietSleepTrendVO>>("/diet/sleep-trend", {
+        return GAxiosWithCredentials.get<ApiResult<DietSleepTrendVO>>("/diet/sleep-trend", {
             params: { userId },
         });
     }
 
     static publishNote(data: WellnessNotePublishDTO) {
-        return GAxios.post<ApiResult<WellnessNoteVO>>(
+        return GAxiosWithCredentials.post<ApiResult<WellnessNoteVO>>(
             "/wellness-notes",
             data,
         );
@@ -420,7 +447,7 @@ export class ApiCircle {
         size?: number;
         noteType?: number;
     }) {
-        return GAxios.get<ApiResult<PageResult<WellnessNoteVO>>>(
+        return GAxiosWithCredentials.get<ApiResult<CommunityPageResult<WellnessNoteVO>>>(
             "/wellness-notes/page",
             { params },
         );
@@ -432,14 +459,14 @@ export class ApiCircle {
         size?: number;
         noteType?: number;
     }) {
-        return GAxios.get<ApiResult<PageResult<WellnessNoteVO>>>(
+        return GAxiosWithCredentials.get<ApiResult<CommunityPageResult<WellnessNoteVO>>>(
             "/wellness-notes/page/others",
             { params },
         );
     }
 
     static getNoteDetail(id: number) {
-        return GAxios.get<ApiResult<WellnessNoteVO>>(
+        return GAxiosWithCredentials.get<ApiResult<WellnessNoteVO>>(
             `/wellness-notes/${id}`,
         );
     }
@@ -449,58 +476,85 @@ export class ApiCircle {
         page?: number;
         size?: number;
     }) {
-        return GAxios.get<ApiResult<PageResult<WellnessNoteCommentVO>>>(
+        return GAxiosWithCredentials.get<ApiResult<CommunityPageResult<WellnessNoteCommentVO>>>(
             "/wellness-notes/comment/page",
             { params },
         );
     }
 
     static publishNoteComment(data: WellnessNoteCommentSaveDTO) {
-        return GAxios.post<ApiResult<WellnessNoteCommentVO>>(
+        return GAxiosWithCredentials.post<ApiResult<WellnessNoteCommentVO>>(
             "/wellness-notes/comment",
             data,
         );
     }
 
     static deleteNoteComment(id: number, userId: number) {
-        return GAxios.delete<ApiResult<WellnessNoteCommentVO>>(
+        return GAxiosWithCredentials.delete<ApiResult<WellnessNoteCommentVO>>(
             `/wellness-notes/comment/${id}`,
             { params: { userId } },
         );
     }
 
     static getCheckinToday(userId: number) {
-        return GAxios.get<ApiResult<CheckInTodayOverviewVO>>(
+        return GAxiosWithCredentials.get<ApiResult<CheckInTodayOverviewVO>>(
             "/checkin/today",
             { params: { userId } },
         );
     }
 
     static saveCheckinMood(data: CheckInMoodSaveDTO) {
-        return GAxios.post<ApiResult<CheckInMoodVO>>("/checkin/mood", data);
+        return GAxiosWithCredentials.post<ApiResult<CheckInMoodVO>>("/checkin/mood", data);
+    }
+
+    static deleteCheckinMood(params: { userId: number; date?: string }) {
+        return GAxiosWithCredentials.delete<ApiResult<CheckInMoodVO>>("/checkin/mood", {
+            params,
+        });
+    }
+
+    static getCheckinDailyContent(userId: number) {
+        return GAxiosWithCredentials.get<ApiResult<CheckInDailyContentVO[]>>(
+            "/checkin/daily-content",
+            { params: { userId } },
+        );
+    }
+
+    static saveCheckinDailyContent(data: CheckInDailyContentSaveDTO) {
+        return GAxiosWithCredentials.post<ApiResult<CheckInDailyContentVO>>(
+            "/checkin/daily-content",
+            data,
+        );
+    }
+
+    static deleteCheckinDailyContent(id: number, userId: number) {
+        return GAxiosWithCredentials.delete<ApiResult<CheckInDailyContentVO>>(
+            `/checkin/daily-content/${id}`,
+            { params: { userId } },
+        );
     }
 
     static getCheckinWeek(params: { userId: number; date?: string }) {
-        return GAxios.get<ApiResult<CheckInWeekVO>>("/checkin/week", {
+        return GAxiosWithCredentials.get<ApiResult<CheckInWeekVO>>("/checkin/week", {
             params,
         });
     }
 
     static getCheckinMonth(params: { userId: number; month?: string }) {
-        return GAxios.get<ApiResult<CheckInMonthVO>>("/checkin/month", {
+        return GAxiosWithCredentials.get<ApiResult<CheckInMonthVO>>("/checkin/month", {
             params,
         });
     }
 
     static getCheckinMilestones(userId: number) {
-        return GAxios.get<ApiResult<CheckInMilestoneVO>>(
+        return GAxiosWithCredentials.get<ApiResult<CheckInMilestoneVO>>(
             "/checkin/milestones",
             { params: { userId } },
         );
     }
 
     static refreshCheckinMilestones(userId: number) {
-        return GAxios.post<ApiResult<CheckInMilestoneVO>>(
+        return GAxiosWithCredentials.post<ApiResult<CheckInMilestoneVO>>(
             "/checkin/milestones/refresh",
             null,
             { params: { userId } },
@@ -508,21 +562,21 @@ export class ApiCircle {
     }
 
     static getWaterToday(userId: number) {
-        return GAxios.get<ApiResult<WaterTodayOverviewVO>>(
+        return GAxiosWithCredentials.get<ApiResult<WaterTodayOverviewVO>>(
             "/water-tracking/today",
             { params: { userId } },
         );
     }
 
     static updateWaterTarget(data: WaterTodayTargetUpdateDTO) {
-        return GAxios.put<ApiResult<WaterTodayOverviewVO>>(
+        return GAxiosWithCredentials.put<ApiResult<WaterTodayOverviewVO>>(
             "/water-tracking/today/target",
             data,
         );
     }
 
     static updateWaterCups(data: WaterTodayCupsUpdateDTO) {
-        return GAxios.put<ApiResult<WaterTodayOverviewVO>>(
+        return GAxiosWithCredentials.put<ApiResult<WaterTodayOverviewVO>>(
             "/water-tracking/today/cups",
             data,
         );

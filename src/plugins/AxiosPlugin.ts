@@ -170,7 +170,7 @@ async function handleUnauthorized() {
  */
 const createAxiosInstance = (withCredentials: boolean): AxiosInstance => {
     const instance = axios.create({
-        baseURL: "/e-commerce/api", // 开发时使用                                                                  
+        baseURL: "/e-commerce/api", // 开发时使用
         // baseURL: "http://localhost:9090", // 本地虚拟机使用
         // baseURL: "https://dev.ppsnav.cn/e-commerce/local/api", // 云服务器专用版
         // baseURL: "http://154.219.104.242:9090", // 云服务器专用版

@@ -1,4 +1,5 @@
 import { resolvePostLoginPath } from "./authRedirect";
+import { API_BASE_URL, buildApiUrl } from "@/config/api";
 import { useUserStore } from "@/store/user";
 
 /**
@@ -9,15 +10,14 @@ export async function tryAutoLogin(): Promise<boolean> {
     console.log("[Auto Login] 开始尝试自动登录...");
 
     try {
-        const baseURL = import.meta.env.BASE_URL || "/";
-        const apiBase = `${baseURL}/api`;
-        const requestUrl = `${apiBase}/users/refresh`;
+        const requestUrl = buildApiUrl("/users/refresh");
 
         console.log("[Auto Login] 请求配置:", {
-            baseURL,
-            apiBase,
+            baseURL: API_BASE_URL,
             requestUrl,
-            fullUrl: window.location.origin + requestUrl,
+            fullUrl: /^https?:\/\//i.test(requestUrl)
+                ? requestUrl
+                : window.location.origin + requestUrl,
         });
 
         const response = await fetch(requestUrl, {

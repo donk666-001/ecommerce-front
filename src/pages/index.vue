@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SolarTermKnowledge from "@/components/SolarTermKnowledge.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
@@ -94,6 +94,11 @@ import {
     type SeasonalHealthDTO,
     type SleepRecordDTO,
 } from "@/network";
+import {
+    addSleepRecordSyncedListener,
+    useSleepRecordSync,
+    type SleepRecordSyncedDetail,
+} from "@/composables/useSleepRecordSync";
 import { useUserStore } from "@/store";
 
 const CONSTITUTION_SCALE_CODE = "CONSTITUTION";
@@ -113,6 +118,8 @@ const isLoadingSleep = ref(false);
 const isLoadingMenstrual = ref(false);
 const isLoadingConstitution = ref(false);
 let loadedUserId: number | null = null;
+let removeHeroSleepSyncedListener: (() => void) | null = null;
+const heroSleepSyncOrigin = `wisdom-hero-${Math.random().toString(36).slice(2)}`;
 
 const tabs = [
     { name: "solar-term", icon: "🌿", label: "节气养生" },
@@ -141,6 +148,17 @@ const activeUserId = computed(() => {
     return Number.isFinite(loginId) && loginId > 0 ? loginId : infoId;
 });
 const hasActiveUser = computed(() => isValidUserId(activeUserId.value));
+useSleepRecordSync({
+    userId: () => activeUserId.value,
+    dateISO: () => todayISO,
+    enabled: () => hasActiveUser.value,
+    intervalMs: 5000,
+    origin: heroSleepSyncOrigin,
+    onRecord: (record) => applyHeroSyncedSleepRecord(record),
+    onError: (error) => {
+        console.error("首页睡眠数据监听失败", error);
+    },
+});
 const seasonalMetaText = computed(() => {
     if (isLoadingSeasonal.value && !seasonalHealth.value) return "同步中";
     const term = seasonalHealth.value?.solarTerm;
@@ -214,6 +232,24 @@ async function loadHeroSleep(userId: number) {
     } finally {
         isLoadingSleep.value = false;
     }
+}
+
+function applyHeroSyncedSleepRecord(record: SleepRecordDTO) {
+    if (getSleepDurationMinutes(record) > 0) {
+        sleepRecord.value = record;
+    }
+}
+
+function handleHeroSleepRecordSynced(detail: SleepRecordSyncedDetail) {
+    if (
+        detail.origin === heroSleepSyncOrigin ||
+        detail.userId !== activeUserId.value ||
+        detail.dateISO !== todayISO
+    ) {
+        return;
+    }
+
+    applyHeroSyncedSleepRecord(detail.record);
 }
 
 async function loadHeroMenstrual(userId: number) {
@@ -596,8 +632,15 @@ function isValidUserId(value: number) {
 }
 
 onMounted(() => {
+    removeHeroSleepSyncedListener = addSleepRecordSyncedListener(
+        handleHeroSleepRecordSynced,
+    );
     void loadHeroSeasonalHealth();
     loadHeroUserMetrics();
+});
+
+onBeforeUnmount(() => {
+    removeHeroSleepSyncedListener?.();
 });
 
 watch(activeUserId, (userId) => {

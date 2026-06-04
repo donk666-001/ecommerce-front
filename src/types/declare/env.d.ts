@@ -17,6 +17,9 @@ interface ImportMetaEnv {
     /** API 目标地址 */
     readonly VITE_API_TARGET: string;
 
+    /** 前端请求 API 的基础地址 */
+    readonly VITE_API_BASE_URL?: string;
+
     // 可以在这里添加更多自定义环境变量类型
     // readonly VITE_YOUR_CUSTOM_VAR: string;
 }

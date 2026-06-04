@@ -88,7 +88,6 @@
             <CustomerService
                 v-show="activeTab === 'service'"
                 :agents="agents"
-                :agents-loading="customerAgentsLoading"
                 v-model:current-agent="currentAgent"
                 :chat-history="chatHistory"
                 v-model:chat-input="chatInput"
@@ -188,7 +187,6 @@ import {
     watch,
     reactive,
 } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import {
     ProductList,
@@ -212,17 +210,12 @@ import {
 import { ApiOrder, type OrderVO } from "@/network/order";
 import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
 import { ApiLogistics } from "@/network";
-import { ApiCustomer, type AgentColleague } from "@/network/customer";
 import { useUserStore } from "@/store/user";
 import {
-    ApiProductCs,
-    type ProductCsMessageVO,
-    type ProductCsSessionVO,
-} from "@/network/productCs";
-import {
-    useProductCsSocket,
-    type ProductCsEvent,
-} from "@/composables/useProductCsSocket";
+    bridgeEnterQueue,
+    bridgeCustomerSend,
+    bridgeSessions,
+} from "@/network/chatBridge";
 
 interface Product {
     id: string;
@@ -257,7 +250,7 @@ interface Agent {
     id: string;
     name: string;
     tag: string;
-    status: "online" | "busy" | "off";
+    status: string;
     avatar: string;
 }
 interface ChatMsg {
@@ -274,8 +267,8 @@ interface ChatMsg {
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
-// 接口异常时的兜底客服，正常情况下由 /product/cs/agents 返回。
-const fallbackAgents: Agent[] = [
+// 客服数据（保持静态）
+const agents: Agent[] = [
     {
         id: "cs1",
         name: "小翠",
@@ -319,14 +312,35 @@ const orders = ref<Order[]>([]);
 const orderLoading = ref(false);
 
 const orderFilter = ref("all");
-const agents = ref<Agent[]>([]);
-const customerAgentsLoading = ref(false);
-const currentAgent = ref("");
-const chatHistory = ref<Record<string, ChatMsg[]>>({});
+const currentAgent = ref("cs1");
+const chatHistory = ref<Record<string, ChatMsg[]>>({
+    cs1: [
+        {
+            from: "agent",
+            text: "您好，我是颐养阁客服小翠，请问有什么可以帮您？",
+            time: "10:01",
+        },
+        {
+            from: "me",
+            text: "你好，请问枸杞红枣养生茶适合气郁体质吗？",
+            time: "10:02",
+        },
+        {
+            from: "agent",
+            text: "非常适合的，枸杞滋阴、红枣补气，正好对应气郁兼阴虚体质，建议每日 1 包，连饮 4 周。",
+            time: "10:02",
+        },
+    ],
+    cs2: [
+        {
+            from: "agent",
+            text: "您好，我是颐养阁客服阿岚，请问有什么可以帮您？",
+            time: "09:30",
+        },
+    ],
+});
 const chatInput = ref("");
 const chatBodyRef = ref<HTMLElement | null>(null);
-const route = useRoute();
-const router = useRouter();
 
 const userStore = useUserStore();
 const custName = computed(
@@ -335,12 +349,10 @@ const custName = computed(
 const custId = computed(
     () => `user_${userStore.G_LoginInfo.account || "anon"}`,
 );
-// 每个 agentId 对应的真实 CS 会话 ID（用于 STOMP 订阅）
-const csSessionIds = ref<Record<string, number>>({});
-const csSessionProductIds = ref<Record<string, number>>({});
-const productCsRestoring = ref(false);
-// STOMP socket 实例（单例，每次只连接一个会话）
-const csSocket = useProductCsSocket();
+// 每个 agentId 对应的 bridge session ID
+const bridgeSessionIds = ref<Record<string, string>>({});
+// 已处理过的消息数（用于增量检测 agent 回复）
+const bridgeMsgCounts = ref<Record<string, number>>({});
 
 // Modal states
 const showPdModal = ref(false);
@@ -1030,224 +1042,13 @@ function toggleMore(idx: number) {
 }
 
 // ── Customer service ──────────────────────────────────────────────────────────
-function currentTimeText(): string {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(
-        now.getMinutes(),
-    ).padStart(2, "0")}`;
-}
-
-function toBackendProductId(id?: string | number | null): number | null {
-    if (id === undefined || id === null) return null;
-    const raw = typeof id === "number" ? String(id) : id.replace(/^p/i, "");
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function resolveProductCsProductId(fallbackId?: string | number | null): number {
-    return (
-        toBackendProductId(serviceContextProduct.value?.id) ??
-        toBackendProductId(fallbackId) ??
-        csSessionProductIds.value[currentAgent.value] ??
-        toBackendProductId(products.value[0]?.id) ??
-        1
-    );
-}
-
-function formatProductCsTime(value?: string): string {
-    if (!value) return currentTimeText();
-    const date = new Date(String(value).replace(" ", "T"));
-    if (Number.isNaN(date.getTime())) return currentTimeText();
-    return `${String(date.getHours()).padStart(2, "0")}:${String(
-        date.getMinutes(),
-    ).padStart(2, "0")}`;
-}
-
-function productCsMessagesToChat(messages: ProductCsMessageVO[]): ChatMsg[] {
-    return [...messages]
-        .sort((a, b) => a.id - b.id)
-        .map((message) => ({
-            from:
-                message.senderType === "user"
-                    ? "me"
-                    : ("agent" as ChatMsg["from"]),
-            text: message.content,
-            time: formatProductCsTime(message.createdAt),
-        }))
-        .filter((message) => Boolean(message.text));
-}
-
-function connectProductCsSession(
-    agentId: string,
-    sessionId: number,
-    productId?: number,
-) {
-    csSessionIds.value[agentId] = sessionId;
-    if (productId) csSessionProductIds.value[agentId] = productId;
-    csSocket.connect(sessionId, (event) => handleCsSocketEvent(agentId, event));
-}
-
-function applyProductCsSession(agentId: string, session: ProductCsSessionVO) {
-    const history = productCsMessagesToChat(session.messages ?? []);
-    if (history.length > 0) {
-        chatHistory.value[agentId] = history;
-    } else {
-        const agent = agents.value.find((item) => item.id === agentId);
-        if (agent) ensureAgentChatHistory(agent);
-    }
-    connectProductCsSession(agentId, session.id, session.productId);
-}
-
-async function restoreProductCsSession() {
-    if (productCsRestoring.value || Object.values(csSessionIds.value).length) {
-        return;
-    }
-    const agentId = currentAgent.value || agents.value[0]?.id;
-    if (!agentId) return;
-
-    productCsRestoring.value = true;
-    try {
-        const sessions = await ApiProductCs.listSessions({
-            page: 1,
-            pageSize: 20,
-        });
-        const activeSession = sessions.find(
-            (session) => session.status !== "CLOSED",
-        );
-        if (!activeSession) return;
-
-        const messages = await ApiProductCs.getMessages(activeSession.id);
-        const history = productCsMessagesToChat(messages);
-        if (history.length > 0) {
-            chatHistory.value[agentId] = history;
-        }
-        connectProductCsSession(
-            agentId,
-            activeSession.id,
-            activeSession.productId,
-        );
-    } catch (error) {
-        console.error("Restore product CS session failed:", error);
-    } finally {
-        productCsRestoring.value = false;
-    }
-}
-
-async function ensureProductCsSession(
-    agentId: string,
-    productId: number,
-): Promise<number> {
-    const existingSessionId = csSessionIds.value[agentId];
-    const existingProductId = csSessionProductIds.value[agentId];
-    if (
-        existingSessionId &&
-        (!existingProductId || existingProductId === productId)
-    ) {
-        return existingSessionId;
-    }
-
-    const session = await ApiProductCs.createSession(productId);
-    applyProductCsSession(agentId, session);
-    return session.id;
-}
-
-async function sendProductCsPayload(
-    agentId: string,
-    sessionId: number,
-    content: string,
-) {
-    const sent = csSocket.send(sessionId, content);
-    if (!sent) {
-        await ApiProductCs.sendMessage(sessionId, content);
-        connectProductCsSession(
-            agentId,
-            sessionId,
-            csSessionProductIds.value[agentId],
-        );
-    }
-}
-
-function normalizeAgentName(name: string): string {
-    return name.replace(/（我）|\(我\)/g, "").trim() || "客服";
-}
-
-function mapAgentStatus(status: AgentColleague["status"]): Agent["status"] {
-    if (status === "online") return "online";
-    if (status === "break") return "busy";
-    return "off";
-}
-
-function mapAgentRole(role: AgentColleague["role"]): string {
-    return role === "aftersale" ? "售后客服" : "售前客服";
-}
-
-function buildAgentAvatar(name: string): string {
-    return name.length <= 2 ? name : name.slice(-2);
-}
-
-function mapCustomerAgent(item: AgentColleague, index: number): Agent {
-    const name = normalizeAgentName(item.name);
-    return {
-        id: item.id || item.userId || `agent_${index + 1}`,
-        name,
-        tag: mapAgentRole(item.role),
-        status: mapAgentStatus(item.status),
-        avatar: buildAgentAvatar(name),
-    };
-}
-
-function ensureAgentChatHistory(agent: Agent) {
-    if (chatHistory.value[agent.id]) return;
-    chatHistory.value[agent.id] = [
-        {
-            from: "agent",
-            text: `您好，我是${agent.name}，请问有什么可以帮您？`,
-            time: currentTimeText(),
-        },
-    ];
-}
-
-function applyCustomerAgents(nextAgents: Agent[]) {
-    agents.value = nextAgents;
-    nextAgents.forEach(ensureAgentChatHistory);
-
-    const selected =
-        nextAgents.find((agent) => agent.id === currentAgent.value) ||
-        nextAgents.find((agent) => agent.status === "online") ||
-        nextAgents[0];
-
-    currentAgent.value = selected?.id || "";
-}
-
-async function loadCustomerAgents() {
-    if (customerAgentsLoading.value) return;
-
-    customerAgentsLoading.value = true;
-    try {
-        const result = await ApiCustomer.getProductCsAgents();
-        const mappedAgents = result
-            .map(mapCustomerAgent)
-            .filter((agent) => agent.name);
-        applyCustomerAgents(mappedAgents);
-        await restoreProductCsSession();
-    } catch (error) {
-        console.error("加载客服列表失败:", error);
-        applyCustomerAgents(fallbackAgents);
-        await restoreProductCsSession();
-        showToast("客服列表加载失败，已使用本地兜底客服");
-    } finally {
-        customerAgentsLoading.value = false;
-    }
-}
-
 function handleContactService() {
     serviceContextProduct.value = selectedProduct.value;
     showPdModal.value = false;
     activeTab.value = "service";
-    loadCustomerAgents();
 }
 
-async function sendProductCard(product: {
+function sendProductCard(product: {
     id: string;
     name: string;
     price: number;
@@ -1255,26 +1056,28 @@ async function sendProductCard(product: {
     desc: string;
 }) {
     const agentId = currentAgent.value;
-    if (!agentId) {
-        showToast("暂无可用客服，请稍后再试");
-        return;
-    }
-    try {
-        const productId = resolveProductCsProductId(product.id);
-        const sessionId = await ensureProductCsSession(agentId, productId);
-        if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
-        chatHistory.value[agentId].push({
-            from: "me",
-            text: `[商品] ${product.name} ¥${product.price}`,
-            time: currentTimeText(),
-            productCard: { ...product },
-        });
-
-        const productMsg = `[商品咨询] ${product.name}（¥${product.price}）`;
-        await sendProductCsPayload(agentId, sessionId, productMsg);
-    } catch (err) {
-        console.error("创建客服会话失败:", err);
-        showToast("发送商品消息失败，请重试");
+    if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    chatHistory.value[agentId].push({
+        from: "me",
+        text: `[商品] ${product.name} ¥${product.price}`,
+        time,
+        productCard: { ...product },
+    });
+    // 同步到桥（以纯文本描述传给客服端）
+    const productMsg = `[商品咨询] ${product.name}（¥${product.price}）`;
+    const existingId = bridgeSessionIds.value[agentId];
+    if (existingId) {
+        bridgeCustomerSend(existingId, productMsg);
+    } else {
+        const session = bridgeEnterQueue(
+            custName.value,
+            custId.value,
+            agentId,
+            productMsg,
+        );
+        bridgeSessionIds.value[agentId] = session.id;
     }
     serviceContextProduct.value = null;
 }
@@ -1287,64 +1090,67 @@ function viewProductFromService(productId: string) {
 async function sendChat() {
     const text = chatInput.value.trim();
     if (!text) return;
-    if (!currentAgent.value) {
-        showToast("暂无可用客服，请稍后再试");
-        return;
-    }
+    const now = new Date();
+    const time =
+        now.getHours().toString().padStart(2, "0") +
+        ":" +
+        now.getMinutes().toString().padStart(2, "0");
+
     const agentId = currentAgent.value;
-
-    try {
-        const productId = resolveProductCsProductId();
-        const sessionId = await ensureProductCsSession(agentId, productId);
-        if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
-        chatHistory.value[agentId].push({
-            from: "me",
-            text,
-            time: currentTimeText(),
-        });
-        chatInput.value = "";
-        await nextTick();
-        scrollChatToBottom();
-
-        await sendProductCsPayload(agentId, sessionId, text);
-    } catch (error) {
-        console.error("发送客服消息失败:", error);
-        showToast("发送消息失败，请重试");
-    }
-}
-
-/** 处理商品客服 STOMP 推送事件 */
-function handleCsSocketEvent(agentId: string, event: ProductCsEvent) {
     if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
-    const time = formatProductCsTime(event.timestamp || event.createdAt);
 
-    if (event.event === "agent_joined") {
-        // 客服接入通知
-        chatHistory.value[agentId].push({
-            from: "agent",
-            text: `客服 ${event.agentName || "客服"} 已接入，请问有什么可以帮您？`,
-            time,
-        });
-    } else if (event.event === "session_closed") {
-        // 会话结束通知
-        chatHistory.value[agentId].push({
-            from: "agent",
-            text: "客服已结束本次会话，感谢您的咨询。如有问题随时联系我们。",
-            time,
-        });
-        delete csSessionIds.value[agentId];
-        delete csSessionProductIds.value[agentId];
-        csSocket.disconnect();
-    } else if (event.senderType === "customer_service" && event.content) {
-        // 客服发来的消息
-        chatHistory.value[agentId].push({
-            from: "agent",
-            text: event.content,
-            time,
-        });
+    // 立即显示到本地聊天记录
+    chatHistory.value[agentId].push({ from: "me", text, time });
+    chatInput.value = "";
+    await nextTick();
+    scrollChatToBottom();
+
+    // 通过桥发送
+    const existingId = bridgeSessionIds.value[agentId];
+    if (existingId) {
+        bridgeCustomerSend(existingId, text);
+    } else {
+        const session = bridgeEnterQueue(
+            custName.value,
+            custId.value,
+            agentId,
+            text,
+        );
+        bridgeSessionIds.value[agentId] = session.id;
     }
-    nextTick().then(scrollChatToBottom);
 }
+
+// 监听桥中客服回复，同步到本地聊天记录
+watch(
+    bridgeSessions,
+    () => {
+        for (const [agentId, sessionId] of Object.entries(
+            bridgeSessionIds.value,
+        )) {
+            const session = bridgeSessions.find((s) => s.id === sessionId);
+            if (!session) continue;
+            const prevCount = bridgeMsgCounts.value[sessionId] ?? 0;
+            const newMsgs = session.messages.slice(prevCount);
+            let added = 0;
+            for (const msg of newMsgs) {
+                if (msg.from === "agent") {
+                    if (!chatHistory.value[agentId])
+                        chatHistory.value[agentId] = [];
+                    chatHistory.value[agentId].push({
+                        from: "agent",
+                        text: msg.text,
+                        time: msg.time,
+                    });
+                }
+                added++;
+            }
+            if (added > 0) {
+                bridgeMsgCounts.value[sessionId] = prevCount + added;
+            }
+        }
+    },
+    { deep: true },
+);
 
 function scrollChatToBottom() {
     if (chatBodyRef.value)
@@ -1628,9 +1434,8 @@ watch(activeTab, (newTab, oldTab) => {
             break;
 
         case "service":
-            // 切换到客服咨询页时刷新客服列表
-            console.log("切换到客服咨询页，加载客服列表");
-            loadCustomerAgents();
+            // 客服页不需要特殊处理
+            console.log("切换到客服咨询页");
             break;
     }
 });

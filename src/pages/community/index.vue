@@ -132,6 +132,11 @@
                                 :class="{ active: selectedMood === mood }"
                                 @click="selectMood(mood)"
                             >{{ mood }}</span>
+                            <span
+                                v-if="selectedMood"
+                                class="pick-chip danger"
+                                @click="clearMood"
+                            >清除心情</span>
                         </div>
                         <div class="tip-row" style="margin-top: 16px">
                             <span class="icon">💡</span>
@@ -159,7 +164,7 @@
                     <div v-else class="check-grid">
                         <div
                             v-for="(item, idx) in checkItems"
-                            :key="idx"
+                            :key="item.id ?? `${item.name}-${idx}`"
                             class="check-item"
                             :class="{ done: item.done }"
                         >
@@ -168,7 +173,7 @@
                                 <div class="ci-name">{{ item.name }}</div>
                                 <div class="ci-meta">{{ item.meta }}</div>
                             </div>
-                            <button class="ci-del" @click.stop="removeCheckin(idx)">✕</button>
+                            <button class="ci-del" :disabled="isSavingCheckItem" @click.stop="removeCheckin(idx)">✕</button>
                             <div class="check-box" @click="toggleCheckinItem(idx)">✓</div>
                         </div>
                     </div>
@@ -216,7 +221,13 @@
                                     </div>
                                     <div class="wset-footer">
                                         <button class="wset-btn" @click="showCheckinDialog = false">取消</button>
-                                        <button class="wset-btn primary" @click="saveCheckin">添加</button>
+                                        <button
+                                            class="wset-btn primary"
+                                            :disabled="isSavingCheckItem || !checkinForm.name.trim()"
+                                            @click="saveCheckin"
+                                        >
+                                            {{ isSavingCheckItem ? "保存中..." : "添加" }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -393,7 +404,7 @@
                     </div>
 
                     <!-- 空状态 -->
-                    <div v-if="meals.length === 0" class="meal-empty" @click="openMealDialog">
+                    <div v-if="meals.length === 0" class="meal-empty" @click="openMealDialog()">
                         <div class="meal-empty-icon">＋</div>
                         <div class="meal-empty-text">记录今日饮食</div>
                     </div>
@@ -402,13 +413,14 @@
                     <div v-else class="grid-4" style="margin-top: 14px">
                         <div
                             v-for="(meal, idx) in meals"
-                            :key="idx"
+                            :key="meal.id ?? `${meal.mealType || 'meal'}-${idx}`"
                             class="meal-card"
+                            @click="openMealDialog(meal)"
                         >
                             <div class="meal-img" :class="meal.bg">
                                 <img v-if="meal.image" :src="meal.image" class="meal-card-img" />
                                 <template v-else>{{ meal.emoji }}</template>
-                                <button class="meal-del" @click.stop="removeMeal(idx)">✕</button>
+                                <span class="meal-edit">编辑</span>
                             </div>
                             <div class="meal-body">
                                 <div class="meal-name">{{ meal.name }}</div>
@@ -417,7 +429,7 @@
                             </div>
                         </div>
                         <!-- 继续添加 -->
-                        <div class="meal-card meal-add-card" @click="openMealDialog">
+                        <div class="meal-card meal-add-card" @click="openMealDialog()">
                             <div class="meal-img meal-add-img">＋</div>
                             <div class="meal-body">
                                 <div class="meal-name" style="color:var(--ink-muted);justify-content:center">添加一餐</div>
@@ -500,8 +512,22 @@
                                         </div>
                                     </div>
                                     <div class="wset-footer">
+                                        <button
+                                            v-if="editingMeal?.id"
+                                            class="wset-btn danger meal-dialog-btn"
+                                            :disabled="isDeletingMeal"
+                                            @click="removeMeal"
+                                        >
+                                            {{ isDeletingMeal ? "删除中..." : "删除记录" }}
+                                        </button>
                                         <button class="wset-btn meal-dialog-btn" @click="showMealDialog = false">取消</button>
-                                        <button class="wset-btn primary meal-dialog-btn" @click="saveMeal">记录</button>
+                                        <button
+                                            class="wset-btn primary meal-dialog-btn"
+                                            :disabled="isSavingMeal || isDeletingMeal || (!mealForm.foods.trim() && mealForm.cal === 0)"
+                                            @click="saveMeal"
+                                        >
+                                            {{ isSavingMeal ? "保存中..." : "保存记录" }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -565,7 +591,9 @@
                                         </div>
                                         <div class="wset-footer">
                                             <button class="wset-btn" @click="showWaterSettings = false">取消</button>
-                                            <button class="wset-btn primary" @click="saveWaterSettings">保存</button>
+                                            <button class="wset-btn primary" :disabled="isSavingWaterTarget" @click="saveWaterSettings">
+                                                {{ isSavingWaterTarget ? "保存中..." : "保存" }}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -610,7 +638,9 @@
                                         </div>
                                         <div class="wset-footer">
                                             <button class="wset-btn" @click="showCalSettings = false">取消</button>
-                                            <button class="wset-btn primary" @click="saveCalSettings">保存</button>
+                                            <button class="wset-btn primary" :disabled="isSavingCalGoal" @click="saveCalSettings">
+                                                {{ isSavingCalGoal ? "保存中..." : "保存" }}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1508,13 +1538,15 @@ import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import SleepTracker from "@/components/SleepTracker.vue";
 import {
     ApiCircle,
+    type CheckInDailyContentVO,
     type CheckInMilestoneVO,
+    type CheckInMoodVO,
     type CheckInMonthVO,
     type CheckInTodayOverviewVO,
     type CheckInWeekVO,
     type DietDailyCalorieSummaryVO,
     type DietRecordVO,
-    type PageResult,
+    type CommunityPageResult,
     type WaterTodayOverviewVO,
     type WellnessDynamicCommentVO,
     type WellnessDynamicVO,
@@ -1581,14 +1613,20 @@ function writeStorage<T>(key: string, value: T) {
 }
 
 function responseData<T>(response: unknown): T | undefined {
-    return (response as { data?: { data?: T } }).data?.data;
+    const payload = (response as { data?: unknown })?.data ?? response;
+    if (payload && typeof payload === "object" && "data" in payload) {
+        return (payload as { data?: T }).data;
+    }
+    return payload as T | undefined;
 }
 
 function getBackendId(id: string | number) {
     if (typeof id === "number") return Number.isFinite(id) ? id : null;
-    const match = id.match(/\d+/);
+    const match = id.match(/^(?:note|dynamic|note_comment|dynamic_comment)_(\d+)$/);
     if (!match) return null;
-    const value = Number(match[0]);
+    const rawId = match[1];
+    if (!rawId) return null;
+    const value = Number(rawId);
     return Number.isFinite(value) ? value : null;
 }
 
@@ -1645,17 +1683,12 @@ const todayDisplay = computed(() => {
 
 // ── 先声明打卡项和心情（watch 依赖它们）──────────────────
 interface CheckItem {
+    id?: number | undefined;
     name: string;
     icon: string;
     meta: string;
     done: boolean;
-}
-
-interface CheckinState {
-    todayKey: string;
-    items: CheckItem[];
-    mood: string;
-    history: Record<string, DayRecord>;
+    sortOrder?: number | undefined;
 }
 
 const moods = ["😔 疲惫", "😐 平常", "🙂 轻松", "😄 元气满满"];
@@ -1663,17 +1696,8 @@ const selectedMood = ref('');
 const checkItems = ref<CheckItem[]>([]);
 const serverStreakDays = ref<number | null>(null);
 const serverMilestoneData = ref<CheckInMilestoneVO | null>(null);
-
-function getDefaultCheckItems(): CheckItem[] {
-    return [
-        { icon: "🌅", name: "晨起温水", meta: "起床后 300ml", done: false },
-        { icon: "🧘", name: "静心呼吸", meta: "5 分钟", done: false },
-        { icon: "🥗", name: "清淡一餐", meta: "少油少糖", done: false },
-        { icon: "💧", name: "饮水达标", meta: "按今日目标完成", done: false },
-        { icon: "🏃", name: "轻运动", meta: "散步或拉伸 20 分钟", done: false },
-        { icon: "🌙", name: "早睡准备", meta: "23:00 前放下手机", done: false },
-    ];
-}
+const isSavingCheckinMood = ref(false);
+const isSavingCheckItem = ref(false);
 
 // ── 历史打卡存档 ──────────────────────────────────────
 interface DayRecord {
@@ -1691,35 +1715,12 @@ function saveTodayHistory() {
             mood: selectedMood.value,
         };
     }
-    writeStorage<CheckinState>(STORAGE_KEYS.checkin, {
-        todayKey: todayKey.value,
-        items: checkItems.value.map((i) => ({ ...i })),
-        mood: selectedMood.value,
-        history: checkinHistory.value,
-    });
 }
 
 function loadCheckinState() {
-    const saved = readStorage<CheckinState | null>(STORAGE_KEYS.checkin, null);
-    if (saved?.history && typeof saved.history === "object") {
-        checkinHistory.value = saved.history;
-    }
-
-    const record = checkinHistory.value[todayKey.value];
-    if (saved?.todayKey === todayKey.value && Array.isArray(saved.items)) {
-        checkItems.value = saved.items.map((i) => ({ ...i, done: !!i.done }));
-        selectedMood.value = saved.mood || "";
-        return;
-    }
-    if (record) {
-        checkItems.value = record.items.map((i) => ({ ...i, done: !!i.done }));
-        selectedMood.value = record.mood || "";
-        return;
-    }
-
-    checkItems.value = getDefaultCheckItems();
+    checkinHistory.value = {};
+    checkItems.value = [];
     selectedMood.value = "";
-    saveTodayHistory();
 }
 
 function moodLabelToCode(mood: string) {
@@ -1749,6 +1750,20 @@ function moodCodeToLabel(code?: number, text?: string) {
     );
 }
 
+function mapDailyContentToCheckItem(
+    item: CheckInDailyContentVO,
+    index = 0,
+): CheckItem {
+    return {
+        id: item.id,
+        icon: item.status === 1 ? "✅" : "🎯",
+        name: item.targetTitle || "今日打卡",
+        meta: item.content || "",
+        done: item.status === 1,
+        sortOrder: item.sortOrder ?? index + 1,
+    };
+}
+
 function applyCheckinToday(data?: CheckInTodayOverviewVO) {
     if (!data) return;
     if (typeof data.streakDays === "number") {
@@ -1756,15 +1771,21 @@ function applyCheckinToday(data?: CheckInTodayOverviewVO) {
     }
     if (data.mood || data.moodText) {
         selectedMood.value = moodCodeToLabel(data.mood, data.moodText);
+    } else {
+        selectedMood.value = "";
     }
     if (Array.isArray(data.dailyContents) && data.dailyContents.length > 0) {
-        checkItems.value = data.dailyContents.map((item) => ({
-            icon: item.status === 1 ? "✅" : "🎯",
-            name: item.targetTitle || "今日打卡",
-            meta: item.content || "",
-            done: item.status === 1,
-        }));
+        checkItems.value = data.dailyContents.map(mapDailyContentToCheckItem);
     }
+    saveTodayHistory();
+}
+
+function applyCheckinDailyContentList(data?: CheckInDailyContentVO[]) {
+    if (!Array.isArray(data)) return;
+    checkItems.value = data
+        .slice()
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        .map(mapDailyContentToCheckItem);
     saveTodayHistory();
 }
 
@@ -1815,13 +1836,17 @@ function applyCheckinMilestones(data?: CheckInMilestoneVO) {
 async function loadCheckinApiState() {
     const userId = apiUserId.value;
     try {
-        const [today, week, month, milestone] = await Promise.allSettled([
+        const [today, dailyContent, week, month, milestone] = await Promise.allSettled([
             ApiCircle.getCheckinToday(userId),
+            ApiCircle.getCheckinDailyContent(userId),
             ApiCircle.getCheckinWeek({ userId, date: todayKey.value }),
             ApiCircle.getCheckinMonth({ userId, month: todayKey.value }),
             ApiCircle.getCheckinMilestones(userId),
         ]);
         if (today.status === "fulfilled") applyCheckinToday(responseData(today.value));
+        if (dailyContent.status === "fulfilled") {
+            applyCheckinDailyContentList(responseData(dailyContent.value));
+        }
         if (week.status === "fulfilled") applyCheckinWeek(responseData(week.value));
         if (month.status === "fulfilled") applyCheckinMonth(responseData(month.value));
         if (milestone.status === "fulfilled") applyCheckinMilestones(responseData(milestone.value));
@@ -1919,54 +1944,191 @@ function openCheckinDialog() {
     showCheckinDialog.value = true;
 }
 
-function saveCheckin() {
-    if (!checkinForm.value.name.trim()) return;
-    checkItems.value.push({
-        icon: checkinForm.value.icon || "🎯",
-        name: checkinForm.value.name.trim(),
-        meta: checkinForm.value.meta.trim(),
-        done: false,
-    });
-    showCheckinDialog.value = false;
-    saveTodayHistory();
+async function refreshCheckinAfterChange() {
+    await refreshMilestonesFromApi();
+    await loadCheckinApiState();
 }
 
-function removeCheckin(idx: number) {
-    checkItems.value.splice(idx, 1);
-    saveTodayHistory();
+function toCheckinDailyContentPayload(item: CheckItem, status: number, index: number) {
+    const payload = {
+        userId: apiUserId.value,
+        targetTitle: item.name.trim() || "今日打卡",
+        content: item.meta.trim() || item.name.trim() || "今日打卡",
+        status,
+        sortOrder: item.sortOrder ?? index + 1,
+    };
+    return typeof item.id === "number" ? { ...payload, id: item.id } : payload;
 }
 
-function toggleCheckinItem(idx: number) {
+async function saveCheckin() {
+    if (isSavingCheckItem.value) return;
+    const targetTitle = checkinForm.value.name.trim();
+    if (!targetTitle) {
+        toast("请先填写打卡名称");
+        return;
+    }
+    isSavingCheckItem.value = true;
+    try {
+        const response = await ApiCircle.saveCheckinDailyContent({
+            userId: apiUserId.value,
+            targetTitle,
+            content: checkinForm.value.meta.trim() || targetTitle,
+            status: 0,
+            sortOrder: checkItems.value.length + 1,
+        });
+        const saved = responseData<CheckInDailyContentVO>(response);
+        if (saved) {
+            const nextItem = mapDailyContentToCheckItem(saved, checkItems.value.length);
+            nextItem.icon = checkinForm.value.icon || nextItem.icon;
+            checkItems.value.push(nextItem);
+            saveTodayHistory();
+        }
+        checkinForm.value = { icon: "🎯", name: "", meta: "" };
+        showCheckinDialog.value = false;
+        await refreshCheckinAfterChange();
+        toast("打卡项已添加");
+    } catch {
+        toast("打卡项保存失败，请检查 /checkin/daily-content 接口");
+    } finally {
+        isSavingCheckItem.value = false;
+    }
+}
+
+async function removeCheckin(idx: number) {
+    if (isSavingCheckItem.value) return;
     const item = checkItems.value[idx];
     if (!item) return;
-    item.done = !item.done;
-    saveTodayHistory();
+    if (!item.id) {
+        checkItems.value.splice(idx, 1);
+        saveTodayHistory();
+        toast("打卡项已移除");
+        return;
+    }
+    isSavingCheckItem.value = true;
+    try {
+        await ApiCircle.deleteCheckinDailyContent(item.id, apiUserId.value);
+        checkItems.value.splice(idx, 1);
+        saveTodayHistory();
+        await refreshCheckinAfterChange();
+        toast("打卡项已删除");
+    } catch {
+        toast("打卡项删除失败，请检查 /checkin/daily-content/{id} 接口");
+    } finally {
+        isSavingCheckItem.value = false;
+    }
+}
+
+async function saveTodayCheckinRecord(mood = selectedMood.value || "😐 平常", message = "今日打卡已保存") {
+    if (isSavingCheckinMood.value) return;
+    isSavingCheckinMood.value = true;
+    try {
+        const response = await ApiCircle.saveCheckinMood({
+            userId: apiUserId.value,
+            checkinDate: todayKey.value,
+            mood: moodLabelToCode(mood),
+        });
+        const saved = responseData<CheckInMoodVO>(response);
+        selectedMood.value = moodCodeToLabel(
+            saved?.mood ?? moodLabelToCode(mood),
+            saved?.moodText,
+        );
+        await loadCheckinApiState();
+        toast(message);
+    } catch {
+        toast("今日打卡保存失败，请检查 /checkin/mood 接口");
+    } finally {
+        isSavingCheckinMood.value = false;
+    }
+}
+
+async function clearMood() {
+    if (isSavingCheckinMood.value) return;
+    isSavingCheckinMood.value = true;
+    try {
+        await ApiCircle.deleteCheckinMood({
+            userId: apiUserId.value,
+            date: todayKey.value,
+        });
+        selectedMood.value = "";
+        await loadCheckinApiState();
+        selectedMood.value = "";
+        saveTodayHistory();
+        toast("打卡心情已清除");
+    } catch {
+        toast("打卡心情清除失败，请检查 /checkin/mood DELETE 接口");
+    } finally {
+        isSavingCheckinMood.value = false;
+    }
+}
+
+async function toggleCheckinItem(idx: number) {
+    if (isSavingCheckItem.value) return;
+    const item = checkItems.value[idx];
+    if (!item) return;
+    const status = item.done ? 0 : 1;
+    isSavingCheckItem.value = true;
+    const previous = { ...item };
+    item.done = status === 1;
+    item.icon = item.done ? "✅" : "🎯";
+    try {
+        const response = await ApiCircle.saveCheckinDailyContent(
+            toCheckinDailyContentPayload(item, status, idx),
+        );
+        const saved = responseData<CheckInDailyContentVO>(response);
+        if (saved) checkItems.value[idx] = mapDailyContentToCheckItem(saved, idx);
+        saveTodayHistory();
+        await refreshCheckinAfterChange();
+        toast(status === 1 ? "打卡项已完成" : "打卡项已取消");
+    } catch {
+        checkItems.value[idx] = previous;
+        saveTodayHistory();
+        toast("打卡状态保存失败，请检查 /checkin/daily-content 接口");
+    } finally {
+        isSavingCheckItem.value = false;
+    }
 }
 
 const allChecksDone = computed(
     () => checkItems.value.length > 0 && checkItems.value.every((i) => i.done),
 );
 
-function toggleAllChecks() {
-    if (checkItems.value.length === 0) {
-        toast('请先添加打卡内容');
-        return;
+async function toggleAllChecks() {
+    if (isSavingCheckItem.value) return;
+    if (checkItems.value.length === 0) return;
+    const status = allChecksDone.value ? 0 : 1;
+    const previous = checkItems.value.map((item) => ({ ...item }));
+    isSavingCheckItem.value = true;
+    checkItems.value = checkItems.value.map((item) => ({
+        ...item,
+        icon: status === 1 ? "✅" : "🎯",
+        done: status === 1,
+    }));
+    try {
+        await Promise.all(
+            checkItems.value.map((item, index) =>
+                ApiCircle.saveCheckinDailyContent(
+                    toCheckinDailyContentPayload(item, status, index),
+                ),
+            ),
+        );
+        saveTodayHistory();
+        await refreshCheckinAfterChange();
+        toast(status === 1 ? "今日打卡已全部完成" : "今日打卡已全部取消");
+    } catch {
+        checkItems.value = previous;
+        saveTodayHistory();
+        toast("批量打卡保存失败，请检查 /checkin/daily-content 接口");
+    } finally {
+        isSavingCheckItem.value = false;
     }
-    const target = !allChecksDone.value;
-    checkItems.value.forEach((i) => { i.done = target; });
-    saveTodayHistory();
-    if (target) void refreshMilestonesFromApi();
-    toast(target ? "🎉 今日打卡全部完成！" : "已取消今日全部打卡");
 }
 
-function selectMood(mood: string) {
-    selectedMood.value = mood;
-    saveTodayHistory();
-    ApiCircle.saveCheckinMood({
-        userId: apiUserId.value,
-        checkinDate: todayKey.value,
-        mood: moodLabelToCode(mood),
-    }).catch(() => {});
+async function selectMood(mood: string) {
+    if (selectedMood.value === mood) {
+        await clearMood();
+        return;
+    }
+    await saveTodayCheckinRecord(mood, "打卡心情已保存");
 }
 
 // ── 打卡海报 ──────────────────────────────────────────
@@ -2250,6 +2412,7 @@ interface MealRecord {
     id?: number | undefined;
     mealType?: number | undefined;
     dietType?: number | undefined;
+    recordDate?: string | undefined;
     name: string;
     emoji: string;
     bg: string;
@@ -2269,40 +2432,24 @@ interface LifestyleState {
 const meals = ref<MealRecord[]>([]);
 
 const mealTypes = [
-    { name: "早茶",   emoji: "🍵", bg: "mt-morning-tea" },
-    { name: "早餐",   emoji: "🥣", bg: "mt-breakfast" },
-    { name: "午餐",   emoji: "🍲", bg: "mt-lunch" },
-    { name: "下午茶", emoji: "☕", bg: "mt-tea-break" },
-    { name: "晚餐",   emoji: "🥗", bg: "mt-dinner" },
-    { name: "夜宵",   emoji: "🌙", bg: "mt-supper" },
-    { name: "加餐",   emoji: "🍎", bg: "mt-snack" },
+    { name: "早餐", emoji: "🥣", bg: "mt-breakfast", code: 1 },
+    { name: "晚餐", emoji: "🥗", bg: "mt-dinner", code: 2 },
 ];
 
 const mealTypeCodeByName: Record<string, number> = {
-    早茶: 1,
     早餐: 1,
-    午餐: 2,
-    下午茶: 4,
-    晚餐: 3,
-    夜宵: 5,
-    加餐: 4,
+    晚餐: 2,
 };
 
 function getMealTypeMeta(mealType?: number, mealTypeText?: string) {
     const text = mealTypeText || "";
     if (text.includes("早")) return { name: "早餐", emoji: "🥣", bg: "mt-breakfast" };
-    if (text.includes("午")) return { name: "午餐", emoji: "🍲", bg: "mt-lunch" };
     if (text.includes("晚")) return { name: "晚餐", emoji: "🥗", bg: "mt-dinner" };
-    if (text.includes("茶")) return { name: "下午茶", emoji: "☕", bg: "mt-tea-break" };
-    if (text.includes("夜")) return { name: "夜宵", emoji: "🌙", bg: "mt-supper" };
     return (
         {
             1: { name: "早餐", emoji: "🥣", bg: "mt-breakfast" },
-            2: { name: "午餐", emoji: "🍲", bg: "mt-lunch" },
-            3: { name: "晚餐", emoji: "🥗", bg: "mt-dinner" },
-            4: { name: "加餐", emoji: "🍎", bg: "mt-snack" },
-            5: { name: "夜宵", emoji: "🌙", bg: "mt-supper" },
-        }[mealType || 0] || { name: "加餐", emoji: "🍎", bg: "mt-snack" }
+            2: { name: "晚餐", emoji: "🥗", bg: "mt-dinner" },
+        }[mealType || 0] || { name: "早餐", emoji: "🥣", bg: "mt-breakfast" }
     );
 }
 
@@ -2312,6 +2459,7 @@ function mapDietRecordToMeal(record: DietRecordVO): MealRecord {
         id: record.id,
         mealType: record.mealType,
         dietType: record.dietType,
+        recordDate: record.recordDate,
         name: meta.name,
         emoji: meta.emoji,
         bg: meta.bg,
@@ -2324,9 +2472,23 @@ function mapDietRecordToMeal(record: DietRecordVO): MealRecord {
 const showMealDialog = ref(false);
 const mealForm = ref({ name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" });
 const mealImgInputRef = ref<HTMLInputElement | null>(null);
+const editingMeal = ref<MealRecord | null>(null);
+const isSavingMeal = ref(false);
+const isDeletingMeal = ref(false);
+const backendTotalCal = ref<number | null>(null);
 
-function openMealDialog() {
-    mealForm.value = { name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" };
+function openMealDialog(meal?: MealRecord) {
+    editingMeal.value = meal ? { ...meal } : null;
+    mealForm.value = meal
+        ? {
+            name: meal.name,
+            emoji: meal.emoji,
+            bg: meal.bg,
+            foods: meal.foods,
+            cal: meal.cal,
+            image: meal.image,
+        }
+        : { name: "早餐", emoji: "🥣", bg: "mt-breakfast", foods: "", cal: 0, image: "" };
     showMealDialog.value = true;
 }
 
@@ -2349,46 +2511,86 @@ function onMealImgSelect(e: Event) {
     (e.target as HTMLInputElement).value = "";
 }
 
+async function refreshDietBackendState() {
+    await Promise.allSettled([
+        loadDietRecordsApiState(),
+        loadCalorieApiState(),
+    ]);
+}
+
 async function saveMeal() {
+    if (isSavingMeal.value) return;
     if (!mealForm.value.foods.trim() && mealForm.value.cal === 0) return;
-    const fallbackMeal = {
-        ...mealForm.value,
-        foods: mealForm.value.foods.trim(),
-        cal: Math.max(0, Number(mealForm.value.cal) || 0),
-        mealType: mealTypeCodeByName[mealForm.value.name] || 4,
-        dietType: 2,
-    };
+    isSavingMeal.value = true;
     try {
+        const mealType = mealTypeCodeByName[mealForm.value.name] || 1;
         const payload = {
             userId: apiUserId.value,
             recordDate: todayKey.value,
-            mealType: fallbackMeal.mealType,
-            content: fallbackMeal.foods,
-            dietType: fallbackMeal.dietType,
-            calories: fallbackMeal.cal,
+            mealType,
+            content: mealForm.value.foods.trim(),
+            dietType: 2,
+            calories: Math.max(0, Number(mealForm.value.cal) || 0),
         };
-        const response = await ApiCircle.saveDietRoutineRecord(payload).catch(() =>
-            ApiCircle.saveDietRecord(payload),
+        const response = await ApiCircle.saveDietRecord(payload).catch(() =>
+            ApiCircle.saveDietRoutineRecord(payload),
         );
         const saved = responseData<DietRecordVO>(response);
-        meals.value.push(saved ? mapDietRecordToMeal(saved) : fallbackMeal);
-        void loadCalorieApiState();
+        if (saved) upsertMealFromBackend(saved);
+        await refreshDietBackendState();
+        editingMeal.value = null;
+        showMealDialog.value = false;
+        toast("饮食记录已保存");
     } catch {
-        meals.value.push(fallbackMeal);
+        toast("饮食记录保存失败，请检查接口返回");
+    } finally {
+        isSavingMeal.value = false;
     }
-    showMealDialog.value = false;
-    saveLifestyleState();
-    toast("饮食记录已保存");
-}
-
-function removeMeal(idx: number) {
-    meals.value.splice(idx, 1);
     saveLifestyleState();
 }
 
-const totalCal = computed(() =>
+function upsertMealFromBackend(record: DietRecordVO) {
+    const meal = mapDietRecordToMeal(record);
+    const index = meals.value.findIndex((item) =>
+        (meal.id !== undefined && item.id === meal.id) ||
+        (item.mealType === meal.mealType && (item.recordDate || todayKey.value) === (meal.recordDate || todayKey.value)),
+    );
+    if (index >= 0) {
+        meals.value.splice(index, 1, meal);
+    } else {
+        meals.value.push(meal);
+    }
+    backendTotalCal.value = null;
+}
+
+async function removeMeal() {
+    if (isDeletingMeal.value) return;
+    const meal = editingMeal.value;
+    if (meal?.id == null) {
+        toast("这条饮食记录缺少后端 ID，无法删除");
+        return;
+    }
+    isDeletingMeal.value = true;
+    try {
+        await ApiCircle.deleteDietRecord(meal.id, apiUserId.value);
+        meals.value = meals.value.filter((item) => item.id !== meal.id);
+        backendTotalCal.value = null;
+        await refreshDietBackendState();
+        showMealDialog.value = false;
+        editingMeal.value = null;
+        saveLifestyleState();
+        toast("饮食记录已删除");
+    } catch {
+        toast("饮食记录删除失败，请检查 /diet/record/{id} 接口");
+    } finally {
+        isDeletingMeal.value = false;
+    }
+}
+
+const localTotalCal = computed(() =>
     meals.value.reduce((sum, m) => sum + (m.cal || 0), 0),
 );
+const totalCal = computed(() => backendTotalCal.value ?? localTotalCal.value);
 const calOver = computed(() => totalCal.value > calGoal.value);
 const calPct = computed(() =>
     Math.min(100, Math.round((totalCal.value / calGoal.value) * 100)),
@@ -2405,79 +2607,95 @@ const waterCupSize = ref(250);
 const waterCupCount = computed(() => Math.ceil(waterGoal.value / Math.max(waterCupSize.value, 1)));
 const showWaterSettings = ref(false);
 const wsetForm = ref({ goal: 2000, cupSize: 250 });
+const isSavingWaterTarget = ref(false);
 
 function openWaterSettings() {
     wsetForm.value = { goal: waterGoal.value, cupSize: waterCupSize.value };
     showWaterSettings.value = true;
 }
 
-function saveWaterSettings() {
+async function saveWaterSettings() {
+    if (isSavingWaterTarget.value) return;
+    isSavingWaterTarget.value = true;
     const currentMl = waterFilled.value * waterCupSize.value;
-    waterGoal.value = Math.min(5000, Math.max(500, Number(wsetForm.value.goal) || 2000));
-    waterCupSize.value = Math.min(1000, Math.max(50, Number(wsetForm.value.cupSize) || 250));
-    waterFilled.value = Math.min(
-        waterCupCount.value,
-        Math.max(0, Math.round(currentMl / waterCupSize.value)),
-    );
-    showWaterSettings.value = false;
-    saveLifestyleState();
-    ApiCircle.updateWaterTarget({
-        userId: apiUserId.value,
-        statDate: todayKey.value,
-        targetMl: waterGoal.value,
-        cupMl: waterCupSize.value,
-    })
-        .then((response) => {
-            applyWaterOverview(responseData(response));
-            saveLifestyleState();
-        })
-        .catch(() => {});
-    toast("饮水目标已保存");
+    const targetMl = Math.min(5000, Math.max(500, Number(wsetForm.value.goal) || 2000));
+    const cupMl = Math.min(1000, Math.max(50, Number(wsetForm.value.cupSize) || 250));
+    try {
+        const response = await ApiCircle.updateWaterTarget({
+            userId: apiUserId.value,
+            statDate: todayKey.value,
+            targetMl,
+            cupMl,
+        });
+        applyWaterOverview(responseData(response));
+        waterFilled.value = Math.min(
+            waterCupCount.value,
+            Math.max(0, Math.round(currentMl / waterCupSize.value)),
+        );
+        showWaterSettings.value = false;
+        saveLifestyleState();
+        toast("饮水目标已保存");
+    } catch {
+        toast("饮水目标保存失败，请检查接口返回");
+    } finally {
+        isSavingWaterTarget.value = false;
+    }
 }
 
-function setWaterFilled(count: number) {
-    waterFilled.value = Math.min(waterCupCount.value, Math.max(0, count));
-    saveLifestyleState();
-    ApiCircle.updateWaterCups({
-        userId: apiUserId.value,
-        statDate: todayKey.value,
-        currentCups: waterFilled.value,
-    })
-        .then((response) => {
-            applyWaterOverview(responseData(response));
-            saveLifestyleState();
-        })
-        .catch(() => {});
+async function setWaterFilled(count: number) {
+    const previous = waterFilled.value;
+    const currentCups = Math.min(waterCupCount.value, Math.max(0, count));
+    waterFilled.value = currentCups;
+    try {
+        const response = await ApiCircle.updateWaterCups({
+            userId: apiUserId.value,
+            statDate: todayKey.value,
+            currentCups,
+        });
+        applyWaterOverview(responseData(response));
+        saveLifestyleState();
+    } catch {
+        waterFilled.value = previous;
+        toast("饮水记录保存失败，请检查接口返回");
+    }
 }
 
 const calGoal = ref(1800);
 const showCalSettings = ref(false);
 const calForm = ref({ goal: 1800 });
+const isSavingCalGoal = ref(false);
 
 function openCalSettings() {
     calForm.value.goal = calGoal.value;
     showCalSettings.value = true;
 }
 
-function saveCalSettings() {
-    calGoal.value = Math.min(5000, Math.max(500, Number(calForm.value.goal) || 1800));
-    showCalSettings.value = false;
-    saveLifestyleState();
-    ApiCircle.setCalorieLimit({
-        userId: apiUserId.value,
-        limitDate: todayKey.value,
-        calorieLimit: calGoal.value,
-    })
-        .then((response) => {
-            applyCalorieSummary(responseData(response));
-            saveLifestyleState();
-        })
-        .catch(() => {});
-    toast("热量目标已保存");
+async function saveCalSettings() {
+    if (isSavingCalGoal.value) return;
+    isSavingCalGoal.value = true;
+    const calorieLimit = Math.min(5000, Math.max(500, Number(calForm.value.goal) || 1800));
+    try {
+        const response = await ApiCircle.setCalorieLimit({
+            userId: apiUserId.value,
+            limitDate: todayKey.value,
+            calorieLimit,
+        });
+        applyCalorieSummary(responseData(response));
+        showCalSettings.value = false;
+        saveLifestyleState();
+        toast("热量目标已保存");
+    } catch {
+        toast("热量目标保存失败，请检查 /diet-routine/calorie/limit 接口");
+    } finally {
+        isSavingCalGoal.value = false;
+    }
 }
 
 function applyCalorieSummary(data?: DietDailyCalorieSummaryVO) {
     if (!data) return;
+    if (typeof data.totalCalories === "number") {
+        backendTotalCal.value = Math.max(0, data.totalCalories);
+    }
     if (typeof data.calorieLimit === "number") {
         calGoal.value = data.calorieLimit;
     }
@@ -2495,13 +2713,13 @@ function applyWaterOverview(data?: WaterTodayOverviewVO) {
 
 async function loadDietRecordsApiState() {
     try {
-        const response = await ApiCircle.getTodayDietRecords(apiUserId.value);
+        const response = await ApiCircle.getDietRecordList({
+            userId: apiUserId.value,
+            date: todayKey.value,
+        });
         let records = responseData<DietRecordVO[]>(response);
         if (!records?.length) {
-            const fallback = await ApiCircle.getDietRecordList({
-                userId: apiUserId.value,
-                date: todayKey.value,
-            });
+            const fallback = await ApiCircle.getTodayDietRecords(apiUserId.value);
             records = responseData<DietRecordVO[]>(fallback);
         }
         if (Array.isArray(records)) {
@@ -2544,7 +2762,7 @@ async function loadLifestyleApiState() {
 
 function saveLifestyleState() {
     writeStorage<LifestyleState>(STORAGE_KEYS.lifestyle, {
-        meals: meals.value,
+        meals: [],
         waterFilled: waterFilled.value,
         waterGoal: waterGoal.value,
         waterCupSize: waterCupSize.value,
@@ -2555,16 +2773,7 @@ function saveLifestyleState() {
 function loadLifestyleState() {
     const saved = readStorage<LifestyleState | null>(STORAGE_KEYS.lifestyle, null);
     if (!saved) return;
-    meals.value = Array.isArray(saved.meals)
-        ? saved.meals.map((m) => ({
-            name: m.name || "加餐",
-            emoji: m.emoji || "🍎",
-            bg: m.bg || "mt-snack",
-            foods: m.foods || "",
-            cal: Math.max(0, Number(m.cal) || 0),
-            image: m.image || "",
-        }))
-        : [];
+    meals.value = [];
     waterGoal.value = Math.min(5000, Math.max(500, Number(saved.waterGoal) || 2000));
     waterCupSize.value = Math.min(1000, Math.max(50, Number(saved.waterCupSize) || 250));
     waterFilled.value = Math.min(
@@ -2727,7 +2936,7 @@ async function hydrateNoteComments(post: Post) {
             page: 1,
             size: 50,
         });
-        const page = responseData<PageResult<WellnessNoteCommentVO>>(response);
+        const page = responseData<CommunityPageResult<WellnessNoteCommentVO>>(response);
         const comments = page?.records || [];
         const roots = comments.filter((c) => !c.parentId);
         post.commentList = roots.map((comment) => ({
@@ -2743,62 +2952,10 @@ async function hydrateNoteComments(post: Post) {
     }
 }
 
-function getSeededPublishedPosts(): Post[] {
-    return [
-        {
-            _id: "exp_seed_1",
-            text: "小满后湿气重，我这周把晚餐换成山药小米粥配清炒时蔬，胃口稳了很多，晚上也不容易口渴。",
-            images: [],
-            video: "",
-            category: "食疗药膳",
-            author: "林清欢",
-            time: "昨天 20:20",
-            likes: 18,
-            comments: 2,
-            stars: 7,
-            commentList: [
-                { _cid: "exp_c_1", author: "禾木", text: "山药小米粥真的舒服，我也试试。", time: "昨天", replies: [] },
-                { _cid: "exp_c_2", author: "松风", text: "晚餐清一点，睡眠也会变稳。", time: "今天", replies: [] },
-            ],
-            emoji: catEmojis["食疗药膳"] || "🍲",
-        },
-        {
-            _id: "exp_seed_2",
-            text: "最近用 10 分钟整理入睡仪式：热水泡脚、关掉短视频、读两页书。坚持五天后，入睡速度明显快了。",
-            images: [],
-            video: "",
-            category: "作息调理",
-            author: "苏小养",
-            time: "今天 08:45",
-            likes: 24,
-            comments: 1,
-            stars: 12,
-            commentList: [
-                { _cid: "exp_c_3", author: "小翠", text: "这个流程很适合晚上执行，收藏了。", time: "09:30", replies: [] },
-            ],
-            emoji: catEmojis["作息调理"] || "🌙",
-        },
-        {
-            _id: "exp_seed_3",
-            text: "八段锦不一定要练很久，晨起完整做一遍再出门，肩颈松开后整个人会清醒很多。",
-            images: [],
-            video: "",
-            category: "运动养生",
-            author: "陈一山",
-            time: "今天 10:12",
-            likes: 15,
-            comments: 0,
-            stars: 5,
-            commentList: [],
-            emoji: catEmojis["运动养生"] || "🧘",
-        },
-    ];
-}
-
 function loadPublished() {
     try {
         const raw = localStorage.getItem('yiyangge_published');
-        publishedPosts.value = raw ? JSON.parse(raw) : getSeededPublishedPosts();
+        publishedPosts.value = raw ? JSON.parse(raw) : [];
         // 兼容旧数据
         publishedPosts.value.forEach(p => {
             if (!p._id) p._id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -2809,16 +2966,19 @@ function loadPublished() {
             });
             p.comments = countAllComments(p.commentList);
         });
-        if (!raw) savePublished();
     } catch { publishedPosts.value = []; }
 }
 
 async function loadPublishedApiState() {
     try {
         const response = await ApiCircle.getNotePage({ page: 1, size: 50 });
-        const page = responseData<PageResult<WellnessNoteVO>>(response);
+        const page = responseData<CommunityPageResult<WellnessNoteVO>>(response);
         const records = page?.records || [];
-        if (records.length === 0) return;
+        if (records.length === 0) {
+            publishedPosts.value = [];
+            savePublished();
+            return;
+        }
         publishedPosts.value = records.map(mapNoteToPost);
         await Promise.allSettled(publishedPosts.value.map((post) => hydrateNoteComments(post)));
         savePublished();
@@ -2838,22 +2998,6 @@ function savePublished() {
 async function publishPost() {
     const f = shareForm.value;
     if (!f.text.trim()) { toast('请输入内容，内容不能为空'); return; }
-    const now = new Date();
-    const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const fallbackPost: Post = {
-        _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        text: f.text,
-        images: [...f.images],
-        video: f.video,
-        category: f.category,
-        author: currentUser.value,
-        time: t,
-        likes: 0,
-        comments: 0,
-        stars: 0,
-        commentList: [],
-        emoji: catEmojis[f.category] || "📝",
-    };
     try {
         const resources = [
             ...f.images.map((url) => ({ resourceType: 1, url })),
@@ -2868,36 +3012,21 @@ async function publishPost() {
             resources,
         });
         const saved = responseData<WellnessNoteVO>(response);
-        publishedPosts.value.unshift(saved ? mapNoteToPost(saved) : fallbackPost);
+        if (!saved) throw new Error("empty wellness note response");
+        publishedPosts.value.unshift(mapNoteToPost(saved));
+        savePublished();
+        closeShareDialog();
+        showDraftsPanel.value = false;
+        toast('✓ 已发布成功');
     } catch {
-        publishedPosts.value.unshift(fallbackPost);
+        toast('发布失败，请检查养生笔记接口返回');
     }
-    savePublished();
-    closeShareDialog();
-    showDraftsPanel.value = false;
-    toast('✓ 已发布成功');
 }
 
 // 发布草稿
 async function publishDraft(idx: number) {
     const d = drafts.value[idx];
     if (!d) return;
-    const now = new Date();
-    const t = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const fallbackPost: Post = {
-        _id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        text: d.text,
-        images: d.images || [],
-        video: d.video || "",
-        category: d.category,
-        author: currentUser.value,
-        time: t,
-        likes: 0,
-        comments: 0,
-        stars: 0,
-        commentList: [],
-        emoji: catEmojis[d.category] || "📝",
-    };
     try {
         const resources = [
             ...(d.images || []).map((url) => ({ resourceType: 1, url })),
@@ -2912,27 +3041,20 @@ async function publishDraft(idx: number) {
             resources,
         });
         const saved = responseData<WellnessNoteVO>(response);
-        publishedPosts.value.unshift(saved ? mapNoteToPost(saved) : fallbackPost);
+        if (!saved) throw new Error("empty wellness note response");
+        publishedPosts.value.unshift(mapNoteToPost(saved));
+        savePublished();
+        drafts.value.splice(idx, 1);
+        saveDrafts();
+        if (drafts.value.length === 0) showDraftsPanel.value = false;
+        toast('✓ 草稿已发布');
     } catch {
-        publishedPosts.value.unshift(fallbackPost);
+        toast('草稿发布失败，请检查养生笔记接口返回');
     }
-    savePublished();
-    drafts.value.splice(idx, 1);
-    saveDrafts();
-    if (drafts.value.length === 0) showDraftsPanel.value = false;
-    toast('✓ 草稿已发布');
 }
 
-function removePost(postId: string) {
-    const idx = publishedPosts.value.findIndex(p => p._id === postId);
-    if (idx !== -1) {
-        publishedPosts.value.splice(idx, 1);
-        delete likesState.value[postId];
-        delete starsState.value[postId];
-        savePublished();
-        saveSharingReactions();
-        toast('已删除');
-    }
+function removePost(_postId?: string) {
+    toast('当前接口文档没有养生笔记删除接口，已取消本地假删除');
 }
 
 // 点赞/评论/收藏
@@ -3306,7 +3428,7 @@ async function hydrateDynamicComments(post: CommunityPost) {
             page: 1,
             size: 50,
         });
-        const page = responseData<PageResult<WellnessDynamicCommentVO>>(response);
+        const page = responseData<CommunityPageResult<WellnessDynamicCommentVO>>(response);
         const comments = page?.records || [];
         const roots = comments.filter((c) => !c.parentId);
         post.commentList = roots.map((comment) => ({
@@ -3405,7 +3527,7 @@ function loadCommunityPosts() {
 async function loadCommunityPostsApiState() {
     try {
         const response = await ApiCircle.getDynamicPage({ page: 1, size: 50 });
-        const page = responseData<PageResult<WellnessDynamicVO>>(response);
+        const page = responseData<CommunityPageResult<WellnessDynamicVO>>(response);
         const records = page?.records || [];
         if (records.length === 0) return;
         const details = await Promise.allSettled(
@@ -4367,6 +4489,10 @@ onMounted(() => {
     color: var(--jade);
     font-weight: 500;
 }
+.pick-chip.danger:hover {
+    border-color: var(--cinnabar);
+    color: var(--cinnabar);
+}
 .chip-row {
     display: flex;
     flex-wrap: wrap;
@@ -4853,6 +4979,7 @@ onMounted(() => {
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.2s;
+    cursor: pointer;
 }
 .meal-card:hover {
     transform: translateY(-2px);
@@ -4881,25 +5008,20 @@ onMounted(() => {
 .mt-light-dinner  { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
 .mt-supper        { background: linear-gradient(135deg, #1e293b22, #334155aa); }
 .mt-snack         { background: linear-gradient(135deg, #fee2e2, #fecaca); }
-.meal-del {
+.meal-edit {
     position: absolute;
     top: 6px;
     right: 6px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.18);
-    border: none;
+    border-radius: 999px;
+    background: rgba(44,54,57,0.5);
     color: white;
-    font-size: 11px;
-    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 5px 8px;
     display: none;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    &:hover { background: var(--cinnabar); }
+    pointer-events: none;
 }
-.meal-card:hover .meal-del { display: flex; }
+.meal-card:hover .meal-edit { display: inline-flex; }
 .meal-body { padding: 12px 14px; }
 .meal-name {
     font-size: 14px;
@@ -4941,8 +5063,10 @@ onMounted(() => {
 }
 .meal-dialog {
     width: min(700px, 92vw) !important;
-    max-height: 88vh;
-    overflow-y: auto;
+    max-height: min(88vh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 .meal-dialog-header {
     font-size: 18px !important;
@@ -4951,6 +5075,9 @@ onMounted(() => {
 .meal-dialog-body {
     padding: 20px 22px !important;
     gap: 20px !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
 }
 .meal-dialog-btn {
     height: 44px !important;
@@ -4980,6 +5107,18 @@ onMounted(() => {
     text-align: center;
     &:hover { border-color: var(--jade); background: var(--jade-soft); }
     &.active { border-color: var(--jade); background: var(--jade-soft); color: var(--jade); font-weight: 600; }
+}
+@media (max-width: 640px) {
+    .meal-dialog {
+        max-height: calc(100vh - 24px);
+    }
+    .meal-type-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .meal-dialog-btn {
+        flex: 1;
+        padding: 0 14px !important;
+    }
 }
 .meal-img-upload {
     width: 100%;
@@ -5164,6 +5303,8 @@ onMounted(() => {
     gap: 10px;
     padding: 14px 20px;
     border-top: 1px solid var(--line);
+    flex-shrink: 0;
+    background: var(--paper, #fffef9);
 }
 .wset-btn {
     padding: 8px 20px;
@@ -5181,6 +5322,16 @@ onMounted(() => {
         color: white;
         border-color: var(--jade);
         &:hover { background: #4a6f60; }
+    }
+    &.danger {
+        color: var(--cinnabar);
+        border-color: rgba(179,60,44,0.32);
+        background: var(--cinnabar-soft);
+        &:hover { border-color: var(--cinnabar); }
+    }
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
     }
 }
 .poster-modal {
