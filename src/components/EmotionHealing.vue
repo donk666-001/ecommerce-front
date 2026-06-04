@@ -158,7 +158,6 @@
                         class="meditation-row"
                         :class="{
                             active: activeMeditation === meditationKey(med),
-                            disabled: !med.mediaUrl,
                         }"
                         type="button"
                         @click="toggleMeditation(med)"
@@ -172,9 +171,7 @@
                             {{
                                 activeMeditation === meditationKey(med)
                                     ? "暂停"
-                                    : med.mediaUrl
-                                      ? "开始"
-                                      : "无资源"
+                                    : "开始"
                             }}
                         </div>
                     </button>
@@ -396,6 +393,10 @@ const activeMeditation = ref("");
 const activeMeditationAudio = ref<HTMLAudioElement | null>(null);
 const isLoadingMeditations = ref(false);
 const meditationError = ref("");
+const localMeditationFallbackUrls = [
+    buildPublicAudioUrl("video_“张雪峰老师 我还记得你.”_《..._0.mp3"),
+    buildPublicAudioUrl("video_神人音频素材猎奇_0.mp3"),
+];
 const emotionSummary = ref<Emotion17DaysVO | null>(null);
 const isLoadingEmotion = ref(false);
 const isSavingEmotion = ref(false);
@@ -730,18 +731,38 @@ async function toggleMeditation(meditation: MeditationItem) {
         return;
     }
 
-    if (!meditation.mediaUrl) {
-        showToast("该冥想音频暂无播放地址");
-        return;
-    }
-
     stopMeditationAudio();
-    activeMeditation.value = key;
 
     if (typeof Audio === "undefined") return;
 
-    const player = new Audio(meditation.mediaUrl);
+    const sources = [
+        meditation.mediaUrl,
+        ...localMeditationFallbackUrls,
+    ].filter(Boolean);
+    await playMeditationFromSources(key, sources);
+}
+
+async function playMeditationFromSources(
+    key: string,
+    sources: string[],
+    index = 0,
+) {
+    if (index >= sources.length) {
+        activeMeditationAudio.value = null;
+        activeMeditation.value = "";
+        showToast("冥想音频播放失败，已尝试本地音频");
+        return;
+    }
+
+    const source = sources[index];
+    if (!source) {
+        await playMeditationFromSources(key, sources, index + 1);
+        return;
+    }
+
+    const player = new Audio(source);
     activeMeditationAudio.value = player;
+    activeMeditation.value = key;
     player.onended = () => {
         if (activeMeditationAudio.value === player) {
             activeMeditationAudio.value = null;
@@ -750,22 +771,30 @@ async function toggleMeditation(meditation: MeditationItem) {
     };
     player.onerror = () => {
         if (activeMeditationAudio.value === player) {
+            player.pause();
             activeMeditationAudio.value = null;
+            void playMeditationFromSources(key, sources, index + 1);
         }
-        activeMeditation.value = "";
-        showToast("冥想音频加载失败，请稍后重试");
     };
 
     try {
         await player.play();
+        if (index > 0) showToast("已切换本地音频");
     } catch (error) {
         console.error("播放冥想音频失败", error);
         if (activeMeditationAudio.value === player) {
+            player.pause();
             activeMeditationAudio.value = null;
         }
         activeMeditation.value = "";
-        showToast("冥想音频播放失败，请检查资源地址");
+        await playMeditationFromSources(key, sources, index + 1);
     }
+}
+
+function buildPublicAudioUrl(fileName: string) {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+    return encodeURI(`${normalizedBase}audio/${fileName}`);
 }
 
 function buildRecentMoodDays(source: DayEmotionVO[]) {

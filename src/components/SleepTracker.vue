@@ -364,15 +364,21 @@
                         <span class="dot"></span>今日作息建议
                     </div>
                     <div class="timeline">
-                        <div
+                        <button
                             v-for="item in scheduleItems"
                             :key="item.time"
+                            type="button"
                             class="timeline-item"
-                            :class="{ active: item.active }"
+                            :class="{
+                                active: item.active,
+                                completed: item.completed,
+                            }"
+                            :aria-pressed="item.completed"
+                            @click="toggleScheduleDone(item.key)"
                         >
                             <span class="time-tag">{{ item.time }}</span>
                             <span class="time-desc">{{ item.desc }}</span>
-                        </div>
+                        </button>
                     </div>
                 </section>
 
@@ -598,15 +604,12 @@
                         class="audio-row"
                         :class="{
                             playing: audio.playing,
-                            disabled: !audio.mediaUrl,
                         }"
                         type="button"
                         @click="toggleAudio(audio)"
                     >
                         <div class="audio-play">
-                            {{
-                                audio.playing ? "Ⅱ" : audio.mediaUrl ? "▶" : "—"
-                            }}
+                            {{ audio.playing ? "Ⅱ" : "▶" }}
                         </div>
                         <div class="audio-info">
                             <div class="audio-title">{{ audio.title }}</div>
@@ -621,15 +624,12 @@
                         class="audio-row"
                         :class="{
                             playing: audio.playing,
-                            disabled: !audio.mediaUrl,
                         }"
                         type="button"
                         @click="toggleAudio(audio)"
                     >
                         <div class="audio-play">
-                            {{
-                                audio.playing ? "Ⅱ" : audio.mediaUrl ? "▶" : "—"
-                            }}
+                            {{ audio.playing ? "Ⅱ" : "▶" }}
                         </div>
                         <div class="audio-info">
                             <div class="audio-title">{{ audio.title }}</div>
@@ -781,6 +781,13 @@ type AudioItem = {
     playing: boolean;
     source: WellnessMediaResourceVO;
 };
+type ScheduleItem = {
+    key: string;
+    time: string;
+    desc: string;
+    active: boolean;
+    completed: boolean;
+};
 type PhoneImportStatus =
     | "idle"
     | "checking"
@@ -844,6 +851,8 @@ const todayDate = startOfLocalDay(new Date());
 const todayISO = toISODate(todayDate);
 const minRecordDateISO = toISODate(addDays(todayDate, -6));
 const recordDateISO = ref(todayISO);
+const scheduleDoneStorageKey = `yiyangge_sleep_schedule_done_${todayISO}`;
+const completedScheduleKeys = ref<string[]>(readScheduleDoneState());
 const todayRecordUpdated = ref(false);
 const isSleepCardFlipped = ref(false);
 const showPhoneImportPanel = ref(false);
@@ -1040,6 +1049,10 @@ const sleepAudioItems = ref<AudioItem[]>([]);
 const isLoadingSleepAudios = ref(false);
 const sleepAudioError = ref("");
 const activeSleepAudioElement = ref<HTMLAudioElement | null>(null);
+const localAudioFallbackUrls = [
+    buildPublicAudioUrl("video_“张雪峰老师 我还记得你.”_《..._0.mp3"),
+    buildPublicAudioUrl("video_神人音频素材猎奇_0.mp3"),
+];
 
 const audioList1 = computed(() => {
     const splitIndex = Math.ceil(sleepAudioItems.value.length / 2);
@@ -2507,30 +2520,77 @@ const clockHandStyle = computed(() => ({
     transform: `translateX(-50%) rotate(${(draftHour.value % 12) * 30 + draftMinute.value * 0.5}deg)`,
 }));
 
-const scheduleItems = computed(() => [
-    {
-        time: "06:30",
-        desc: "寅时末起床，温水一杯",
-        active: wakeTime.value <= "06:45",
-    },
-    { time: "12:30", desc: "午时小憩 20 分钟（养心）", active: true },
-    { time: "18:00", desc: "晚餐七分饱，少油少盐", active: false },
-    {
-        time: "21:00",
-        desc: "温水泡脚 15 分钟",
-        active: sleepTagSelected.value.includes("入睡慢"),
-    },
-    {
-        time: "22:30",
-        desc: "放下手机，进入睡前状态",
-        active: sleepTime.value <= "22:45",
-    },
-    {
-        time: "23:00",
-        desc: "熄灯入眠，子时入睡养肝胆",
-        active: sleepTime.value <= "23:00",
-    },
-]);
+const scheduleItems = computed<ScheduleItem[]>(() =>
+    [
+        {
+            key: "wake-water",
+            time: "06:30",
+            desc: "寅时末起床，温水一杯",
+            active: wakeTime.value <= "06:45",
+        },
+        {
+            key: "midday-rest",
+            time: "12:30",
+            desc: "午时小憩 20 分钟（养心）",
+            active: true,
+        },
+        {
+            key: "light-dinner",
+            time: "18:00",
+            desc: "晚餐七分饱，少油少盐",
+            active: false,
+        },
+        {
+            key: "foot-bath",
+            time: "21:00",
+            desc: "温水泡脚 15 分钟",
+            active: sleepTagSelected.value.includes("入睡慢"),
+        },
+        {
+            key: "phone-away",
+            time: "22:30",
+            desc: "放下手机，进入睡前状态",
+            active: sleepTime.value <= "22:45",
+        },
+        {
+            key: "lights-out",
+            time: "23:00",
+            desc: "熄灯入眠，子时入睡养肝胆",
+            active: sleepTime.value <= "23:00",
+        },
+    ].map((item) => ({
+        ...item,
+        completed: completedScheduleKeys.value.includes(item.key),
+    })),
+);
+
+function readScheduleDoneState() {
+    if (typeof localStorage === "undefined") return [];
+    try {
+        const raw = localStorage.getItem(scheduleDoneStorageKey);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed)
+            ? parsed.filter((item): item is string => typeof item === "string")
+            : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeScheduleDoneState() {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(
+        scheduleDoneStorageKey,
+        JSON.stringify(completedScheduleKeys.value),
+    );
+}
+
+function toggleScheduleDone(key: string) {
+    completedScheduleKeys.value = completedScheduleKeys.value.includes(key)
+        ? completedScheduleKeys.value.filter((item) => item !== key)
+        : [...completedScheduleKeys.value, key];
+    writeScheduleDoneState();
+}
 
 function isSleepTagDisabled(tag: string) {
     if (sleepTagSelected.value.includes(tag)) return false;
@@ -2724,18 +2784,35 @@ async function toggleAudio(audio: AudioItem) {
         return;
     }
 
-    if (!audio.mediaUrl) {
-        showToast("该音频暂无播放地址");
-        return;
-    }
-
     stopSleepAudio();
-    audio.playing = true;
 
     if (typeof Audio === "undefined") return;
 
-    const player = new Audio(audio.mediaUrl);
+    const sources = [audio.mediaUrl, ...localAudioFallbackUrls].filter(Boolean);
+    await playSleepAudioFromSources(audio, sources);
+}
+
+async function playSleepAudioFromSources(
+    audio: AudioItem,
+    sources: string[],
+    index = 0,
+) {
+    if (index >= sources.length) {
+        audio.playing = false;
+        activeSleepAudioElement.value = null;
+        showToast("音频播放失败，已尝试本地音频");
+        return;
+    }
+
+    const source = sources[index];
+    if (!source) {
+        await playSleepAudioFromSources(audio, sources, index + 1);
+        return;
+    }
+
+    const player = new Audio(source);
     activeSleepAudioElement.value = player;
+    audio.playing = true;
     player.onended = () => {
         audio.playing = false;
         if (activeSleepAudioElement.value === player) {
@@ -2743,23 +2820,31 @@ async function toggleAudio(audio: AudioItem) {
         }
     };
     player.onerror = () => {
-        audio.playing = false;
         if (activeSleepAudioElement.value === player) {
+            player.pause();
             activeSleepAudioElement.value = null;
+            void playSleepAudioFromSources(audio, sources, index + 1);
         }
-        showToast("音频加载失败，请稍后重试");
     };
 
     try {
         await player.play();
+        if (index > 0) showToast("已切换本地音频");
     } catch (error) {
         console.error("播放助眠音律失败", error);
         audio.playing = false;
         if (activeSleepAudioElement.value === player) {
+            player.pause();
             activeSleepAudioElement.value = null;
         }
-        showToast("音频播放失败，请检查资源地址");
+        await playSleepAudioFromSources(audio, sources, index + 1);
     }
+}
+
+function buildPublicAudioUrl(fileName: string) {
+    const base = import.meta.env.BASE_URL || "/";
+    const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+    return encodeURI(`${normalizedBase}audio/${fileName}`);
 }
 
 onMounted(() => {
@@ -3629,6 +3714,15 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition:
+        opacity 0.2s ease,
+        color 0.2s ease;
 }
 .timeline-item::before {
     content: "";
@@ -3644,6 +3738,13 @@ onBeforeUnmount(() => {
     background: var(--jade);
     border-color: var(--jade);
 }
+.timeline-item.completed {
+    opacity: 0.58;
+}
+.timeline-item.completed::before {
+    background: var(--gold);
+    border-color: var(--gold);
+}
 .time-tag {
     font-weight: 600;
     color: var(--ink);
@@ -3653,6 +3754,10 @@ onBeforeUnmount(() => {
 .time-desc {
     color: var(--ink-muted);
     font-size: 13px;
+}
+.timeline-item.completed .time-desc {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
 }
 
 .media-state {

@@ -127,7 +127,9 @@
                     class="btn btn-ghost"
                     type="button"
                     :disabled="
-                        isLoadingCourses || !hasActiveUser || allCourses.length === 0
+                        isLoadingCourses ||
+                        !hasActiveUser ||
+                        allCourses.length === 0
                     "
                     @click="showAllCourses = true"
                 >
@@ -348,7 +350,10 @@
                             </button>
                         </div>
                         <button
-                            v-if="selectedCourse?.contentUrl"
+                            v-if="
+                                selectedCourse &&
+                                getCourseContentUrl(selectedCourse)
+                            "
                             class="btn"
                             type="button"
                             @click="openCourseContent"
@@ -400,6 +405,21 @@ type RadarAxis = {
     valueY: number;
 };
 
+const courseContentLinks = [
+    {
+        pattern: /中医体质调理入门|阴虚体质调理课/,
+        url: "https://www.bilibili.com/video/BV1f1L16AEPE/?spm_id_from=333.337.top_right_bar_window_default_collection.content.click&vd_source=50078c81d89be534c9e0da79354d6eaa",
+    },
+    {
+        pattern: /睡眠调理与助眠课/,
+        url: "https://www.bilibili.com/video/BV1XHLb6yEZ6/?spm_id_from=333.337.search-card.all.click&vd_source=50078c81d89be534c9e0da79354d6eaa",
+    },
+    {
+        pattern: /经期养护课程|节气养生课程/,
+        url: "https://www.bilibili.com/video/BV1m4Li6sEsF/?spm_id_from=333.337.search-card.all.click",
+    },
+];
+
 const CONSTITUTION_SCALE_CODE = "CONSTITUTION";
 const emit = defineEmits<{
     "constitution-updated": [result: PsychScaleLatestVO | null];
@@ -449,43 +469,43 @@ const acupoints: Acupoint[] = [
         name: "膻中",
         effect: "宁心安神",
         method: "按揉 2 分钟",
-        top: "28%",
-        left: "48%",
+        top: "24%",
+        left: "50%",
     },
     {
         name: "左内关",
         effect: "和胃宽胸",
         method: "点按 1 分钟",
-        top: "42%",
-        left: "35%",
+        top: "39%",
+        left: "37%",
     },
     {
         name: "右内关",
         effect: "和胃宽胸",
         method: "点按 1 分钟",
-        top: "42%",
-        left: "60%",
+        top: "39%",
+        left: "63%",
     },
     {
         name: "中脘",
         effect: "健脾和胃",
         method: "顺揉 36 圈",
-        top: "55%",
+        top: "51%",
         left: "50%",
     },
     {
         name: "左足三里",
         effect: "补气养胃",
         method: "按揉 3 分钟",
-        top: "70%",
-        left: "42%",
+        top: "73%",
+        left: "43%",
     },
     {
         name: "右足三里",
         effect: "补气养胃",
         method: "按揉 3 分钟",
-        top: "70%",
-        left: "58%",
+        top: "73%",
+        left: "57%",
     },
 ];
 const selectedAcupoint = ref<Acupoint>(acupoints[0]!);
@@ -719,9 +739,19 @@ async function openCourse(course: Course) {
 }
 
 function openCourseContent() {
-    const url = selectedCourse.value?.contentUrl;
+    const url = selectedCourse.value
+        ? getCourseContentUrl(selectedCourse.value)
+        : "";
     if (!url) return;
     window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function getCourseContentUrl(course: Course) {
+    const text = `${course.name}${course.source.courseTitle}${course.source.courseSubtitle}`;
+    return (
+        courseContentLinks.find((item) => item.pattern.test(text))?.url ||
+        course.contentUrl
+    );
 }
 
 function closeCourseDialog() {
@@ -1013,17 +1043,20 @@ watch(activeUserId, (userId) => {
 }
 
 .meridian-body {
-    height: 280px;
+    height: 330px;
     background: linear-gradient(180deg, var(--jade-soft), var(--paper-warm));
     border-radius: 14px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 .body-figure {
-    font-size: 120px;
-    opacity: 0.4;
+    font-size: 192px;
+    line-height: 1;
+    opacity: 0.48;
+    transform: translateY(8px);
 }
 .acupoint {
     position: absolute;

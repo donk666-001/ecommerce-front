@@ -235,6 +235,9 @@
                         <div class="recipe-detail-tag">
                             {{ selectedRecipe.tag }}
                         </div>
+                        <div class="recipe-detail-calorie">
+                            ≈ {{ getRecipeCalories(selectedRecipe) }} 千卡
+                        </div>
                         <p>{{ selectedRecipe.effect }}</p>
                         <p class="recipe-detail-note">
                             {{ selectedRecipe.usageNote }}
@@ -242,10 +245,13 @@
                         <button
                             class="btn"
                             type="button"
-                            @click="selectedRecipe = null"
+                            @click="addSelectedRecipeToMeal"
                         >
                             加入今日食单
                         </button>
+                        <div v-if="recipeAddTip" class="recipe-add-tip">
+                            {{ recipeAddTip }}
+                        </div>
                     </section>
                 </div>
             </Transition>
@@ -268,6 +274,10 @@ import {
     type SeasonalHealthDTO,
     type SeasonalRecipeDTO,
 } from "@/network";
+import {
+    addLocalDietMealFromRecipe,
+    inferSeasonalRecipeCalories,
+} from "@/composables/useDietMealSync";
 
 type Recipe = {
     id: number;
@@ -668,6 +678,7 @@ const canReturnToday = computed(
 
 const showRecipeModal = ref(false);
 const selectedRecipe = ref<Recipe | null>(null);
+const recipeAddTip = ref("");
 const modalRef = ref<HTMLElement | null>(null);
 
 const fallbackRecipes: Recipe[] = [
@@ -861,6 +872,28 @@ function mapRecipeFromBackend(recipe: SeasonalRecipeDTO): Recipe {
     };
 }
 
+function getRecipeCalories(recipe: Pick<Recipe, "name">) {
+    return inferSeasonalRecipeCalories(recipe.name);
+}
+
+function addSelectedRecipeToMeal() {
+    if (!selectedRecipe.value) return;
+
+    const recipe = selectedRecipe.value;
+    const { isNew } = addLocalDietMealFromRecipe({
+        recipeId: recipe.id,
+        termName: currentTerm.value.name,
+        foodName: recipe.name,
+        calories: getRecipeCalories(recipe),
+        emoji: recipe.emoji,
+        usageNote: recipe.usageNote,
+        effectText: recipe.effect,
+    });
+    recipeAddTip.value = isNew
+        ? "已加入元气社区 · 今日饮食记录"
+        : "今日食单中已有这道食疗方，已刷新热量记录";
+}
+
 function getRecipeEmoji(foodName: string) {
     if (foodName.includes("莲子") || foodName.includes("茶")) return "🍵";
     if (foodName.includes("山药")) return "🍠";
@@ -947,6 +980,10 @@ watch(showRecipeModal, async (visible) => {
         await nextTick();
         modalRef.value?.focus();
     }
+});
+
+watch(selectedRecipe, () => {
+    recipeAddTip.value = "";
 });
 
 onBeforeUnmount(() => {
@@ -1627,6 +1664,16 @@ onBeforeUnmount(() => {
     color: var(--jade);
     font-size: 12px;
 }
+.recipe-detail-calorie {
+    width: fit-content;
+    margin: 10px auto 0;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--gold-soft) 72%, white);
+    color: var(--gold-deep);
+    font-size: 12px;
+    font-weight: 700;
+}
 .recipe-detail p {
     margin: 14px auto 18px;
     color: var(--ink-muted);
@@ -1637,6 +1684,12 @@ onBeforeUnmount(() => {
 .recipe-detail .recipe-detail-note {
     margin-top: -8px;
     color: var(--gold-deep);
+}
+.recipe-add-tip {
+    margin-top: 12px;
+    color: var(--jade);
+    font-size: 12px;
+    font-weight: 700;
 }
 .detail-close {
     position: absolute;
