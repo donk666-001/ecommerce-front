@@ -863,6 +863,7 @@ async function submitConstitutionTest() {
         latestConstitution.value = result;
         constitutionHistory.value = [result, ...constitutionHistory.value];
         emit("constitution-updated", result);
+        closeTestModal();
     } catch (error) {
         console.error("提交体质测试失败", error);
         testError.value = resolveTcmErrorMessage(

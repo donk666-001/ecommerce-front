@@ -634,10 +634,11 @@ async function submitSurvey() {
     ) {
         return;
     }
+    const surveyCode = selectedSurvey.value.code;
     isSubmittingSurvey.value = true;
     try {
         const result = await ApiEmotion.submitScaleTest(
-            selectedSurvey.value.code,
+            surveyCode,
             {
                 userId: activeUserId.value,
                 answers: surveyQuestions.value.map((question) => ({
@@ -649,10 +650,11 @@ async function submitSurvey() {
         surveyResult.value = result;
         scaleLatestMap.value = {
             ...scaleLatestMap.value,
-            [selectedSurvey.value.code]: result,
+            [surveyCode]: result,
         };
         scaleHistory.value = [result, ...scaleHistory.value];
         showToast("量表结果已同步");
+        closeSurvey();
     } catch (error) {
         console.error("提交心理量表失败", error);
         showToast(

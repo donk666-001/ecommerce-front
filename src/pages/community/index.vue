@@ -3194,12 +3194,7 @@ import {
     type CheckInWeekVO,
     type DietDailyCalorieSummaryVO,
     type DietRecordVO,
-    type CommunityPageResult,
     type WaterTodayOverviewVO,
-    type WellnessDynamicCommentVO,
-    type WellnessDynamicVO,
-    type WellnessNoteCommentVO,
-    type WellnessNoteVO,
 } from "@/network";
 import {
     addDietMealAddedListener,
@@ -3275,30 +3270,6 @@ function responseData<T>(response: unknown): T | undefined {
     }
     return payload as T | undefined;
 }
-
-function getBackendId(id: string | number) {
-    if (typeof id === "number") return Number.isFinite(id) ? id : null;
-    const match = id.match(
-        /^(?:note|dynamic|note_comment|dynamic_comment)_(\d+)$/,
-    );
-    if (!match) return null;
-    const rawId = match[1];
-    if (!rawId) return null;
-    const value = Number(rawId);
-    return Number.isFinite(value) ? value : null;
-}
-
-const noteTypeByCategory: Record<string, number> = {
-    食疗药膳: 1,
-    作息调理: 2,
-    运动养生: 3,
-    情志疏导: 4,
-    节气养生: 5,
-    中医妙招: 6,
-};
-const categoryByNoteType = Object.fromEntries(
-    Object.entries(noteTypeByCategory).map(([key, value]) => [value, key]),
-) as Record<number, string>;
 
 // ---- Toast ----
 const toastVisible = ref(false);
@@ -4853,7 +4824,7 @@ function loadDrafts() {
     }
 }
 function saveDrafts() {
-    localStorage.setItem("yiyangge_drafts", JSON.stringify(drafts.value));
+    writeStorage("yiyangge_drafts", drafts.value);
 }
 function editDraft(idx: number) {
     const d = drafts.value[idx];
@@ -4926,67 +4897,6 @@ const catEmojis: Record<string, string> = {
     中医妙招: "🫖",
 };
 
-function mapNoteCommentToComment(comment: WellnessNoteCommentVO): CommentItem {
-    return {
-        _cid: `note_comment_${comment.id}`,
-        author: `用户${comment.userId || ""}`,
-        text: comment.content || "",
-        time: comment.createdAt || "",
-        replies: [],
-    };
-}
-
-function mapNoteToPost(note: WellnessNoteVO): Post {
-    const category =
-        categoryByNoteType[note.noteType] || note.noteTypeText || "中医妙招";
-    const resources = Array.isArray(note.resources) ? note.resources : [];
-    return {
-        _id: `note_${note.id}`,
-        text: note.content || note.title || "",
-        images: resources
-            .filter((r) => (r.resourceType || 1) === 1 && r.url)
-            .map((r) => r.url),
-        video: resources.find((r) => r.resourceType === 2)?.url || "",
-        category,
-        author:
-            note.userId === apiUserId.value
-                ? currentUser.value
-                : `用户${note.userId}`,
-        time: note.createdAt || "",
-        likes: 0,
-        comments: 0,
-        stars: 0,
-        commentList: [],
-        emoji: catEmojis[category] || "📝",
-    };
-}
-
-async function hydrateNoteComments(post: Post) {
-    const noteId = getBackendId(post._id);
-    if (!noteId) return;
-    try {
-        const response = await ApiCircle.getNoteCommentPage({
-            noteId,
-            page: 1,
-            size: 50,
-        });
-        const page =
-            responseData<CommunityPageResult<WellnessNoteCommentVO>>(response);
-        const comments = page?.records || [];
-        const roots = comments.filter((c) => !c.parentId);
-        post.commentList = roots.map((comment) => ({
-            ...mapNoteCommentToComment(comment),
-            replies: comments
-                .filter((reply) => reply.parentId === comment.id)
-                .map(mapNoteCommentToComment),
-        }));
-        post.comments = countAllComments(post.commentList);
-        savePublished();
-    } catch {
-        // 后端未启动时沿用本地评论。
-    }
-}
-
 function loadPublished() {
     try {
         const raw = localStorage.getItem("yiyangge_published");
@@ -5016,26 +4926,6 @@ function loadPublished() {
     }
 }
 
-async function loadPublishedApiState() {
-    try {
-        const response = await ApiCircle.getNotePage({ page: 1, size: 50 });
-        const page =
-            responseData<CommunityPageResult<WellnessNoteVO>>(response);
-        const records = page?.records || [];
-        if (records.length === 0) {
-            publishedPosts.value = [];
-            savePublished();
-            return;
-        }
-        publishedPosts.value = records.map(mapNoteToPost);
-        await Promise.allSettled(
-            publishedPosts.value.map((post) => hydrateNoteComments(post)),
-        );
-        savePublished();
-    } catch {
-        // 后端未启动时沿用本地经验数据。
-    }
-}
 function countAllComments(list: CommentItem[]): number {
     let n = list.length;
     list.forEach((c) => {
@@ -5044,75 +4934,79 @@ function countAllComments(list: CommentItem[]): number {
     return n;
 }
 function savePublished() {
-    localStorage.setItem(
-        "yiyangge_published",
-        JSON.stringify(publishedPosts.value),
-    );
+    writeStorage("yiyangge_published", publishedPosts.value);
 }
 
-async function publishPost() {
+function publishPost() {
     const f = shareForm.value;
-    if (!f.text.trim()) {
+    const text = f.text.trim();
+    if (!text && f.images.length === 0 && !f.video) {
         toast("请输入内容，内容不能为空");
         return;
     }
-    try {
-        const resources = [
-            ...f.images.map((url) => ({ resourceType: 1, url })),
-            ...(f.video ? [{ resourceType: 2, url: f.video }] : []),
-        ];
-        const response = await ApiCircle.publishNote({
-            userId: apiUserId.value,
-            title: f.text.slice(0, 24) || f.category,
-            content: f.text,
-            coverUrl: f.images[0] || "",
-            noteType: noteTypeByCategory[f.category] || 6,
-            resources,
-        });
-        const saved = responseData<WellnessNoteVO>(response);
-        if (!saved) throw new Error("empty wellness note response");
-        publishedPosts.value.unshift(mapNoteToPost(saved));
-        savePublished();
-        closeShareDialog();
-        showDraftsPanel.value = false;
-        toast("✓ 已发布成功");
-    } catch {
-        toast("发布失败，请检查养生笔记接口返回");
-    }
+    const category = f.category || "中医妙招";
+    publishedPosts.value.unshift({
+        _id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        text: text || "分享了一组养生图片",
+        images: [...f.images],
+        video: f.video || "",
+        category,
+        author: currentUser.value,
+        time: "刚刚",
+        likes: 0,
+        comments: 0,
+        stars: 0,
+        commentList: [],
+        emoji: catEmojis[category] || "📝",
+    });
+    savePublished();
+    closeShareDialog();
+    showDraftsPanel.value = false;
+    toast("✓ 已发布成功");
 }
 
 // 发布草稿
-async function publishDraft(idx: number) {
+function publishDraft(idx: number) {
     const d = drafts.value[idx];
     if (!d) return;
-    try {
-        const resources = [
-            ...(d.images || []).map((url) => ({ resourceType: 1, url })),
-            ...(d.video ? [{ resourceType: 2, url: d.video }] : []),
-        ];
-        const response = await ApiCircle.publishNote({
-            userId: apiUserId.value,
-            title: d.text.slice(0, 24) || d.category,
-            content: d.text,
-            coverUrl: d.images?.[0] || "",
-            noteType: noteTypeByCategory[d.category] || 6,
-            resources,
-        });
-        const saved = responseData<WellnessNoteVO>(response);
-        if (!saved) throw new Error("empty wellness note response");
-        publishedPosts.value.unshift(mapNoteToPost(saved));
-        savePublished();
-        drafts.value.splice(idx, 1);
-        saveDrafts();
-        if (drafts.value.length === 0) showDraftsPanel.value = false;
-        toast("✓ 草稿已发布");
-    } catch {
-        toast("草稿发布失败，请检查养生笔记接口返回");
+    const text = d.text.trim();
+    if (!text && (d.images || []).length === 0 && !d.video) {
+        toast("草稿为空，无法发布");
+        return;
     }
+    const category = d.category || "中医妙招";
+    publishedPosts.value.unshift({
+        _id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        text: text || "分享了一组养生图片",
+        images: [...(d.images || [])],
+        video: d.video || "",
+        category,
+        author: currentUser.value,
+        time: "刚刚",
+        likes: 0,
+        comments: 0,
+        stars: 0,
+        commentList: [],
+        emoji: catEmojis[category] || "📝",
+    });
+    savePublished();
+    drafts.value.splice(idx, 1);
+    saveDrafts();
+    if (drafts.value.length === 0) showDraftsPanel.value = false;
+    toast("✓ 草稿已发布");
 }
 
-function removePost(_postId?: string) {
-    toast("当前接口文档没有养生笔记删除接口，已取消本地假删除");
+function removePost(postId?: string) {
+    const idx = publishedPosts.value.findIndex((post) => post._id === postId);
+    if (idx < 0) return;
+    publishedPosts.value.splice(idx, 1);
+    if (postId) {
+        delete likesState.value[postId];
+        delete starsState.value[postId];
+        saveSharingReactions();
+    }
+    savePublished();
+    toast("已删除");
 }
 
 // 点赞/评论/收藏
@@ -5165,10 +5059,6 @@ function toggleCommentInput(postId: string) {
     showCommentInputId.value =
         showCommentInputId.value === postId ? "" : postId;
     replyTarget.value = null;
-    if (showCommentInputId.value) {
-        const post = publishedPosts.value.find((p) => p._id === postId);
-        if (post) void hydrateNoteComments(post);
-    }
 }
 
 function setReplyTarget(postId: string, cid: string, author: string) {
@@ -5176,7 +5066,7 @@ function setReplyTarget(postId: string, cid: string, author: string) {
     replyTarget.value = { postId, cid, author };
 }
 
-async function submitComment(postId: string) {
+function submitComment(postId: string) {
     const text = (commentText.value[postId] || "").trim();
     if (!text) return;
     const p = publishedPosts.value.find((x) => x._id === postId);
@@ -5186,25 +5076,8 @@ async function submitComment(postId: string) {
     const now = new Date().toLocaleTimeString().slice(0, 5);
 
     const target = replyTarget.value;
-    const noteId = getBackendId(postId);
-    const parentBackendId = target ? getBackendId(target.cid) : null;
-    let apiSaved = false;
-    try {
-        if (noteId) {
-            await ApiCircle.publishNoteComment({
-                noteId,
-                userId: apiUserId.value,
-                ...(parentBackendId ? { parentId: parentBackendId } : {}),
-                content: text,
-            });
-            apiSaved = true;
-            await hydrateNoteComments(p);
-        }
-    } catch {
-        // 后端未启动时走本地评论。
-    }
 
-    if (target && target.postId === postId && !apiSaved) {
+    if (target && target.postId === postId) {
         // 回复某条评论
         const parent = p.commentList.find((c) => c._cid === target.cid);
         if (parent) {
@@ -5222,7 +5095,7 @@ async function submitComment(postId: string) {
                     Math.random().toString(36).slice(2, 6),
             });
         }
-    } else if (!apiSaved) {
+    } else {
         p.commentList.unshift({
             author: currentUser.value,
             text,
@@ -5530,10 +5403,7 @@ function loadNotifications() {
     }
 }
 function saveNotifications() {
-    localStorage.setItem(
-        "yiyangge_notifs",
-        JSON.stringify(notificationList.value),
-    );
+    writeStorage("yiyangge_notifs", notificationList.value);
 }
 
 function addNotification(notif: NotifItem) {
@@ -5596,91 +5466,11 @@ interface CommunityComment {
     replies?: CommunityComment[];
 }
 
-function mapDynamicCommentToCommunity(
-    comment: WellnessDynamicCommentVO,
-): CommunityComment {
-    return {
-        _cid: `dynamic_comment_${comment.id}`,
-        author: `用户${comment.userId || ""}`,
-        text: comment.content || "",
-        time: comment.createdAt || "",
-        replies: [],
-    };
-}
-
-function mapDynamicToCommunityPost(dynamic: WellnessDynamicVO): CommunityPost {
-    const resources = Array.isArray(dynamic.resources) ? dynamic.resources : [];
-    const imageUrls = resources
-        .filter(
-            (resource) => (resource.resourceType || 1) === 1 && resource.url,
-        )
-        .map((resource) => ({ src: resource.url }));
-    if (imageUrls.length === 0 && dynamic.firstResourceUrl) {
-        imageUrls.push({ src: dynamic.firstResourceUrl });
-    }
-    return {
-        _id: `dynamic_${dynamic.id}`,
-        authorId:
-            dynamic.userId === apiUserId.value
-                ? currentUserId
-                : `user_${dynamic.userId}`,
-        name:
-            dynamic.userId === apiUserId.value ? "我" : `用户${dynamic.userId}`,
-        level: dynamic.userId === apiUserId.value ? "楼主" : "社区成员",
-        meta: dynamic.createdAt || "",
-        avatarBg:
-            dynamic.userId === apiUserId.value
-                ? "linear-gradient(135deg,var(--gold),var(--cinnabar))"
-                : "linear-gradient(135deg,var(--jade),var(--moon))",
-        avatarText:
-            dynamic.userId === apiUserId.value
-                ? "我"
-                : String(dynamic.userId || "?").slice(0, 2),
-        text: dynamic.content || "",
-        images: imageUrls,
-        tags: dynamic.dynamicTypeText
-            ? [dynamic.dynamicTypeText]
-            : ["健康生活"],
-        liked: false,
-        likeCount: 0,
-        stared: false,
-        starCount: 0,
-        commentCount: 0,
-        commentList: [],
-    };
-}
-
-async function hydrateDynamicComments(post: CommunityPost) {
-    const dynamicId = getBackendId(post._id);
-    if (!dynamicId) return;
-    try {
-        const response = await ApiCircle.getDynamicCommentPage({
-            dynamicId,
-            page: 1,
-            size: 50,
-        });
-        const page =
-            responseData<CommunityPageResult<WellnessDynamicCommentVO>>(
-                response,
-            );
-        const comments = page?.records || [];
-        const roots = comments.filter((c) => !c.parentId);
-        post.commentList = roots.map((comment) => ({
-            ...mapDynamicCommentToCommunity(comment),
-            replies: comments
-                .filter((reply) => reply.parentId === comment.id)
-                .map(mapDynamicCommentToCommunity),
-        }));
-        post.commentCount =
-            (post.commentList || []).length +
-            (post.commentList || []).reduce(
-                (s, c) => s + (c.replies?.length || 0),
-                0,
-            );
-        saveCommunityPosts();
-    } catch {
-        // 后端未启动时沿用本地评论。
-    }
+function countCommunityComments(list: CommunityComment[] | undefined): number {
+    return (list || []).reduce(
+        (total, comment) => total + 1 + (comment.replies?.length || 0),
+        0,
+    );
 }
 
 function getSeededCommunityPosts(): CommunityPost[] {
@@ -5836,42 +5626,16 @@ function loadCommunityPosts() {
                   }))
                 : [],
         }));
+        communityPosts.value.forEach((post) => {
+            post.commentCount = countCommunityComments(post.commentList);
+        });
     } catch {
         communityPosts.value = [];
     }
 }
 
-async function loadCommunityPostsApiState() {
-    try {
-        const response = await ApiCircle.getDynamicPage({ page: 1, size: 50 });
-        const page =
-            responseData<CommunityPageResult<WellnessDynamicVO>>(response);
-        const records = page?.records || [];
-        if (records.length === 0) return;
-        const details = await Promise.allSettled(
-            records.map(async (record) => {
-                const detail = await ApiCircle.getDynamicDetail(record.id);
-                return responseData<WellnessDynamicVO>(detail) || record;
-            }),
-        );
-        communityPosts.value = details.map((result, index) => {
-            const record =
-                result.status === "fulfilled" ? result.value : records[index]!;
-            return mapDynamicToCommunityPost(record);
-        });
-        await Promise.allSettled(
-            communityPosts.value.map((post) => hydrateDynamicComments(post)),
-        );
-        saveCommunityPosts();
-    } catch {
-        // 后端未启动时沿用本地动态。
-    }
-}
 function saveCommunityPosts() {
-    localStorage.setItem(
-        "yiyangge_community",
-        JSON.stringify(communityPosts.value),
-    );
+    writeStorage("yiyangge_community", communityPosts.value);
 }
 
 function loadFollowed() {
@@ -5958,21 +5722,22 @@ function toggleCommunityTag(t: string) {
         ? communityForm.value.tags.splice(idx, 1)
         : communityForm.value.tags.push(t);
 }
-async function publishCommunityPost() {
-    if (!communityForm.value.text.trim()) {
+function publishCommunityPost() {
+    const text = communityForm.value.text.trim();
+    if (!text && communityForm.value.images.length === 0) {
         toast("请输入内容");
         return;
     }
     const avatarBg = "linear-gradient(135deg,var(--gold),var(--cinnabar))";
-    const fallbackPost: CommunityPost = {
-        _id: "cp_" + Date.now(),
+    communityPosts.value.unshift({
+        _id: "cp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
         authorId: currentUserId,
         name: "我",
         level: "楼主",
         meta: "刚刚",
         avatarBg,
         avatarText: "我",
-        text: communityForm.value.text,
+        text,
         images: communityForm.value.images.map((s) => ({ src: s })),
         tags: communityForm.value.tags,
         liked: false,
@@ -5981,39 +5746,15 @@ async function publishCommunityPost() {
         starCount: 0,
         commentCount: 0,
         commentList: [],
-    };
-    try {
-        const resources = communityForm.value.images.map((url) => ({
-            resourceType: 1,
-            url,
-        }));
-        const response = await ApiCircle.publishDynamic({
-            userId: apiUserId.value,
-            content: communityForm.value.text,
-            coverUrl: communityForm.value.images[0] || "",
-            dynamicType: resources.length > 0 ? 1 : 3,
-            resources,
-        });
-        const saved = responseData<WellnessDynamicVO>(response);
-        communityPosts.value.unshift(
-            saved ? mapDynamicToCommunityPost(saved) : fallbackPost,
-        );
-    } catch {
-        communityPosts.value.unshift(fallbackPost);
-    }
+    });
     saveCommunityPosts();
     showCommunityPublish.value = false;
+    communityForm.value = { text: "", images: [], tags: [] };
     toast("动态已发布");
 }
-async function deleteCommunityPost(pid: string) {
+function deleteCommunityPost(pid: string) {
     const idx = communityPosts.value.findIndex((p) => p._id === pid);
     if (idx > -1) {
-        const dynamicId = getBackendId(pid);
-        if (dynamicId) {
-            await ApiCircle.deleteDynamic(dynamicId, apiUserId.value).catch(
-                () => {},
-            );
-        }
         communityPosts.value.splice(idx, 1);
         saveCommunityPosts();
         toast("已删除");
@@ -6021,6 +5762,11 @@ async function deleteCommunityPost(pid: string) {
 }
 
 // 社区互动
+function communityPostNoticeText(post: CommunityPost) {
+    const text = post.text || (post.images.length > 0 ? "图片动态" : "动态");
+    return text.slice(0, 60) + (text.length > 60 ? "…" : "");
+}
+
 function likeCommunityPost(pid: string) {
     const p = communityPosts.value.find((x) => x._id === pid);
     if (!p) return;
@@ -6036,7 +5782,7 @@ function likeCommunityPost(pid: string) {
             emoji: "❤️",
             bg: "var(--cinnabar-soft)",
             title: `${currentUser.value} 赞了你的动态`,
-            text: p.text.slice(0, 60) + (p.text.length > 60 ? "…" : ""),
+            text: communityPostNoticeText(p),
             time: new Date().toLocaleTimeString().slice(0, 5),
             read: false,
             fromId: currentUserId,
@@ -6051,6 +5797,20 @@ function starCommunityPost(pid: string) {
     p.starCount += p.stared ? 1 : -1;
     if (p.starCount < 0) p.starCount = 0;
     saveCommunityPosts();
+    if (p.stared && p.authorId !== currentUserId) {
+        addNotification({
+            _nid: "n_" + Date.now(),
+            type: "like",
+            emoji: "⭐",
+            bg: "var(--gold-soft)",
+            title: `${currentUser.value} 收藏了你的动态`,
+            text: communityPostNoticeText(p),
+            time: new Date().toLocaleTimeString().slice(0, 5),
+            read: false,
+            fromId: currentUserId,
+            postId: pid,
+        });
+    }
 }
 function shareCommunityPost(post: CommunityPost) {
     shareFormData.value.originalPost = post;
@@ -6100,44 +5860,20 @@ const communityReplyTarget = ref<{
 function toggleCommunityComment(pid: string) {
     expandedComments.value[pid] = !expandedComments.value[pid];
     communityReplyTarget.value = null;
-    if (expandedComments.value[pid]) {
-        const post = communityPosts.value.find((p) => p._id === pid);
-        if (post) void hydrateDynamicComments(post);
-    }
 }
 function setCommunityReplyTarget(postId: string, cid: string, author: string) {
     communityReplyTarget.value = { postId, cid, author };
 }
-async function submitCommunityComment(pid: string) {
+function submitCommunityComment(pid: string) {
     const text = (communityCommentText.value[pid] || "").trim();
     if (!text) return;
     const p = communityPosts.value.find((x) => x._id === pid);
     if (!p) return;
     if (!p.commentList) p.commentList = [];
     const now = new Date().toLocaleTimeString().slice(0, 5);
-    const dynamicId = getBackendId(pid);
-    const parentBackendId = communityReplyTarget.value
-        ? getBackendId(communityReplyTarget.value.cid)
-        : null;
-    let apiSaved = false;
-    try {
-        if (dynamicId) {
-            await ApiCircle.publishDynamicComment({
-                dynamicId,
-                userId: apiUserId.value,
-                ...(parentBackendId ? { parentId: parentBackendId } : {}),
-                content: text,
-            });
-            apiSaved = true;
-            await hydrateDynamicComments(p);
-        }
-    } catch {
-        // 后端未启动时走本地评论。
-    }
     if (
         communityReplyTarget.value &&
-        communityReplyTarget.value.postId === pid &&
-        !apiSaved
+        communityReplyTarget.value.postId === pid
     ) {
         const parent = p.commentList.find(
             (c) => c._cid === communityReplyTarget.value!.cid,
@@ -6152,7 +5888,7 @@ async function submitCommunityComment(pid: string) {
                 time: now,
             });
         }
-    } else if (!apiSaved) {
+    } else {
         p.commentList.unshift({
             _cid: "cc_" + Date.now(),
             author: currentUser.value,
@@ -6160,9 +5896,7 @@ async function submitCommunityComment(pid: string) {
             time: now,
         });
     }
-    p.commentCount =
-        (p.commentList || []).length +
-        (p.commentList || []).reduce((s, c) => s + (c.replies?.length || 0), 0);
+    p.commentCount = countCommunityComments(p.commentList);
     communityCommentText.value[pid] = "";
     communityReplyTarget.value = null;
     saveCommunityPosts();
@@ -6825,8 +6559,6 @@ onMounted(() => {
     void Promise.allSettled([
         loadCheckinApiState(),
         loadLifestyleApiState(),
-        loadPublishedApiState(),
-        loadCommunityPostsApiState(),
     ]);
 });
 
