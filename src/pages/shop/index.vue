@@ -88,6 +88,7 @@
             <CustomerService
                 v-show="activeTab === 'service'"
                 :agents="agents"
+                :agents-loading="agentsLoading"
                 v-model:current-agent="currentAgent"
                 :chat-history="chatHistory"
                 v-model:chat-input="chatInput"
@@ -187,6 +188,7 @@ import {
     watch,
     reactive,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import HeaderLayout from "@/layouts/HeaderLayout.vue";
 import {
     ProductList,
@@ -211,11 +213,8 @@ import { ApiOrder, type OrderVO } from "@/network/order";
 import { ApiRefund, type ApplyRefundDTO } from "@/network/refund";
 import { ApiLogistics } from "@/network";
 import { useUserStore } from "@/store/user";
-import {
-    bridgeEnterQueue,
-    bridgeCustomerSend,
-    bridgeSessions,
-} from "@/network/chatBridge";
+import { ApiProductCs } from "@/network/productCs";
+import { useProductCsSocket, type ProductCsEvent } from "@/composables/useProductCsSocket";
 
 interface Product {
     id: string;
@@ -254,7 +253,7 @@ interface Agent {
     avatar: string;
 }
 interface ChatMsg {
-    from: "agent" | "me";
+    from: "agent" | "me" | "sys";
     text: string;
     time: string;
     productCard?: {
@@ -267,23 +266,8 @@ interface ChatMsg {
 }
 
 // ── Static data ──────────────────────────────────────────────────────────────
-// 客服数据（保持静态）
-const agents: Agent[] = [
-    {
-        id: "cs1",
-        name: "小翠",
-        tag: "在线客服",
-        status: "online",
-        avatar: "客一",
-    },
-    {
-        id: "cs2",
-        name: "阿岚",
-        tag: "在线客服",
-        status: "online",
-        avatar: "客二",
-    },
-];
+const agentsLoading = ref(false);
+const agents = ref<Agent[]>([]);
 
 const tabDefs = [
     { key: "shop", icon: "🏪", label: "商品浏览" },
@@ -312,35 +296,13 @@ const orders = ref<Order[]>([]);
 const orderLoading = ref(false);
 
 const orderFilter = ref("all");
-const currentAgent = ref("cs1");
-const chatHistory = ref<Record<string, ChatMsg[]>>({
-    cs1: [
-        {
-            from: "agent",
-            text: "您好，我是颐养阁客服小翠，请问有什么可以帮您？",
-            time: "10:01",
-        },
-        {
-            from: "me",
-            text: "你好，请问枸杞红枣养生茶适合气郁体质吗？",
-            time: "10:02",
-        },
-        {
-            from: "agent",
-            text: "非常适合的，枸杞滋阴、红枣补气，正好对应气郁兼阴虚体质，建议每日 1 包，连饮 4 周。",
-            time: "10:02",
-        },
-    ],
-    cs2: [
-        {
-            from: "agent",
-            text: "您好，我是颐养阁客服阿岚，请问有什么可以帮您？",
-            time: "09:30",
-        },
-    ],
-});
+const currentAgent = ref("");
+const chatHistory = ref<Record<string, ChatMsg[]>>({});
 const chatInput = ref("");
 const chatBodyRef = ref<HTMLElement | null>(null);
+
+const route = useRoute();
+const router = useRouter();
 
 const userStore = useUserStore();
 const custName = computed(
@@ -349,10 +311,9 @@ const custName = computed(
 const custId = computed(
     () => `user_${userStore.G_LoginInfo.account || "anon"}`,
 );
-// 每个 agentId 对应的 bridge session ID
-const bridgeSessionIds = ref<Record<string, string>>({});
-// 已处理过的消息数（用于增量检测 agent 回复）
-const bridgeMsgCounts = ref<Record<string, number>>({});
+// 商品客服真实会话 ID（与后端建立连接后获取）
+const csSessionId = ref<number | null>(null);
+const csSocket = useProductCsSocket();
 
 // Modal states
 const showPdModal = ref(false);
@@ -1065,20 +1026,10 @@ function sendProductCard(product: {
         time,
         productCard: { ...product },
     });
-    // 同步到桥（以纯文本描述传给客服端）
+    // 通过真实 API 发送商品咨询消息
     const productMsg = `[商品咨询] ${product.name}（¥${product.price}）`;
-    const existingId = bridgeSessionIds.value[agentId];
-    if (existingId) {
-        bridgeCustomerSend(existingId, productMsg);
-    } else {
-        const session = bridgeEnterQueue(
-            custName.value,
-            custId.value,
-            agentId,
-            productMsg,
-        );
-        bridgeSessionIds.value[agentId] = session.id;
-    }
+    const productId = parseInt(product.id.replace("p", "")) || 0;
+    void ensureSessionAndSend(productMsg, productId);
     serviceContextProduct.value = null;
 }
 
@@ -1102,59 +1053,75 @@ async function sendChat() {
     // 立即显示到本地聊天记录
     chatHistory.value[agentId].push({ from: "me", text, time });
     chatInput.value = "";
-    await nextTick();
-    scrollChatToBottom();
 
-    // 通过桥发送
-    const existingId = bridgeSessionIds.value[agentId];
-    if (existingId) {
-        bridgeCustomerSend(existingId, text);
-    } else {
-        const session = bridgeEnterQueue(
-            custName.value,
-            custId.value,
-            agentId,
-            text,
-        );
-        bridgeSessionIds.value[agentId] = session.id;
+    await ensureSessionAndSend(text, 0);
+}
+
+/** 处理客服侧 STOMP 推送的回复消息 */
+function handleCsReply(event: ProductCsEvent) {
+    const agentId = currentAgent.value;
+    if (!chatHistory.value[agentId]) chatHistory.value[agentId] = [];
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    if (event.event === "agent_joined") {
+        // 客服接入通知
+        chatHistory.value[agentId].push({
+            from: "sys",
+            text: `${event.agentName || "客服"}已加入会话`,
+            time,
+        });
+        return;
+    }
+    if (event.event === "session_closed") {
+        chatHistory.value[agentId].push({ from: "sys", text: "会话已关闭", time });
+        // 重置会话状态，下次发消息时自动创建新会话并进入排队队列
+        csSessionId.value = null;
+        csSocket.disconnect();
+        return;
+    }
+    // 过滤掉用户自己发的消息回声（senderType=user）和非 new_message 事件
+    if (event.event !== "new_message" || event.senderType === "user") return;
+    chatHistory.value[agentId].push({ from: "agent", text: event.content || "", time });
+}
+
+/** 确保会话已建立，然后发送消息（STOMP 优先，降级到 HTTP） */
+async function ensureSessionAndSend(text: string, productId = 0) {
+    try {
+        if (!csSessionId.value) {
+            const session = await ApiProductCs.createSession(productId);
+            csSessionId.value = session.id;
+            csSocket.connect(session.id, handleCsReply);
+        }
+        const sent = csSocket.send(csSessionId.value, text);
+        if (!sent) {
+            await ApiProductCs.sendMessage(csSessionId.value, text);
+        }
+    } catch {
+        showToast("发送失败，请稍后重试");
     }
 }
 
-// 监听桥中客服回复，同步到本地聊天记录
-watch(
-    bridgeSessions,
-    () => {
-        for (const [agentId, sessionId] of Object.entries(
-            bridgeSessionIds.value,
-        )) {
-            const session = bridgeSessions.find((s) => s.id === sessionId);
-            if (!session) continue;
-            const prevCount = bridgeMsgCounts.value[sessionId] ?? 0;
-            const newMsgs = session.messages.slice(prevCount);
-            let added = 0;
-            for (const msg of newMsgs) {
-                if (msg.from === "agent") {
-                    if (!chatHistory.value[agentId])
-                        chatHistory.value[agentId] = [];
-                    chatHistory.value[agentId].push({
-                        from: "agent",
-                        text: msg.text,
-                        time: msg.time,
-                    });
-                }
-                added++;
-            }
-            if (added > 0) {
-                bridgeMsgCounts.value[sessionId] = prevCount + added;
-            }
+/** 加载在线客服列表 */
+async function loadAgents() {
+    agentsLoading.value = true;
+    try {
+        const list = await ApiProductCs.listAgents();
+        agents.value = list.map((a) => ({
+            id: a.userId || a.id || String(Math.random()),
+            name: a.name,
+            tag: a.role === "presale" ? "售前客服" : "售后客服",
+            status: a.status as "online" | "busy" | "off",
+            avatar: a.name.slice(-1),
+        }));
+        if (agents.value.length > 0 && !currentAgent.value) {
+            currentAgent.value = agents.value[0].id;
         }
-    },
-    { deep: true },
-);
-
-function scrollChatToBottom() {
-    if (chatBodyRef.value)
-        chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
+    } catch {
+        // 加载失败保留空列表
+    } finally {
+        agentsLoading.value = false;
+    }
 }
 
 // ── Confirm modal ─────────────────────────────────────────────────────────────
@@ -1454,7 +1421,7 @@ onMounted(() => {
     loadCategories();
     loadCartList();
     loadOrders();
-    loadCustomerAgents();
+    loadAgents();
 
     // 每秒刷新待支付订单的倒计时
     refreshCountdowns();
