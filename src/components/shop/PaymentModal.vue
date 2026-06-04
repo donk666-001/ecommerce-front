@@ -8,7 +8,10 @@
             <div class="modal-header">
                 <div>
                     <h3>确认支付</h3>
-                    <div class="countdown" :class="{ urgent: countdownSecs <= 60 }">
+                    <div
+                        class="countdown"
+                        :class="{ urgent: countdownSecs <= 60 }"
+                    >
                         <span class="cd-icon">⏱</span>
                         {{ countdownText }} 后订单将自动取消
                     </div>
@@ -42,7 +45,9 @@
                     <div class="ali-logo">支</div>
                     <div class="pay-method-main">
                         <div class="pay-method-title">支付宝沙箱支付</div>
-                        <div class="pay-method-sub">请使用支付宝沙箱 APP 扫码</div>
+                        <div class="pay-method-sub">
+                            请使用支付宝沙箱 APP 扫码
+                        </div>
                     </div>
                     <div class="pay-check">✓</div>
                 </div>
@@ -57,7 +62,11 @@
                     <div v-else-if="paymentStatus === 'error'" class="qr-state">
                         <strong>{{ errorMessage }}</strong>
                         <span>确认订单仍为待付款后可重新生成二维码</span>
-                        <button class="retry-btn" type="button" @click="restartPayment">
+                        <button
+                            class="retry-btn"
+                            type="button"
+                            @click="restartPayment"
+                        >
                             重新生成二维码
                         </button>
                     </div>
@@ -82,13 +91,20 @@
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-outline" type="button" @click="handleCancel">
+                <button
+                    class="btn btn-outline"
+                    type="button"
+                    @click="handleCancel"
+                >
                     暂不支付
                 </button>
                 <button
                     class="btn btn-jade"
                     type="button"
-                    :disabled="paymentStatus === 'creating'"
+                    :disabled="
+                        paymentStatus === 'creating' ||
+                        paymentStatus === 'checking'
+                    "
                     @click="checkPaymentNow"
                 >
                     我已完成支付
@@ -109,7 +125,13 @@ interface DisplayItem {
     price: number;
 }
 
-type PaymentStatus = "idle" | "creating" | "ready" | "checking" | "paid" | "error";
+type PaymentStatus =
+    | "idle"
+    | "creating"
+    | "ready"
+    | "checking"
+    | "paid"
+    | "error";
 
 interface CachedPaymentQr {
     orderNo: string;
@@ -225,13 +247,33 @@ function restartPayment() {
     void createAlipayOrder();
 }
 
-function checkPaymentNow() {
+async function checkPaymentNow() {
+    if (paymentStatus.value === "checking") return;
+
     if (!props.orderId) {
         paymentStatus.value = "error";
         errorMessage.value = "订单信息不完整，无法确认支付结果";
         return;
     }
-    completePayment(props.orderId);
+
+    const seq = requestSeq;
+    paymentStatus.value = "checking";
+    errorMessage.value = "";
+    stopPolling();
+
+    try {
+        const response = await ApiOrder.simulatePay(props.orderId);
+        if (!isApiSuccess(response.data.code)) {
+            throw new Error(response.data.message || "订单支付状态更新失败");
+        }
+        if (seq !== requestSeq) return;
+        completePayment(props.orderId);
+    } catch (error) {
+        console.error("手动确认支付失败", error);
+        if (seq !== requestSeq) return;
+        paymentStatus.value = "error";
+        errorMessage.value = "订单支付状态更新失败，请稍后重试";
+    }
 }
 
 async function createAlipayOrder() {
@@ -301,7 +343,8 @@ async function checkPaymentStatus(manual: boolean) {
         }
     } catch (error) {
         console.error("查询支付状态失败", error);
-        paymentStatus.value = previousStatus === "checking" ? "ready" : previousStatus;
+        paymentStatus.value =
+            previousStatus === "checking" ? "ready" : previousStatus;
         if (manual) {
             paymentStatus.value = "error";
             errorMessage.value = "支付状态查询失败，请稍后重试";

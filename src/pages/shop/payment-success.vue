@@ -29,10 +29,18 @@
                 </dl>
 
                 <div class="actions">
-                    <button class="btn btn-primary" type="button" @click="viewOrders">
+                    <button
+                        class="btn btn-primary"
+                        type="button"
+                        @click="viewOrders"
+                    >
                         查看订单
                     </button>
-                    <button class="btn btn-outline" type="button" @click="continueShop">
+                    <button
+                        class="btn btn-outline"
+                        type="button"
+                        @click="continueShop"
+                    >
                         继续逛逛
                     </button>
                     <button
@@ -66,6 +74,7 @@ const syncMessage = ref("");
 const orderId = computed(() => toSingleQuery(route.query.order_id));
 const orderNo = computed(() => toSingleQuery(route.query.order_no));
 const outTradeNo = computed(() => toSingleQuery(route.query.out_trade_no));
+const manualConfirm = computed(() => toSingleQuery(route.query.manual) === "1");
 
 const titleText = computed(() => {
     switch (verifyStatus.value) {
@@ -126,6 +135,11 @@ async function verifyPayment() {
     syncMessage.value = "";
 
     try {
+        if (orderId.value) {
+            const paid = await verifyOrderStatus();
+            if (paid || manualConfirm.value) return;
+        }
+
         if (outTradeNo.value) {
             const syncResponse = await ApiAlipay.toSuccess(outTradeNo.value);
             if (isAlipayPaidResponse(syncResponse.data)) {
@@ -144,14 +158,7 @@ async function verifyPayment() {
                 syncResponse.data.data || "支付服务正在确认该交易。";
         }
 
-        if (orderId.value) {
-            const orderResponse = await ApiOrder.getOrderById(Number(orderId.value));
-            const order = orderResponse.data?.data;
-            verifyStatus.value = isPaidOrderStatus(order?.status)
-                ? "success"
-                : "pending";
-            return;
-        }
+        if (orderId.value) return;
 
         verifyStatus.value = outTradeNo.value ? "pending" : "error";
         if (!outTradeNo.value) {
@@ -162,6 +169,17 @@ async function verifyPayment() {
         verifyStatus.value = "error";
         syncMessage.value = "支付服务暂时不可用，请稍后在订单列表刷新状态。";
     }
+}
+
+async function verifyOrderStatus() {
+    const orderResponse = await ApiOrder.getOrderById(Number(orderId.value));
+    const order = orderResponse.data?.data;
+    const paid = isPaidOrderStatus(order?.status);
+    verifyStatus.value = paid ? "success" : "pending";
+    if (!paid && manualConfirm.value) {
+        syncMessage.value = "已收到手动完成支付操作，订单状态仍在同步。";
+    }
+    return paid;
 }
 
 function viewOrders() {

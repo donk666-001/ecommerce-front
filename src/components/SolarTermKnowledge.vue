@@ -30,7 +30,7 @@
                     </button>
                     <div ref="termWheelRef" class="term-wheel">
                         <button
-                            v-for="term in solarTerms"
+                            v-for="term in orderedSolarTerms"
                             :key="term"
                             class="term-chip"
                             :class="{
@@ -587,6 +587,10 @@ const heroStyle = computed<Record<string, string>>(() => ({
 const activeTipTab = ref("饮食");
 const termWheelRef = ref<HTMLElement | null>(null);
 
+const orderedSolarTerms = computed(() =>
+    rotateSolarTermsFrom(todayTermName.value),
+);
+
 const contentTypeName: Record<string, string> = {
     "1": "饮食",
     diet: "饮食",
@@ -801,11 +805,24 @@ function scrollTerms(direction: number) {
     });
 }
 
+function rotateSolarTermsFrom(termName: string) {
+    const startIndex = solarTerms.indexOf(termName);
+    if (startIndex <= 0) return solarTerms;
+    return [
+        ...solarTerms.slice(startIndex),
+        ...solarTerms.slice(0, startIndex),
+    ];
+}
+
+function scrollTermWheelToStart() {
+    termWheelRef.value?.scrollTo({ left: 0, behavior: "auto" });
+}
+
 async function returnToToday() {
     activeTipTab.value = "饮食";
     await loadCurrentSeasonalHealth();
     await nextTick();
-    scrollTermIntoView(todayTermName.value);
+    scrollTermWheelToStart();
 }
 
 function scrollTermIntoView(term: string) {
@@ -898,6 +915,12 @@ async function loadSeasonalHealth(
         selectedTermName.value = data.solarTerm.termName;
         seasonalHealth.value = data;
         isCurrentTermData.value = isCurrent;
+        if (isCurrent) {
+            await nextTick();
+            if (currentRequest === requestSerial) {
+                scrollTermWheelToStart();
+            }
+        }
     } catch (error) {
         console.error("节气养生接口请求失败", error);
         if (currentRequest !== requestSerial) return;
