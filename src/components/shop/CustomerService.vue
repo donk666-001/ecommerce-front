@@ -56,35 +56,39 @@
                         class="chat-msg"
                         :class="m.from"
                     >
-                        <div v-if="m.from === 'agent'" class="agent-avatar xs">
-                            {{ currentAgentObj.avatar }}
-                        </div>
-                        <div v-else class="user-avatar xs">我</div>
-                        <div>
-                            <div class="chat-meta">
-                                {{
-                                    m.from === "agent"
-                                        ? currentAgentObj.name
-                                        : "我"
-                                }}
-                                · {{ m.time }}
+                        <!-- 系统提示消息（居中展示） -->
+                        <div v-if="m.from === 'sys'" class="sys-notice">{{ m.text }}</div>
+                        <template v-else>
+                            <div v-if="m.from === 'agent'" class="agent-avatar xs">
+                                {{ currentAgentObj.avatar }}
                             </div>
-                            <div
-                                v-if="m.productCard"
-                                class="product-card-msg"
-                                @click="$emit('viewProduct', m.productCard.id)"
-                            >
-                                <div class="pcm-body">
-                                    <span class="pcm-icon">{{ m.productCard.icon }}</span>
-                                    <div class="pcm-info">
-                                        <div class="pcm-name">{{ m.productCard.name }}</div>
-                                        <div class="pcm-price">¥{{ m.productCard.price }}</div>
-                                    </div>
+                            <div v-else class="user-avatar xs">我</div>
+                            <div>
+                                <div class="chat-meta">
+                                    {{
+                                        m.from === "agent"
+                                            ? currentAgentObj.name
+                                            : "我"
+                                    }}
+                                    · {{ m.time }}
                                 </div>
-                                <div class="pcm-footer">查看商品详情 ›</div>
+                                <div
+                                    v-if="m.productCard"
+                                    class="product-card-msg"
+                                    @click="$emit('viewProduct', m.productCard.id)"
+                                >
+                                    <div class="pcm-body">
+                                        <span class="pcm-icon">{{ m.productCard.icon }}</span>
+                                        <div class="pcm-info">
+                                            <div class="pcm-name">{{ m.productCard.name }}</div>
+                                            <div class="pcm-price">¥{{ m.productCard.price }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="pcm-footer">查看商品详情 ›</div>
+                                </div>
+                                <div v-else class="chat-bubble">{{ m.text }}</div>
                             </div>
-                            <div v-else class="chat-bubble">{{ m.text }}</div>
-                        </div>
+                        </template>
                     </div>
                 </div>
 
@@ -426,10 +430,24 @@ function scrollChatToBottom() {
     gap: 10px;
     max-width: 75%;
 
+    &.sys {
+        max-width: 100%;
+        justify-content: center;
+    }
+
+
     &.me {
         align-self: flex-end;
         flex-direction: row-reverse;
     }
+}
+
+.sys-notice {
+    font-size: 12px;
+    color: var(--ink-muted);
+    background: rgba(0, 0, 0, 0.04);
+    padding: 3px 12px;
+    border-radius: 10px;
 }
 
 .chat-bubble {

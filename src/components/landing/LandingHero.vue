@@ -41,15 +41,6 @@
             </div>
         </div>
 
-        <div class="hero-wordmark-marquee" aria-hidden="true">
-            <div class="hero-wordmark-track">
-                <span>YIYANGGE</span>
-                <span>YIYANGGE</span>
-                <span>YIYANGGE</span>
-                <span>YIYANGGE</span>
-            </div>
-        </div>
-
         <!-- 滚动提示 -->
         <div class="scroll-hint">
             <span class="scroll-hint-text">向下滚动</span>
@@ -406,55 +397,6 @@ onMounted(() => {
     animation: scrollLine 2s ease-in-out infinite;
 }
 
-.hero-wordmark-marquee {
-    position: absolute;
-    left: 50%;
-    right: auto;
-    bottom: 18px;
-    width: 100vw;
-    height: clamp(92px, 11vw, 150px);
-    transform: translateX(-50%);
-    overflow: hidden;
-    pointer-events: none;
-    opacity: 0.22;
-    mask-image: linear-gradient(
-        90deg,
-        transparent,
-        black 16%,
-        black 84%,
-        transparent
-    );
-}
-
-.hero-wordmark-track {
-    display: flex;
-    align-items: center;
-    width: max-content;
-    gap: clamp(36px, 7vw, 92px);
-    animation: wordmarkDrift 28s linear infinite;
-
-    span {
-        color: rgba(255, 255, 255, 0.9);
-        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.9);
-        font-family:
-            Georgia, "Times New Roman", "PingFang SC", "Microsoft YaHei",
-            serif;
-        font-size: clamp(5rem, 13vw, 11rem);
-        font-weight: 700;
-        line-height: 0.9;
-        letter-spacing: 0;
-        white-space: nowrap;
-    }
-}
-
-@keyframes wordmarkDrift {
-    from {
-        transform: translate3d(0, 0, 0);
-    }
-    to {
-        transform: translate3d(calc(-50% - clamp(18px, 3.5vw, 46px)), 0, 0);
-    }
-}
 
 @media (max-width: 980px) {
     .hero {
@@ -513,10 +455,6 @@ onMounted(() => {
         display: none;
     }
 
-    .hero-wordmark-marquee {
-        bottom: 20px;
-        opacity: 0.16;
-    }
 }
 
 @keyframes scrollLine {
@@ -531,10 +469,4 @@ onMounted(() => {
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .hero-wordmark-track {
-        animation: none !important;
-        transform: translateX(-12%);
-    }
-}
 </style>
